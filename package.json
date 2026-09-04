@@ -1,0 +1,47 @@
+{
+  "name": "@veevtamm/settings-panel",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scene settings panel (⌘M) for Next.js + Tailwind 4 sites",
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Veevtamm/settings-panel.git"
+  },
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles.css",
+    "./utils": "./src/lib/utils.ts",
+    "./cubic-bezier": "./src/lib/cubic-bezier.ts",
+    "./easing-presets": "./src/lib/easing-presets.ts",
+    "./hex": "./src/lib/hex.ts",
+    "./prefers-reduced-motion": "./src/lib/prefers-reduced-motion.ts",
+    "./use-local-settings-store": "./src/lib/use-local-settings-store.ts",
+    "./is-over-settings-panel": "./src/lib/is-over-settings-panel.ts",
+    "./frame-orient": "./src/lib/frame-orient.ts",
+    "./eval-number-expression": "./src/lib/eval-number-expression.ts",
+    "./panel-theme": "./src/lib/panel-theme.ts",
+    "./copy-text": "./src/lib/copy-text.ts",
+    "./transition-player": "./src/lib/transition-player.ts",
+    "./sf-symbol": "./src/sf-symbol.tsx",
+    "./easing-curve-editor": "./src/easing-curve-editor.tsx"
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "clsx": "^2",
+    "react": "^19",
+    "react-dom": "^19",
+    "tailwind-merge": "^3"
+  },
+  "devDependencies": {
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}

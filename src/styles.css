@@ -1,0 +1,121 @@
+/* Panel gray ladder (Figma Tools → Panel / Primitive):
+   glass · surface · raised · line · line-2 · dim · text-2 · text · contrast.
+   All tokens are solid aliases onto the ladder; alpha lives only in glass. */
+[data-settings-panel],
+[data-panel-theme] {
+  --sp-glass: rgba(12, 12, 12, 0.72);
+  --sp-field: #161616; /* surface */
+  --sp-muted: #b8b8b8; /* text */
+  --sp-label: #8c8c8c; /* text-2 */
+  --sp-label-hover: #b8b8b8; /* text */
+  --sp-fg: #ffffff; /* contrast */
+  --sp-fg-dim: #616161; /* dim */
+  --sp-line: #303030; /* line */
+  --sp-line-mid: #3d3d3d; /* line-2 */
+  --sp-line-hover: #616161; /* dim */
+  --sp-line-strong: #616161; /* dim */
+  --sp-line-focus: #8c8c8c; /* text-2 */
+  --sp-fill: #303030; /* line */
+  --sp-fill-hover: #242424; /* raised */
+  --sp-fill-strong: #3d3d3d; /* line-2 */
+  --sp-tick: #616161; /* dim */
+  --sp-knob: #ffffff; /* contrast */
+  --sp-knob-off: #b8b8b8; /* text */
+  --sp-plot-bg: #161616; /* surface */
+  --sp-plot-grid: #242424; /* raised */
+  --sp-plot-diag: #303030; /* line */
+  --sp-plot-ghost: #3d3d3d; /* line-2 */
+  --sp-plot-help: #3d3d3d; /* line-2 */
+  --sp-plot-play: #616161; /* dim */
+  --sp-plot-band: #242424; /* raised */
+  --sp-plot-strong: #ffffff; /* contrast */
+  --sp-plot-handle: #161616; /* surface */
+  --sp-tooltip: #242424; /* raised */
+}
+
+[data-settings-panel][data-panel-theme="light"],
+[data-panel-theme="light"] {
+  --sp-glass: rgba(248, 248, 248, 0.86);
+  --sp-field: #ffffff; /* surface */
+  --sp-muted: #5a5a5a; /* text */
+  --sp-label: #5a5a5a; /* text */
+  --sp-label-hover: #1a1a1a; /* contrast */
+  --sp-fg: #1a1a1a; /* contrast */
+  --sp-fg-dim: #a9a9a9; /* dim */
+  --sp-line: #dadada; /* line */
+  --sp-line-mid: #cbcbcb; /* line-2 */
+  --sp-line-hover: #a9a9a9; /* dim */
+  --sp-line-strong: #8a8a8a; /* text-2 */
+  --sp-line-focus: #8a8a8a; /* text-2 */
+  --sp-fill: #dadada; /* line */
+  --sp-fill-hover: #e9e9e9; /* raised */
+  --sp-fill-strong: #cbcbcb; /* line-2 */
+  --sp-tick: #a9a9a9; /* dim */
+  --sp-knob: #1a1a1a; /* contrast */
+  --sp-knob-off: #8a8a8a; /* text-2 */
+  --sp-plot-bg: #e9e9e9; /* raised */
+  --sp-plot-grid: #dadada; /* line */
+  --sp-plot-diag: #cbcbcb; /* line-2 */
+  --sp-plot-ghost: #cbcbcb; /* line-2 */
+  --sp-plot-help: #cbcbcb; /* line-2 */
+  --sp-plot-play: #a9a9a9; /* dim */
+  --sp-plot-band: #e9e9e9; /* raised */
+  --sp-plot-strong: #1a1a1a; /* contrast */
+  --sp-plot-handle: #ffffff; /* surface */
+  --sp-tooltip: #e9e9e9; /* raised */
+}
+
+[data-settings-panel] button,
+[data-panel-theme] button {
+  cursor: pointer;
+}
+
+[data-settings-panel] button:disabled,
+[data-panel-theme] button:disabled {
+  cursor: default;
+}
+
+[data-settings-panel] button[data-panel-resize="x"] {
+  cursor: ew-resize;
+}
+
+[data-settings-panel] button[data-panel-resize="y"] {
+  cursor: ns-resize;
+}
+
+[data-settings-panel] button[data-panel-resize="xy-nwse"] {
+  cursor: nwse-resize;
+}
+
+[data-settings-panel] button[data-panel-resize="xy-nesw"] {
+  cursor: nesw-resize;
+}
+
+html[data-panel-resizing="x"],
+html[data-panel-resizing="x"] * {
+  cursor: ew-resize !important;
+}
+
+html[data-panel-resizing="y"],
+html[data-panel-resizing="y"] * {
+  cursor: ns-resize !important;
+}
+
+html[data-panel-resizing="xy-nwse"],
+html[data-panel-resizing="xy-nwse"] * {
+  cursor: nwse-resize !important;
+}
+
+html[data-panel-resizing="xy-nesw"],
+html[data-panel-resizing="xy-nesw"] * {
+  cursor: nesw-resize !important;
+}
+
+html[data-panel-moving],
+html[data-panel-moving] * {
+  cursor: grabbing !important;
+}
+
+body.settings-place-pick {
+  cursor: crosshair;
+}

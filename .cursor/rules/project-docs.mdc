@@ -1,0 +1,12 @@
+---
+description: Project docs pointers — read AGENTS.md for stack and deploy
+alwaysApply: true
+---
+
+# Project docs
+
+Before adding dependencies, changing persistence, or changing deploy tooling, read and follow `AGENTS.md`.
+
+- Stack, non-goals, and publish path live only in `AGENTS.md` — do not duplicate them here.
+- When the stack or how projects consume this package changes, update `AGENTS.md` in the same task.
+- When the user-facing picture of the package changes, update `README.md` in the same task.
