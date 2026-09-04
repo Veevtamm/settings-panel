@@ -14,9 +14,9 @@ React 19, TypeScript, Tailwind 4. Сборка не нужна: Next компи�
 
 `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel"`
 
-Пока репозиторий на GitHub ещё не опубликован, локально:
+Репозиторий: [github.com/Veevtamm/settings-panel](https://github.com/Veevtamm/settings-panel) (private).
 
-`"@veevtamm/settings-panel": "file:../settings-panel"`
+Пока правишь панель на этой машине, в потребителе лучше `file:../settings-panel` — это одна папка, не копия в `node_modules`.
 
 В Next: `transpilePackages: ["@veevtamm/settings-panel"]`.
 
