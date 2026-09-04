@@ -2476,9 +2476,8 @@ export function SettingsPanelImpl<TSettings>({
             ? []
             : sectionRails.mid.filter(sectionVisible);
           return (
-          <div className={cn("min-h-0 w-full", panelScroll)}>
           <div
-            className="flex min-h-0 w-full flex-col"
+            className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
             data-section-list=""
           >
             <div className="shrink-0">
@@ -2486,7 +2485,7 @@ export function SettingsPanelImpl<TSettings>({
                 renderOrderedSection(id, i > 0),
               )}
             </div>
-            <div className="min-h-0">
+            <div className={cn("min-h-0 flex-1", panelScroll)}>
               {visibleMid.map((id, i) =>
                 renderOrderedSection(
                   id,
@@ -2494,7 +2493,6 @@ export function SettingsPanelImpl<TSettings>({
                 ),
               )}
             </div>
-          </div>
           </div>
           );
           })() : null}

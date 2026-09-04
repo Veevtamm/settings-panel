@@ -16,7 +16,7 @@ Compact context for AI agents. For people — `README.md`.
 
 ## Infrastructure
 
-- **Install:** `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel"`
+- **Install:** `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel"` (public GitHub)
 - **Install (local, while editing the panel):** `"file:../settings-panel"` — same folder on disk; do not edit `node_modules`
 - **Next.js consumer:** `transpilePackages: ["@veevtamm/settings-panel"]`. Local `file:` install: `turbopack.root` = parent of the app and this package (`path.join(__dirname, "..")`).
 - **CSS:** `@import "@veevtamm/settings-panel/styles.css"` and Tailwind `@source` on this package `src`
@@ -32,7 +32,7 @@ Compact context for AI agents. For people — `README.md`.
 
 ## Specifics
 
-- Canonical implementation lives **here**. experimental / folio / vn-manage consume the package; do not copy `components/settings-panel` into apps anymore.
+- Canonical implementation lives **here**. experimental and folio install `github:Veevtamm/settings-panel`. vn-manage still has a local copy — do not edit the copy; new kernel work stays here.
 - Figma: Tools file `ttYXL5aqa6feFcY8oNkpwm`, page Panel System. Rules: Connected Library `Agent Rules/settings-panel.md`.
 - Storage keys stay per-scene in the app: `<project>-<scene>-settings`.
 - `PANEL_THEME_EVENT` is still `"experimental:panel-theme"` so existing localStorage listeners keep working.

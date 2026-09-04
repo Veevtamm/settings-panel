@@ -10,17 +10,17 @@ React 19, TypeScript, Tailwind 4. Сборка не нужна: Next компи�
 
 ## Как подключить
 
-В `package.json`:
+В `package.json` с публичного GitHub (не npm):
 
 `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel"`
 
-Репозиторий: [github.com/Veevtamm/settings-panel](https://github.com/Veevtamm/settings-panel) (private).
+Репозиторий: [github.com/Veevtamm/settings-panel](https://github.com/Veevtamm/settings-panel).
 
 Пока правишь панель на этой машине, в потребителе лучше `file:../settings-panel` — это одна папка, не копия в `node_modules`.
 
-В Next: `transpilePackages: ["@veevtamm/settings-panel"]`.
+В Next: `transpilePackages: ["@veevtamm/settings-panel"]`. Для `file:` ещё `turbopack.root` = родитель папки сайта и пакета.
 
-В CSS: импорт `styles.css` пакета и `@source` на его `src`, чтобы Tailwind увидел классы. Geist — в layout сайта, как раньше.
+В CSS: `@import "@veevtamm/settings-panel/styles.css"` и Tailwind `@source` на `src` пакета. Geist — в layout сайта.
 
 Панель на стартовую страницу не вешать, пока нет сцены.
 
@@ -33,4 +33,4 @@ React 19, TypeScript, Tailwind 4. Сборка не нужна: Next компи�
 
 ## Деплой
 
-Это библиотека, не сайт. Публикация — GitHub-репозиторий `Veevtamm/settings-panel`.
+Это библиотека, не сайт. Публикация — публичный GitHub-репозиторий `Veevtamm/settings-panel`, не npm.
