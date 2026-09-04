@@ -116,6 +116,16 @@ html[data-panel-moving] * {
   cursor: grabbing !important;
 }
 
+html[data-panel-reorder],
+html[data-panel-reorder] * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+html[data-panel-reorder] [data-settings-panel-window] * {
+  pointer-events: none !important;
+}
+
 body.settings-place-pick {
   cursor: crosshair;
 }

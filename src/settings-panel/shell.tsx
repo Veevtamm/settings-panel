@@ -362,7 +362,7 @@ export function ReorderShell({
         if (floatRef) floatRef.current = node;
         if (lifted) applyLiftTransform(node, xyRef?.current ?? null);
       }}
-      className="w-full font-sans"
+      className={cn("w-full font-sans", lifted && "select-none")}
       data-panel-theme={lifted ? theme : undefined}
       style={
         lifted && float
@@ -460,7 +460,11 @@ export function SubsectionBlock({
         if (floatRef) floatRef.current = node;
         if (lifted) applyLiftTransform(node, xyRef?.current ?? null);
       }}
-      className={cn("flex flex-col font-sans", open && "gap-2")}
+      className={cn(
+        "flex flex-col font-sans",
+        open && "gap-2",
+        lifted && "select-none",
+      )}
       data-panel-theme={lifted ? theme : undefined}
       style={
         lifted
@@ -1473,6 +1477,15 @@ export function SettingsPanelImpl<TSettings>({
     }
     writePanelSettings(panelId, { reorderSections: value });
   };
+
+  useEffect(() => {
+    if (!draggingSection && !draggingSubsection) return;
+    const root = document.documentElement;
+    root.dataset.panelReorder = "";
+    return () => {
+      delete root.dataset.panelReorder;
+    };
+  }, [draggingSection, draggingSubsection]);
 
   useEffect(() => {
     const drag = subsectionDragRef.current;
