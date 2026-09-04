@@ -2506,7 +2506,9 @@ export function SettingsPanelImpl<TSettings>({
                 titled.length + untitled.length + extras.length > 1;
               const hasSubs = titledMode === "subsection" || extrasAsSub;
               const placeTitle = `${tx(selectedPlace.label, locale)} · ${tx(
-                PANEL_COPY.parameters(placeParamCount(selectedPlace)),
+                PANEL_COPY.parameters(
+                  placeParamCount(selectedPlace, groups),
+                ),
                 locale,
               )}`;
               const body = (
@@ -2532,6 +2534,14 @@ export function SettingsPanelImpl<TSettings>({
                       titledMode,
                     ),
                   )}
+                  {untitled.length + titled.length + extras.length === 0 ? (
+                    <p
+                      className="px-2 text-[13px] leading-[18px]"
+                      style={{ color: MUTED }}
+                    >
+                      {tx(PANEL_COPY.placeEmpty, locale)}
+                    </p>
+                  ) : null}
                   {extras.map((kind) => {
                     const title =
                       kind === "plot"
@@ -2740,6 +2750,7 @@ export function SettingsPanelImpl<TSettings>({
       <PlaceHoverLayer
         active={pickPlace}
         places={places}
+        groups={groups}
         locale={locale}
         panelTheme={panelTheme}
         onPick={applyPlace}

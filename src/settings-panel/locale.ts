@@ -128,6 +128,10 @@ export const PANEL_COPY = {
   cancelPickPlace: L("Выключить указку", "Turn off the pointer"),
   showAllSettings: L("Показать все параметры", "Show all settings"),
   placeGone: L("Место исчезло, показаны все параметры", "Place gone — showing all settings"),
+  placeEmpty: L(
+    "Для текущего вида сцены у этого места нет параметров",
+    "This place has no parameters in the current scene",
+  ),
   parameters: (n: number) => {
     if (n === 1) return L("1 параметр", "1 parameter");
     const mod10 = n % 10;

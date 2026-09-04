@@ -6,14 +6,29 @@ import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import { GLASS, ICON, MUTED } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
-import { closePlayersHiddenByPlace } from "./model";
+import { closePlayersHiddenByPlace, collectGroupKeys } from "./model";
 import type { SettingsGroup, SettingsPlace } from "./types";
 
 /** Place marks on the scene — not a panel token. */
 const PLACE_MARK = "#3B82F6";
 
-export function placeParamCount<TSettings>(place: SettingsPlace<TSettings>) {
-  return place.keys.length + (place.easingIds?.length ?? 0);
+/** Keys listed on the place that the current schema actually renders. */
+export function placeVisibleKeys<TSettings>(
+  place: SettingsPlace<TSettings>,
+  groups: readonly SettingsGroup<TSettings>[],
+) {
+  const present = collectGroupKeys(groups);
+  return place.keys.filter((key) => present.has(key));
+}
+
+export function placeParamCount<TSettings>(
+  place: SettingsPlace<TSettings>,
+  groups?: readonly SettingsGroup<TSettings>[],
+) {
+  const keyCount = groups
+    ? placeVisibleKeys(place, groups).length
+    : place.keys.length;
+  return keyCount + (place.easingIds?.length ?? 0);
 }
 
 export function pointInSelector(selector: string, x: number, y: number) {
@@ -236,6 +251,7 @@ export function usePlacesPicker<TSettings>({
 export function PlaceHoverLayer<TSettings>({
   active,
   places,
+  groups,
   locale,
   panelTheme,
   onPick,
@@ -243,6 +259,7 @@ export function PlaceHoverLayer<TSettings>({
 }: {
   active: boolean;
   places: readonly SettingsPlace<TSettings>[];
+  groups: readonly SettingsGroup<TSettings>[];
   locale: PanelLocale;
   panelTheme: "dark" | "light";
   onPick: (id: string) => void;
@@ -325,7 +342,7 @@ export function PlaceHoverLayer<TSettings>({
   const n = rects.length;
   const caption = `${tx(hover.label, locale)}${
     n > 1 ? ` \u00d7 ${n}` : ""
-  } · ${tx(PANEL_COPY.parameters(placeParamCount(hover)), locale)}`;
+  } · ${tx(PANEL_COPY.parameters(placeParamCount(hover, groups)), locale)}`;
 
   return createPortal(
     <div

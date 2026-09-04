@@ -321,7 +321,7 @@ export function filterGroupsByPlace<TSettings>(
 }
 
 export function collectGroupKeys<TSettings>(
-  groups: SettingsGroup<TSettings>[],
+  groups: readonly SettingsGroup<TSettings>[],
 ): Set<keyof TSettings> {
   const keys = new Set<keyof TSettings>();
   const add = (key: keyof TSettings | undefined) => {
