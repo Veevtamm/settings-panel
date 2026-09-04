@@ -28,6 +28,7 @@ Compact context for AI agents. For people — `README.md` (EN) and `README.ru.md
 
 - Scene `settings.ts` schemas — they stay in the consuming app
 - Plot editors (`vertical-zone-editor`, `axis-curve-editor`) — optional, still in experimental until needed
+- Scene-only chrome (Grid Kind Switch on `/7-grids`)
 - shadcn, Next runtime APIs inside the panel
 - Public npm registry
 

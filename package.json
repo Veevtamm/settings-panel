@@ -34,6 +34,7 @@
     "./use-local-settings-store": "./src/lib/use-local-settings-store.ts",
     "./is-over-settings-panel": "./src/lib/is-over-settings-panel.ts",
     "./frame-orient": "./src/lib/frame-orient.ts",
+    "./skip-cells": "./src/lib/skip-cells.ts",
     "./eval-number-expression": "./src/lib/eval-number-expression.ts",
     "./panel-theme": "./src/lib/panel-theme.ts",
     "./copy-text": "./src/lib/copy-text.ts",

@@ -59,6 +59,17 @@ export {
 export { SettingsPanel } from "./settings-panel/shell";
 export { pointInSelector, pointInSettingsPlace } from "./settings-panel/places";
 export { PickRadioGroup } from "./settings-panel/pick";
+export { SettingChips } from "./settings-panel/chips";
+export { SettingCells, SettingSkipReplay } from "./settings-panel/cells";
+export {
+  SettingStrokeJoin,
+  STROKE_JOINS,
+  STROKE_JOIN_LABELS,
+  isStrokeJoin,
+  DEFAULT_MITER_ANGLE,
+  miterAngleToLimit,
+} from "./settings-panel/stroke-join";
+export type { StrokeJoin } from "./settings-panel/stroke-join";
 export { useCopyFlash } from "./settings-panel/use-copy-flash";
 export {
   SfSymbol,
@@ -101,6 +112,11 @@ export {
 } from "./lib/cubic-bezier";
 export { normalizeHex, parseRgb } from "./lib/hex";
 export { FRAME_ORIENTS, type FrameOrient } from "./lib/frame-orient";
+export {
+  SKIP_PATTERN_ROWS,
+  parseSkipCells,
+  serializeSkipCells,
+} from "./lib/skip-cells";
 export { evalNumberExpression } from "./lib/eval-number-expression";
 export { copyText } from "./lib/copy-text";
 export { useLocalSettingsStore } from "./lib/use-local-settings-store";
