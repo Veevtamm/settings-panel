@@ -90,7 +90,7 @@ export function NumberInput({
   );
 }
 
-/** 28 Field chrome: transport, eyedropper, Player/Scrub toggles (`expanded` = xmark on hover). */
+/** 28 Field chrome: transport, pipette, Player/Scrub toggles (`expanded` = `x` on hover). */
 export function FieldButton({
   label,
   active = false,
@@ -142,7 +142,7 @@ export function FieldButton({
           </span>
           {expanded ? (
             <SfSymbol
-              name="xmark"
+              name="x"
               className="absolute inset-0 size-5 opacity-0 transition-opacity duration-150 fine-hover:group-hover/field-btn:opacity-100"
             />
           ) : null}

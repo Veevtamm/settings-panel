@@ -13,7 +13,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { EasingCurveEditor } from "../easing-curve-editor";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { resolvePanelIcon, SfSymbol, type SfSymbolName } from "../sf-symbol";
 import {
   formatBezierInput,
   parseBezierInput,
@@ -100,7 +100,8 @@ import {
   usePlacesPicker,
 } from "./places";
 import { usePanelWindow } from "./use-panel-window";
-import { InfoHint, RowLabel, SectionCollapse, useDeferredMount } from "./row";
+import { RowLabel, SectionCollapse, useDeferredMount } from "./row";
+import { SectionIconPicker } from "./icon-picker";
 import { SectionRows } from "./section-rows";
 import { PanelSelectList } from "./select";
 import type {
@@ -132,6 +133,7 @@ export function SectionBlock({
   pinned,
   onPinClick,
   locale = "ru",
+  onIconChange,
 }: {
   icon: SfSymbolName;
   title: string;
@@ -152,6 +154,7 @@ export function SectionBlock({
   pinned?: boolean;
   onPinClick?: () => void;
   locale?: PanelLocale;
+  onIconChange?: (name: SfSymbolName) => void;
 }) {
   return (
     <section
@@ -171,7 +174,7 @@ export function SectionBlock({
                 onPointerDown={onGripPointerDown}
               >
                 <SfSymbol
-                  name="line.3.horizontal"
+                  name="grip-vertical"
                   className="size-5"
                   style={{ color: ICON }}
                 />
@@ -194,7 +197,7 @@ export function SectionBlock({
                 className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
               >
                 <SfSymbol
-                  name={pinned ? "pin.slash" : "pin"}
+                  name={pinned ? "pin-off" : "pin"}
                   className="size-5"
                   style={{ color: ICON }}
                 />
@@ -207,6 +210,15 @@ export function SectionBlock({
             {leading}
           </span>
         ) : null}
+        <span className="inline-flex min-w-0 flex-1 items-center gap-1">
+          {leading || !onIconChange ? null : (
+            <SectionIconPicker
+              label={title}
+              locale={locale}
+              onChange={onIconChange}
+              value={icon}
+            />
+          )}
         <button
           type="button"
           onClick={onToggle}
@@ -214,7 +226,7 @@ export function SectionBlock({
           className="flex min-w-0 flex-1 cursor-pointer items-center text-left outline-none"
         >
           <span className="inline-flex min-w-0 items-center gap-1">
-            {leading ? null : (
+            {leading || onIconChange ? null : (
               <SfSymbol name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
             )}
             {modified && onResetValue ? (
@@ -250,6 +262,7 @@ export function SectionBlock({
             </span>
           </span>
         </button>
+        </span>
         <span className="inline-flex shrink-0 items-center gap-1.5">
           {headerAction}
           {onVisibilityChange != null && visibilityOn != null ? (
@@ -261,7 +274,7 @@ export function SectionBlock({
               className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
             >
               <SfSymbol
-                name={visibilityOn ? "eye" : "eye.slash"}
+                name={visibilityOn ? "eye" : "eye-off"}
                 className="size-5"
                 style={{ color: ICON }}
               />
@@ -279,7 +292,7 @@ export function SectionBlock({
             className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
           >
             <SfSymbol
-              name="chevron.up"
+              name="chevron-up"
               className={cn(
                 "size-5",
                 !reduceMotion && "transition-transform",
@@ -482,7 +495,7 @@ export function SubsectionBlock({
             }
             onPointerDown={onGripPointerDown}
           >
-            <SfSymbol name="line.3.horizontal" className="size-5" style={{ color: ICON }} />
+            <SfSymbol name="grip-vertical" className="size-5" style={{ color: ICON }} />
           </span>
           ) : null}
           <span
@@ -503,7 +516,7 @@ export function SubsectionBlock({
             className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
           >
             <SfSymbol
-              name={visibilityOn ? "eye" : "eye.slash"}
+              name={visibilityOn ? "eye" : "eye-off"}
               className="size-5"
               style={{ color: ICON }}
             />
@@ -521,7 +534,7 @@ export function SubsectionBlock({
           className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
         >
         <SfSymbol
-          name="chevron.up"
+          name="chevron-up"
           className={cn(
             "size-5",
             !reduceMotion && "transition-transform",
@@ -621,8 +634,8 @@ export function DockFoldButton({
       <SfSymbol
         name={
           collapse
-            ? "arrow.down.and.line.horizontal.and.arrow.up"
-            : "arrow.up.and.line.horizontal.and.arrow.down"
+            ? "list-chevrons-down-up"
+            : "list-chevrons-up-down"
         }
       />
     </button>
@@ -661,7 +674,7 @@ export function PresetCurveIcon({ id }: { id: string }) {
         className="relative size-[14px] shrink-0 overflow-hidden"
       >
         <SfSymbol
-          name="function"
+          name="function-square"
           className="pointer-events-none absolute size-5"
           style={{ left: -2, top: -3 }}
         />
@@ -696,7 +709,7 @@ export function SettingsPanelImpl<TSettings>({
   easingTargets = [],
   curveSection,
   curveSectionTitle,
-  curveSectionIcon = "beziercurve",
+  curveSectionIcon = "spline",
   easingSectionTitle,
   onReplay,
   getReplayDurationMs,
@@ -1003,6 +1016,9 @@ export function SettingsPanelImpl<TSettings>({
   const [pinnedSections, setPinnedSections] = useState<string[]>([
     ...DEFAULT_PINNED_SECTIONS,
   ]);
+  const [sectionIcons, setSectionIcons] = useState<
+    Record<string, SfSymbolName>
+  >({});
   const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [sectionFloat, setSectionFloat] = useState<LiftSize | null>(null);
   const sectionXyRef = useRef<LiftXy | null>(null);
@@ -1271,6 +1287,7 @@ export function SettingsPanelImpl<TSettings>({
     if (parsed.pinnedSections !== undefined) {
       setPinnedSections(withoutRetiredSectionIds(parsed.pinnedSections));
     }
+    setSectionIcons(parsed.sectionIcons ?? {});
   }, [legacyPanelKey, panelId]);
 
   const persistPanelTheme = (value: "dark" | "light") => {
@@ -1282,6 +1299,25 @@ export function SettingsPanelImpl<TSettings>({
     setLocale(value);
     writePanelLocale(panelId, value);
   };
+
+  const persistSectionIcon = (
+    id: string,
+    fallback: SfSymbolName,
+    next: SfSymbolName,
+  ) => {
+    setSectionIcons((prev) => {
+      const map = { ...prev };
+      if (resolvePanelIcon(next) === resolvePanelIcon(fallback)) delete map[id];
+      else map[id] = resolvePanelIcon(next) ?? next;
+      writePanelSettings(panelId, { sectionIcons: map });
+      return map;
+    });
+  };
+
+  const sectionIconProps = (id: string, fallback: SfSymbolName) => ({
+    icon: sectionIcons[id] ?? fallback,
+    onIconChange: (name: SfSymbolName) => persistSectionIcon(id, fallback, name),
+  });
 
   const curveTitle = tx(curveSectionTitle ?? PANEL_COPY.bezierCurve, locale);
   const easingTitle = tx(easingSectionTitle ?? PANEL_COPY.easingCurves, locale);
@@ -1663,7 +1699,7 @@ export function SettingsPanelImpl<TSettings>({
               }}
             >
               <SfSymbol
-                name={panelOpen ? "xmark" : "gearshape"}
+                name={panelOpen ? "x" : "settings"}
                 className="size-5"
               />
             </ToolbarButton>
@@ -1763,7 +1799,7 @@ export function SettingsPanelImpl<TSettings>({
                     className="size-[34px] shrink-0 px-0"
                     onClick={onReset}
                   >
-                    <SfSymbol name="trash" className="size-5" />
+                    <SfSymbol name="trash-2" className="size-5" />
                   </ToolbarButton>
                   <DockCountBadge count={changedCount} />
                 </div>
@@ -1779,7 +1815,7 @@ export function SettingsPanelImpl<TSettings>({
                       onClick={copyChangedSettings}
                     >
                       <SfSymbol
-                        name={copiedChanges ? "checkmark" : "doc"}
+                        name={copiedChanges ? "check" : "file"}
                         className="size-5"
                       />
                     </ToolbarButton>
@@ -2075,7 +2111,7 @@ export function SettingsPanelImpl<TSettings>({
                       onClick={replay}
                       className="overflow-hidden active:scale-[0.97] fine-hover:hover:bg-[color:var(--sp-fill-hover)]"
                     >
-                      <SfSymbol name="arrow.counterclockwise" className="size-5" />
+                      <SfSymbol name="rotate-ccw" className="size-5" />
                     </FieldButton>
                   ) : null}
 
@@ -2156,7 +2192,7 @@ export function SettingsPanelImpl<TSettings>({
             if (sectionId === PANEL_SECTION_ID) {
               return shell(
           <SectionBlock
-            icon="slider.horizontal"
+            {...sectionIconProps(PANEL_SECTION_ID, "sliders-horizontal")}
             title={tx(PANEL_COPY.panelSettings, locale)}
             open={openSections.has("panel")}
             onToggle={() => toggleSection("panel")}
@@ -2169,15 +2205,11 @@ export function SettingsPanelImpl<TSettings>({
                 className="flex h-[28px] min-w-0 items-center justify-between gap-4"
                 data-setting-row=""
               >
-                <span className="inline-flex min-w-0 items-center gap-1.5">
-                  <span className={cn(rowLabelClass, "min-w-0")}>
-                    {tx(PANEL_COPY.presets, locale)}
-                  </span>
-                  <InfoHint
-                    label={tx(PANEL_COPY.presets, locale)}
-                    text={tx(PANEL_COPY.presetsInfo, locale)}
-                  />
-                </span>
+                <RowLabel
+                  label={tx(PANEL_COPY.presets, locale)}
+                  info={tx(PANEL_COPY.presetsInfo, locale)}
+                  icon="save"
+                />
               <div
                 role="group"
                 aria-label={tx(PANEL_COPY.presetsAria, locale)}
@@ -2263,7 +2295,7 @@ export function SettingsPanelImpl<TSettings>({
                 control="segment"
                 offLabel="Light"
                 onLabel="Dark"
-                offIcon="sun.max"
+                offIcon="sun"
                 onIcon="moon"
                 onChange={(dark) =>
                   persistPanelTheme(dark ? "dark" : "light")
@@ -2362,7 +2394,7 @@ export function SettingsPanelImpl<TSettings>({
               );
               return shell(
                 <SectionBlock
-                  icon="pointer.arrow.rays"
+                  icon="mouse-pointer-click"
                   title={placeTitle}
                   open={openSections.has(PLACE_SECTION_ID)}
                   onToggle={() => toggleSection(PLACE_SECTION_ID)}
@@ -2383,7 +2415,7 @@ export function SettingsPanelImpl<TSettings>({
 
               return shell(
           <SectionBlock
-            icon={curveSectionIcon}
+            {...sectionIconProps("bezier", curveSectionIcon)}
             title={curveTitle}
             open={openSections.has("bezier")}
             onToggle={() => toggleSection("bezier")}
@@ -2400,7 +2432,7 @@ export function SettingsPanelImpl<TSettings>({
             if (sectionId === easingSectionId && renderEasingEditor) {
               return shell(
           <SectionBlock
-            icon="beziercurve"
+            {...sectionIconProps(easingSectionId, "spline")}
             title={showPlotSection ? easingTitle : curveTitle}
             open={openSections.has(easingSectionId)}
             onToggle={() => toggleSection(easingSectionId)}
@@ -2418,7 +2450,7 @@ export function SettingsPanelImpl<TSettings>({
             if (!group) return null;
             return shell(
             <SectionBlock
-              icon={group.icon}
+              {...sectionIconProps(group.id, group.icon)}
               title={tx(group.title, locale)}
               open={openSections.has(group.id)}
               onToggle={() => toggleSection(group.id)}

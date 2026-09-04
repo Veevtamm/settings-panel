@@ -26,15 +26,15 @@ import {
 } from "./types";
 
 const FIT_GLYPH: Record<(typeof SETTING_X_ANCHORS)[number], SfSymbolName> = {
-  left: "align.horizontal.left",
-  center: "align.horizontal.center",
-  right: "align.horizontal.right",
+  left: "align-start-vertical",
+  center: "align-center-vertical",
+  right: "align-end-vertical",
 };
 const TEXT_ALIGN_GLYPH: Record<SettingTextAlign, SfSymbolName> = {
-  left: "text.alignleft",
-  center: "text.aligncenter",
-  right: "text.alignright",
-  justify: "text.justify",
+  left: "align-left",
+  center: "align-center",
+  right: "align-right",
+  justify: "align-justify",
 };
 
 function anchorLabel(anchor: SettingAnchor, locale: PanelLocale) {
@@ -111,8 +111,8 @@ export function isSettingFrameOrient(value: unknown): value is SettingFrameOrien
 
 export const FRAME_ORIENT_GLYPH: Record<SettingFrameOrient, SfSymbolName> = {
   square: "square",
-  portrait: "rectangle.portrait",
-  landscape: "rectangle",
+  portrait: "rectangle-vertical",
+  landscape: "rectangle-horizontal",
 };
 
 export function FrameOrientGlyph({

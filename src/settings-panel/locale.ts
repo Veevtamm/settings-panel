@@ -75,6 +75,7 @@ export const PANEL_COPY = {
   rangeMin: L("min", "min"),
   rangeMax: L("max", "max"),
   resetDefault: L("Вернуть дефолт", "Restore default"),
+  sectionIcon: L("Иконка секции", "Section icon"),
   dragSection: L("Перетащить секцию", "Drag section"),
   drag: L("Перетащить", "Drag"),
   collapse: (title: string) => L(`Свернуть ${title}`, `Collapse ${title}`),

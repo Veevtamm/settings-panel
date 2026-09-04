@@ -1,36 +1,135 @@
-# Settings panel
+# Settings Panel
 
-Панель настроек сцены (⌘M): тайминги, easing, цвета, сетка. Код один раз — в этом репозитории. Сайты подключают пакет, а не копируют файлы.
+[Русский](README.ru.md)
 
-Схемы страниц (`settings.ts`) сюда не входят: они пишутся в каждом проекте.
+Scene settings panel for Next.js. Press **⌘M** to tune timings, easing, colors, and layout live — without editing code.
 
-## Стек
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-React 19, TypeScript, Tailwind 4. Сборка не нужна: Next компилирует исходники сам.
+## Features
 
-## Как подключить
+- Glass dock in any of the four corners, like the Next.js Dev Tools indicator
+- Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
+- Russian and English UI
+- Dark and light themes
+- Presets, pointer mode, per-row reset, and copy-as-defaults
+- Lucide icons from Tools **Panel / Icon** (16×16 in a 20×20 slot)
+- Per-scene `localStorage`
 
-В `package.json` с публичного GitHub (не npm):
+## Installation
 
-`"@veevtamm/settings-panel": "github:Veevtamm/settings-panel"`
+The package lives on GitHub, not npm.
 
-Репозиторий: [github.com/Veevtamm/settings-panel](https://github.com/Veevtamm/settings-panel).
+```bash
+npm install github:Veevtamm/settings-panel
+```
 
-Пока правишь панель на этой машине, в потребителе лучше `file:../settings-panel` — это одна папка, не копия в `node_modules`.
+Peer dependencies: `react` 19, `react-dom` 19, `clsx`, `tailwind-merge`. Load Geist in the app layout. The panel uses `font-sans` and `font-mono`.
 
-В Next: `transpilePackages: ["@veevtamm/settings-panel"]`. Для `file:` ещё `turbopack.root` = родитель папки сайта и пакета.
+## Setup
 
-В CSS: `@import "@veevtamm/settings-panel/styles.css"` и Tailwind `@source` на `src` пакета. Geist — в layout сайта.
+Next.js:
 
-Панель на стартовую страницу не вешать, пока нет сцены.
+```ts
+const nextConfig = {
+  transpilePackages: ["@veevtamm/settings-panel"],
+};
 
-## Структура
+export default nextConfig;
+```
 
-- `src/index.ts` — публичный вход
-- `src/settings-panel/` — ядро панели
-- `src/styles.css` — токены `--sp-*`
-- `src/lib/` — hex, bezier, тема, persist
+CSS (Tailwind 4). Point `@source` at the package `src` from this file:
 
-## Деплой
+```css
+@import "@veevtamm/settings-panel/styles.css";
+@source "../node_modules/@veevtamm/settings-panel/src";
+@custom-variant fine-hover (@media (hover: hover) and (pointer: fine));
+```
 
-Это библиотека, не сайт. Публикация — публичный GitHub-репозиторий `Veevtamm/settings-panel`, не npm.
+## Quick Start
+
+```tsx
+"use client";
+
+import { useState } from "react";
+import {
+  L,
+  SettingsPanel,
+  type SettingsGroup,
+} from "@veevtamm/settings-panel";
+
+type Settings = {
+  durationMs: number;
+  invert: boolean;
+};
+
+const DEFAULTS: Settings = { durationMs: 400, invert: false };
+
+const groups: SettingsGroup<Settings>[] = [
+  {
+    id: "motion",
+    title: L("Движение", "Motion"),
+    icon: "timer",
+    sections: [
+      {
+        title: L("Переход", "Transition"),
+        settings: [
+          {
+            key: "durationMs",
+            label: L("Длительность", "Duration"),
+            min: 0,
+            max: 2000,
+            step: 10,
+            unit: "ms",
+          },
+        ],
+        toggles: [
+          { key: "invert", label: L("Инверсия", "Invert") },
+        ],
+      },
+    ],
+  },
+];
+
+export function Scene() {
+  const [settings, setSettings] = useState(DEFAULTS);
+
+  return (
+    <SettingsPanel
+      panelId="demo-ui"
+      storageLabel="demo"
+      settings={settings}
+      groups={groups}
+      defaultSettings={DEFAULTS}
+      onSettingsChange={(patch) =>
+        setSettings((prev) => ({ ...prev, ...patch }))
+      }
+      onReset={() => setSettings(DEFAULTS)}
+    />
+  );
+}
+```
+
+Open the scene and press ⌘M. Keep page schemas (`settings.ts`) in the app. This package is the panel, not the scene.
+
+## Persist
+
+Use `useLocalSettingsStore` when values should survive a reload. Storage key: `<project>-<scene>-settings`.
+
+```tsx
+import { useLocalSettingsStore } from "@veevtamm/settings-panel";
+```
+
+## Local development
+
+While you edit this repo next to an app:
+
+```json
+"@veevtamm/settings-panel": "file:../settings-panel"
+```
+
+Set `turbopack.root` to the parent of the app and this package. Do not edit the copy inside `node_modules`.
+
+## License
+
+[MIT](LICENSE)

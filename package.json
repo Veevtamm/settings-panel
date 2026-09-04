@@ -3,11 +3,22 @@
   "version": "0.1.0",
   "private": true,
   "description": "Scene settings panel (⌘M) for Next.js + Tailwind 4 sites",
-  "license": "UNLICENSED",
+  "license": "MIT",
+  "homepage": "https://github.com/Veevtamm/settings-panel",
+  "bugs": {
+    "url": "https://github.com/Veevtamm/settings-panel/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Veevtamm/settings-panel.git"
   },
+  "keywords": [
+    "react",
+    "nextjs",
+    "tailwindcss",
+    "settings",
+    "panel"
+  ],
   "type": "module",
   "sideEffects": [
     "**/*.css"

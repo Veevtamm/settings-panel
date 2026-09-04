@@ -383,7 +383,7 @@ export function ColorPickerFlyout({
                 .finally(onPickEnd);
             }}
           >
-            <SfSymbol name="eyedropper" className="size-5" />
+            <SfSymbol name="pipette" className="size-5" />
           </FieldButton>
         ) : null}
       </div>

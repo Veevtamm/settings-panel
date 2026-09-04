@@ -749,7 +749,7 @@ export function SettingNumber({
                   }
             }
           >
-            <SfSymbol name="slider.horizontal.below.rectangle" className="size-5" />
+            <SfSymbol name="sliders-horizontal" className="size-5" />
           </FieldButton>
           {field}
         </div>

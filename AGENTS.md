@@ -1,6 +1,6 @@
 # AGENTS — settings-panel
 
-Compact context for AI agents. For people — `README.md`.
+Compact context for AI agents. For people — `README.md` (EN) and `README.ru.md` (RU).
 
 ## Stack
 
@@ -22,6 +22,7 @@ Compact context for AI agents. For people — `README.md`.
 - **CSS:** `@import "@veevtamm/settings-panel/styles.css"` and Tailwind `@source` on this package `src`
 - **Env vars:** none
 - **Portless / deploy:** none — this is a library
+- **License:** MIT
 
 ## Non-goals
 

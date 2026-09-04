@@ -20,7 +20,7 @@ export type NumberSetting<TSettings> = {
   label: Copy;
   /** ⓘ next to the label: hover tooltip explaining the parameter. */
   info?: Copy;
-  /** Optional SF glyph before the label (Figma row Icon + Glyph). */
+  /** Optional Lucide glyph before the label (Figma row Icon + Glyph). */
   icon?: SfSymbolName;
   /** Default scrub track end. Track grows if the typed value is higher. */
   max: number;
@@ -352,7 +352,7 @@ export type SettingsPanelProps<TSettings> = {
   /** Replace / prepend a plot section (e.g. zone or axis editor). */
   curveSection?: ReactNode;
   curveSectionTitle?: Copy;
-  /** Section header glyph for `curveSection` (/2 Axis = `function` 􃈟; /5 zone = `slider.horizontal` 􀌆). */
+  /** Section header glyph for `curveSection` (/2 Axis = `function-square`; /5 zone = `sliders-horizontal`). */
   curveSectionIcon?: SfSymbolName;
   /** Title for the easing editor tab when it sits beside `curveSection`. */
   easingSectionTitle?: Copy;
@@ -365,7 +365,7 @@ export type SettingsPanelProps<TSettings> = {
   /** Per-row reset dots: rows whose value differs from these defaults get a dot. */
   defaultSettings?: TSettings;
   /**
-   * Scene places the pointer can pick. Dock 34 (`pointer.arrow.rays`) appears
+   * Scene places the pointer can pick. Dock 34 (`mouse-pointer-click`) appears
    * when this list is non-empty. Click a place → panel keeps only its keys.
    */
   places?: readonly SettingsPlace<TSettings>[];

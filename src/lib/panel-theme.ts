@@ -2,6 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import type { PanelLocale } from "../settings-panel/locale";
+import { isSfSymbolName, resolvePanelIcon, type SfSymbolName } from "../sf-symbol";
 
 export type PanelTheme = "dark" | "light";
 export type { PanelLocale };
@@ -30,10 +31,24 @@ export type PanelSettingsFile = {
   panelFloat?: { x: number; y: number } | null;
   /** Gear dock corner. Omit = top-left. Reset does not clear. */
   dockCorner?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  /** Section header Lucide glyphs. Omit / missing id = schema `icon`. Reset does not clear. */
+  sectionIcons?: Record<string, SfSymbolName>;
   /** @deprecated migrated to dockCorner */
   dockX?: number;
   dockY?: number;
 };
+
+function parseSectionIcons(raw: unknown): Record<string, SfSymbolName> | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const next: Record<string, SfSymbolName> = {};
+  for (const [id, name] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof name === "string" && isSfSymbolName(name)) {
+      const lucide = resolvePanelIcon(name);
+      if (lucide) next[id] = lucide;
+    }
+  }
+  return Object.keys(next).length ? next : undefined;
+}
 
 export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile {
   if (!raw) return {};
@@ -95,6 +110,8 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     if (typeof rec.dockY === "number" && Number.isFinite(rec.dockY)) {
       next.dockY = rec.dockY;
     }
+    const icons = parseSectionIcons(rec.sectionIcons);
+    if (icons) next.sectionIcons = icons;
     return next;
   } catch {
     return {};
@@ -132,6 +149,10 @@ export function writePanelSettings(
   if (patch.panelFloat !== undefined) {
     if (patch.panelFloat === null) delete next.panelFloat;
     else next.panelFloat = patch.panelFloat;
+  }
+  if (patch.sectionIcons !== undefined) {
+    if (Object.keys(patch.sectionIcons).length === 0) delete next.sectionIcons;
+    else next.sectionIcons = patch.sectionIcons;
   }
   delete next.dockX;
   delete next.dockY;

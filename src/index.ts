@@ -60,7 +60,12 @@ export { SettingsPanel } from "./settings-panel/shell";
 export { pointInSelector, pointInSettingsPlace } from "./settings-panel/places";
 export { PickRadioGroup } from "./settings-panel/pick";
 export { useCopyFlash } from "./settings-panel/use-copy-flash";
-export { SfSymbol, type SfSymbolName } from "./sf-symbol";
+export {
+  SfSymbol,
+  isSfSymbolName,
+  resolvePanelIcon,
+  type SfSymbolName,
+} from "./sf-symbol";
 export { EasingCurveEditor } from "./easing-curve-editor";
 
 export {

@@ -95,7 +95,7 @@ export function SectionCollapse({
   );
 }
 
-/** Hint after the label — SF `info.square` (Panel / Icon 􁊇); tooltip Figma `5242:391`. */
+/** Hint after the label — Lucide `info`; tooltip Figma `5242:391`. */
 function hintBox(icon: HTMLElement) {
   let box: Element | null = icon.closest("[data-setting-row]");
   if (!box) {
@@ -175,7 +175,7 @@ export function InfoHint({ label, text }: { label: string; text: string }) {
       onBlur={hide}
       className="flex size-5 shrink-0 cursor-default items-center justify-center text-[color:var(--sp-muted)] outline-none transition-colors duration-150 fine-hover:hover:text-[color:var(--sp-fg)] focus-visible:text-[color:var(--sp-fg)]"
     >
-      <SfSymbol name="info.square" className="block size-5" />
+      <SfSymbol name="info" className="block size-5" />
       {pos
         ? createPortal(
             <div

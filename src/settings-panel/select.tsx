@@ -124,7 +124,7 @@ export function PanelSelectList({
           </span>
         </span>
         <SfSymbol
-          name="chevron.up"
+          name="chevron-up"
           className={cn(
             "size-5 shrink-0 text-[color:var(--sp-muted)] transition-[color,transform] duration-150 fine-hover:group-hover/preset-trigger:text-[color:var(--sp-fg)]",
             !reduceMotion && "ease-[cubic-bezier(0.23,1,0.32,1)]",

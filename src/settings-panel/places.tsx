@@ -135,7 +135,7 @@ export function PlacePointerButton({
         color: active ? ICON : MUTED,
       }}
     >
-      <SfSymbol name="pointer.arrow.rays" />
+      <SfSymbol name="mouse-pointer-click" />
     </button>
   );
 }
@@ -158,7 +158,7 @@ export function PlaceClearButton({
       }}
       className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
     >
-      <SfSymbol name="xmark" className="size-5" style={{ color: ICON }} />
+      <SfSymbol name="x" className="size-5" style={{ color: ICON }} />
     </button>
   );
 }

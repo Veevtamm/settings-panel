@@ -261,7 +261,7 @@ function TransportRow({
 
   const transport: { icon: SfSymbolName; label: string; active: boolean; run: () => void }[] = [
     {
-      icon: "backward.end",
+      icon: "skip-back",
       label: tx(PANEL_COPY.back, locale),
       active: state.playing && state.direction === -1,
       run: () => controller.play(-1),
@@ -281,7 +281,7 @@ function TransportRow({
           run: () => controller.play(1),
         },
     {
-      icon: "forward.end",
+      icon: "skip-forward",
       label: tx(PANEL_COPY.forward, locale),
       active: state.playing && state.direction === 1,
       run: () => controller.play(1),
@@ -319,10 +319,10 @@ function TransportRow({
           active={pinned}
           onClick={() => controller.togglePin()}
         >
-          <SfSymbol name={pinned ? "pin.slash" : "pin"} className="size-5" />
+          <SfSymbol name={pinned ? "pin-off" : "pin"} className="size-5" />
         </FieldButton>
         <FieldButton label={tx(PANEL_COPY.copyMoment, locale)} onClick={copyMoment}>
-          <SfSymbol name={copied ? "checkmark" : "doc"} className="size-5" />
+          <SfSymbol name={copied ? "check" : "file"} className="size-5" />
         </FieldButton>
       </div>
     </div>
@@ -584,7 +584,7 @@ export function SettingPlayer({
                   }
             }
           >
-            <SfSymbol name="playpause" className="size-5" />
+            <SfSymbol name="circle-play" className="size-5" />
           </FieldButton>
           <NumberField
             ariaLabel={aria}
