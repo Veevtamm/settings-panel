@@ -139,6 +139,7 @@ export function SettingFrameOrient({
   onResetValue,
   info,
   icon,
+  onIconChange,
 }: {
   label: string;
   locale?: PanelLocale;
@@ -153,6 +154,8 @@ export function SettingFrameOrient({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
       <PickRadioGroup
         label={label}
@@ -231,6 +234,7 @@ export function SettingXAnchor({
   onResetValue,
   info,
   icon,
+  onIconChange,
 }: {
   label: string;
   locale?: PanelLocale;
@@ -245,6 +249,8 @@ export function SettingXAnchor({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
       <PickRadioGroup
         label={label}
@@ -276,6 +282,7 @@ export function SettingTextAlign({
   onResetValue,
   info,
   icon,
+  onIconChange,
 }: {
   label: string;
   locale?: PanelLocale;
@@ -290,6 +297,8 @@ export function SettingTextAlign({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
       <PickRadioGroup
         label={label}
@@ -321,6 +330,7 @@ export function SettingAnchor({
   onResetValue,
   info,
   icon,
+  onIconChange,
 }: {
   label: string;
   locale?: PanelLocale;
@@ -340,6 +350,8 @@ export function SettingAnchor({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       />
       <div
         role="radiogroup"

@@ -495,6 +495,8 @@ export function SettingPair<TSettings>({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   pair: PairSetting<TSettings>;
   values: readonly [number, number];
@@ -512,6 +514,8 @@ export function SettingPair<TSettings>({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       />
       <div className="flex shrink-0 items-center gap-2">
         {pair.fields.map((field, index) => {
@@ -568,6 +572,8 @@ export function SettingNumber({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   /** Scrub-track notch: the drag magnets to this value. */
   defaultValue?: number;
@@ -602,6 +608,8 @@ export function SettingNumber({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       >
         <div
           className={cn(
@@ -630,6 +638,8 @@ export function SettingNumber({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       >
         <div
           className={cn(
@@ -709,6 +719,8 @@ export function SettingNumber({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
         {field}
       </SettingRow>
@@ -727,6 +739,8 @@ export function SettingNumber({
           onResetValue={onResetValue}
           info={info}
           icon={icon}
+          onIconChange={onIconChange}
+          locale={locale}
         />
         <div className="relative flex shrink-0 items-center">
           <FieldButton
@@ -749,7 +763,7 @@ export function SettingNumber({
                   }
             }
           >
-            <SfSymbol name="sliders-horizontal" className="size-5" />
+            <SfSymbol name="settings-2" className="size-5" />
           </FieldButton>
           {field}
         </div>
@@ -813,6 +827,8 @@ export function SettingRange({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   from: number;
   label: string;
@@ -860,6 +876,8 @@ export function SettingRange({
           onResetValue={onResetValue}
           info={info}
           icon={icon}
+          onIconChange={onIconChange}
+          locale={locale}
         />
         <div className="flex shrink-0 items-center gap-1">
           {field("from", pair.from)}

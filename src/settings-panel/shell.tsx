@@ -13,7 +13,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { EasingCurveEditor } from "../easing-curve-editor";
-import { resolvePanelIcon, SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import {
   formatBezierInput,
   parseBezierInput,
@@ -102,6 +102,13 @@ import {
 import { usePanelWindow } from "./use-panel-window";
 import { RowLabel, SectionCollapse, useDeferredMount } from "./row";
 import { SectionIconPicker } from "./icon-picker";
+import {
+  nextPanelIcons,
+  panelIconIsModified,
+  resolvedPanelIcon,
+  rowIconKey,
+  subsectionIconKey,
+} from "./panel-icons";
 import { SectionRows } from "./section-rows";
 import { PanelSelectList } from "./select";
 import type {
@@ -406,6 +413,10 @@ export function SubsectionBlock({
   children,
   locale = "ru",
   orderKey,
+  icon,
+  onIconChange,
+  modified,
+  onResetValue,
 }: {
   title: string;
   open: boolean;
@@ -425,6 +436,10 @@ export function SubsectionBlock({
   locale?: PanelLocale;
   /** Stable subsection-order id (Russian copy). Defaults to `title`. */
   orderKey?: string;
+  icon?: SfSymbolName;
+  onIconChange?: (name: SfSymbolName) => void;
+  modified?: boolean;
+  onResetValue?: () => void;
 }) {
   const subsectionKey = orderKey ?? title;
   const lifted = !plain && float !== null;
@@ -462,16 +477,10 @@ export function SubsectionBlock({
       }
     >
       <div className="group/sub flex h-5 w-full items-center gap-1.5">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-expanded={open}
-          className="flex min-w-0 flex-1 cursor-pointer items-center text-left outline-none"
-        >
         <span
           className={cn(
-            "inline-flex min-w-0 items-center",
-            !reorderable && "gap-0",
+            "inline-flex min-w-0 flex-1 items-center",
+            reorderable || icon || onIconChange ? "gap-1" : "gap-0",
           )}
         >
           {reorderable ? (
@@ -482,8 +491,8 @@ export function SubsectionBlock({
               "inline-flex h-5 shrink-0 cursor-grab items-center justify-center overflow-hidden active:cursor-grabbing",
               !reduceMotion && "transition-[width,margin,opacity,transform]",
               dragging
-                ? "w-5 mr-2 scale-100 opacity-100"
-                : "w-5 mr-2 scale-100 opacity-100 fine-hover:mr-0 fine-hover:w-0 fine-hover:scale-95 fine-hover:opacity-0 fine-hover:group-hover/sub:mr-2 fine-hover:group-hover/sub:w-5 fine-hover:group-hover/sub:scale-100 fine-hover:group-hover/sub:opacity-100",
+                ? "w-5 mr-1 scale-100 opacity-100"
+                : "w-5 mr-1 scale-100 opacity-100 fine-hover:mr-0 fine-hover:w-0 fine-hover:scale-95 fine-hover:opacity-0 fine-hover:group-hover/sub:mr-1 fine-hover:group-hover/sub:w-5 fine-hover:group-hover/sub:scale-100 fine-hover:group-hover/sub:opacity-100",
             )}
             style={
               reduceMotion
@@ -498,14 +507,61 @@ export function SubsectionBlock({
             <SfSymbol name="grip-vertical" className="size-5" style={{ color: ICON }} />
           </span>
           ) : null}
+          {onIconChange ? (
+            <SectionIconPicker
+              label={title}
+              locale={locale}
+              onChange={onIconChange}
+              value={icon}
+            />
+          ) : icon ? (
+            <SfSymbol
+              name={icon}
+              className="size-5 shrink-0"
+              style={{ color: ICON }}
+            />
+          ) : null}
+          <button
+            type="button"
+            onClick={onToggle}
+            aria-expanded={open}
+            className="flex min-w-0 flex-1 cursor-pointer items-center text-left outline-none"
+          >
+          <span className="inline-flex min-w-0 items-center gap-1">
+          {modified && onResetValue ? (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`${title}: ${tx(PANEL_COPY.resetDefault, locale)}`}
+              title={tx(PANEL_COPY.resetDefault, locale)}
+              onClick={(event) => {
+                event.stopPropagation();
+                onResetValue();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onResetValue();
+                }
+              }}
+              className="group/reset-dot -mx-0.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-full outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)]"
+            >
+              <span
+                aria-hidden
+                className="size-[5px] rounded-full bg-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:group-hover/reset-dot:bg-[color:var(--sp-fg)]"
+              />
+            </span>
+          ) : null}
           <span
             className="truncate text-[15px] font-sans leading-[20px] select-none"
             style={{ color: MUTED }}
           >
             {title}
           </span>
+          </span>
+          </button>
         </span>
-        </button>
         <span className="inline-flex shrink-0 items-center gap-1.5">
         {onVisibilityChange != null && visibilityOn != null ? (
           <button
@@ -726,6 +782,9 @@ export function SettingsPanelImpl<TSettings>({
 }: SettingsPanelProps<TSettings>) {
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelInstant, setPanelInstant] = useState(false);
+  const [sectionIcons, setSectionIcons] = useState<
+    Record<string, SfSymbolName>
+  >({});
   const legacyPanelKey = legacyPanelIds.join("\0");
 
   const sameValue = valuesEqual;
@@ -797,7 +856,9 @@ export function SettingsPanelImpl<TSettings>({
   const curvePlotChanged =
     Boolean(curveSection) && curveKeys.some(settingDiffers);
   const changedCount =
-    listedChangedKeys.length + (curvePlotChanged ? 1 : 0);
+    listedChangedKeys.length +
+    (curvePlotChanged ? 1 : 0) +
+    Object.keys(sectionIcons).length;
 
   const { copied: copiedChanges, copy: copyToClipboard } = useCopyFlash();
 
@@ -873,14 +934,45 @@ export function SettingsPanelImpl<TSettings>({
         ? curveKeys.filter(settingDiffers)
         : []),
     ];
+    const labelForIconId = (id: string): string => {
+      if (id === PANEL_SECTION_ID) return tx(PANEL_COPY.panelSettings, locale);
+      if (id === "bezier") return curveTitle;
+      if (id === easingSectionId) return easingTitle;
+      if (id === "row:presets") return tx(PANEL_COPY.presets, locale);
+      if (id.startsWith("sub:")) {
+        const rest = id.slice(4);
+        const colon = rest.indexOf(":");
+        const groupId = rest.slice(0, colon);
+        const titleKey = rest.slice(colon + 1);
+        const group = groups.find((item) => item.id === groupId);
+        const section = group?.sections.find(
+          (item) => copyKey(item.title) === titleKey,
+        );
+        const sectionLabel = section
+          ? tx(section.title, locale)
+          : titleKey;
+        return group
+          ? `${tx(group.title, locale)} / ${sectionLabel}`
+          : sectionLabel;
+      }
+      if (id.startsWith("row:")) {
+        const raw = id.slice(4);
+        const first = raw.split("+")[0] as keyof TSettings;
+        return labels.get(first) ?? raw;
+      }
+      const group = groups.find((item) => item.id === id);
+      return group ? tx(group.title, locale) : id;
+    };
     const lines = copyKeys
       .map((key) => {
         const label = labels.get(key);
         const name = label ? `${label} (${String(key)})` : String(key);
         return `${name}: ${fmt(settings[key])}`;
-      })
-      .join("\n");
-    const text = `${tx(PANEL_COPY.copyDefaultsHeader, locale)}\n${lines}`;
+      });
+    for (const [id, name] of Object.entries(sectionIcons)) {
+      lines.push(tx(PANEL_COPY.copyIcon(labelForIconId(id), name), locale));
+    }
+    const text = `${tx(PANEL_COPY.copyDefaultsHeader, locale)}\n${lines.join("\n")}`;
     await copyToClipboard(text);
   };
 
@@ -1016,9 +1108,6 @@ export function SettingsPanelImpl<TSettings>({
   const [pinnedSections, setPinnedSections] = useState<string[]>([
     ...DEFAULT_PINNED_SECTIONS,
   ]);
-  const [sectionIcons, setSectionIcons] = useState<
-    Record<string, SfSymbolName>
-  >({});
   const [draggingSection, setDraggingSection] = useState<string | null>(null);
   const [sectionFloat, setSectionFloat] = useState<LiftSize | null>(null);
   const sectionXyRef = useRef<LiftXy | null>(null);
@@ -1302,22 +1391,69 @@ export function SettingsPanelImpl<TSettings>({
 
   const persistSectionIcon = (
     id: string,
-    fallback: SfSymbolName,
-    next: SfSymbolName,
+    fallback: SfSymbolName | undefined,
+    next: SfSymbolName | undefined,
   ) => {
     setSectionIcons((prev) => {
-      const map = { ...prev };
-      if (resolvePanelIcon(next) === resolvePanelIcon(fallback)) delete map[id];
-      else map[id] = resolvePanelIcon(next) ?? next;
+      const map = nextPanelIcons(prev, id, fallback, next);
       writePanelSettings(panelId, { sectionIcons: map });
       return map;
     });
   };
 
-  const sectionIconProps = (id: string, fallback: SfSymbolName) => ({
-    icon: sectionIcons[id] ?? fallback,
-    onIconChange: (name: SfSymbolName) => persistSectionIcon(id, fallback, name),
-  });
+  const withPanelIcon = (
+    id: string,
+    fallback: SfSymbolName | undefined,
+    dots: ResetDotProps = {},
+  ): ResetDotProps => {
+    const iconMod = panelIconIsModified(sectionIcons, id);
+    const resetValue = dots.onResetValue;
+    return {
+      ...dots,
+      locale,
+      icon: resolvedPanelIcon(sectionIcons, id, fallback),
+      modified: Boolean(dots.modified) || iconMod,
+      onResetValue:
+        resetValue || iconMod
+          ? () => {
+              resetValue?.();
+              if (iconMod) persistSectionIcon(id, fallback, fallback);
+            }
+          : undefined,
+      onIconChange: reorderSections
+        ? (name: SfSymbolName) => persistSectionIcon(id, fallback, name)
+        : undefined,
+    };
+  };
+
+  const rowDotFor = (
+    key: keyof TSettings,
+    info?: string,
+    icon?: SfSymbolName,
+  ) => withPanelIcon(rowIconKey(String(key)), icon, dotFor(key, info, icon));
+
+  const rowDotForKeys = (
+    keys: readonly (keyof TSettings)[],
+    info?: string,
+    icon?: SfSymbolName,
+  ) =>
+    withPanelIcon(
+      rowIconKey(keys.map(String).join("+")),
+      icon,
+      dotForKeys(keys, info, icon),
+    );
+
+  const sectionIconProps = (
+    id: string,
+    fallback: SfSymbolName,
+    extra?: ResetDotProps,
+  ) => {
+    const dots = withPanelIcon(id, fallback, extra ?? {});
+    return {
+      ...dots,
+      icon: dots.icon ?? fallback,
+    };
+  };
 
   const curveTitle = tx(curveSectionTitle ?? PANEL_COPY.bezierCurve, locale);
   const easingTitle = tx(easingSectionTitle ?? PANEL_COPY.easingCurves, locale);
@@ -1789,20 +1925,23 @@ export function SettingsPanelImpl<TSettings>({
                   dockBottom ? "flex-col-reverse" : "flex-col",
                 )}
               >
-                <div className="relative">
-                  <ToolbarButton
-                    aria-label={
-                      changedCount > 0
-                        ? tx(PANEL_COPY.resetSettings(changedCount), locale)
-                        : tx(PANEL_COPY.resetSettings(0), locale)
+                <ToolbarButton
+                  aria-label={
+                    changedCount > 0
+                      ? tx(PANEL_COPY.resetSettings(changedCount), locale)
+                      : tx(PANEL_COPY.resetSettings(0), locale)
+                  }
+                  className="size-[34px] shrink-0 px-0"
+                  onClick={() => {
+                    if (Object.keys(sectionIcons).length > 0) {
+                      setSectionIcons({});
+                      writePanelSettings(panelId, { sectionIcons: {} });
                     }
-                    className="size-[34px] shrink-0 px-0"
-                    onClick={onReset}
-                  >
-                    <SfSymbol name="trash-2" className="size-5" />
-                  </ToolbarButton>
-                  <DockCountBadge count={changedCount} />
-                </div>
+                    onReset();
+                  }}
+                >
+                  <SfSymbol name="eraser" className="size-5" />
+                </ToolbarButton>
                 {defaultSettings != null ? (
                   <div className="relative">
                     <ToolbarButton
@@ -1873,8 +2012,7 @@ export function SettingsPanelImpl<TSettings>({
             background: GLASS,
             width: frameW,
             maxHeight: frameH ?? maxPanelH,
-            height:
-              panelResizing && frameH != null ? frameH : "fit-content",
+            height: "fit-content",
             ...(panelFloat != null
               ? {
                   left: panelFloat.x,
@@ -1884,7 +2022,7 @@ export function SettingsPanelImpl<TSettings>({
                   margin: 0,
                 }
               : {}),
-            ...(skipPanelMotion || panelMoving
+            ...(skipPanelMotion || panelMoving || panelResizing
               ? {}
               : {
                   transitionDuration: panelOpen
@@ -1926,7 +2064,7 @@ export function SettingsPanelImpl<TSettings>({
                     ) as Partial<TSettings>,
                   )
                 }
-                {...dotForKeys(
+                {...rowDotForKeys(
                   player.phases.map((phase) => phase.key),
                   player.info == null ? undefined : tx(player.info, locale),
                   player.icon,
@@ -1945,8 +2083,8 @@ export function SettingsPanelImpl<TSettings>({
                     reduceMotion={reduceMotion}
                     locale={locale}
                     numberDefault={numberDefault}
-                    dotFor={dotFor}
-                    dotForKeys={dotForKeys}
+                    dotFor={rowDotFor}
+                    dotForKeys={rowDotForKeys}
                   />
                 ) : null}
               </div>
@@ -1991,6 +2129,10 @@ export function SettingsPanelImpl<TSettings>({
                   draggingSubsection === orderKey ? subsectionXyRef : undefined
                 }
                 theme={panelTheme}
+                {...withPanelIcon(
+                  subsectionIconKey(group.id, orderKey),
+                  section.icon,
+                )}
                 reorderable={mode === "auto" && group.sections.length > 1}
                 onGripPointerDown={(event) => {
                   if (event.button !== 0) return;
@@ -2058,6 +2200,10 @@ export function SettingsPanelImpl<TSettings>({
               dragging={false}
               float={null}
               theme={panelTheme}
+              {...withPanelIcon(
+                subsectionIconKey(PLACE_SECTION_ID, orderKey),
+                undefined,
+              )}
               reorderable={false}
               onGripPointerDown={noopGrip}
               reduceMotion={reduceMotion}
@@ -2208,7 +2354,7 @@ export function SettingsPanelImpl<TSettings>({
                 <RowLabel
                   label={tx(PANEL_COPY.presets, locale)}
                   info={tx(PANEL_COPY.presetsInfo, locale)}
-                  icon="save"
+                  {...withPanelIcon("row:presets", "save")}
                 />
               <div
                 role="group"
@@ -2305,9 +2451,6 @@ export function SettingsPanelImpl<TSettings>({
               <SettingToggle
                 info={tx(PANEL_COPY.sectionOrderInfo, locale)}
                 label={tx(PANEL_COPY.sectionOrder, locale)}
-                control="action"
-                onLabel={tx(PANEL_COPY.sectionOrderSave, locale)}
-                offLabel={tx(PANEL_COPY.sectionOrderEdit, locale)}
                 onChange={persistReorderSections}
                 value={reorderSections}
               />
@@ -2415,14 +2558,12 @@ export function SettingsPanelImpl<TSettings>({
 
               return shell(
           <SectionBlock
-            {...sectionIconProps("bezier", curveSectionIcon)}
+            {...sectionIconProps("bezier", curveSectionIcon, curveDot)}
             title={curveTitle}
             open={openSections.has("bezier")}
             onToggle={() => toggleSection("bezier")}
             reduceMotion={reduceMotion}
             locale={locale}
-            modified={curveDot?.modified}
-            onResetValue={curveDot?.onResetValue}
             {...sectionReorderProps("bezier")}
           >
             {curveSection}
@@ -2432,14 +2573,12 @@ export function SettingsPanelImpl<TSettings>({
             if (sectionId === easingSectionId && renderEasingEditor) {
               return shell(
           <SectionBlock
-            {...sectionIconProps(easingSectionId, "spline")}
+            {...sectionIconProps(easingSectionId, "spline", easingDot)}
             title={showPlotSection ? easingTitle : curveTitle}
             open={openSections.has(easingSectionId)}
             onToggle={() => toggleSection(easingSectionId)}
             reduceMotion={reduceMotion}
             locale={locale}
-            modified={easingDot?.modified}
-            onResetValue={easingDot?.onResetValue}
             {...sectionReorderProps(easingSectionId)}
           >
             {easingEditorBody}

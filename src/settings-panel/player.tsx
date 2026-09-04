@@ -517,6 +517,7 @@ export function SettingPlayer({
   onResetValue,
   info,
   icon,
+  onIconChange,
 }: {
   label: string;
   segments: readonly PlayerSegment[];
@@ -562,6 +563,8 @@ export function SettingPlayer({
           onResetValue={onResetValue}
           info={info}
           icon={icon}
+          onIconChange={onIconChange}
+          locale={locale}
         />
         <div className="relative flex shrink-0 items-center">
           <FieldButton

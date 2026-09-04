@@ -165,7 +165,13 @@ export function usePanelWindow({
         startX: event.clientX,
         startY: event.clientY,
         startW: rect.width,
-        startH: rect.height,
+        // Height drag is a max-height ceiling. Start from that ceiling, not the
+        // hugged rect — collapsed sections are shorter than panelHeight, and
+        // measuring hug here would jump the cap (and the window) on the first move.
+        startH:
+          edge === "y" || edge === "xy"
+            ? Math.max(rect.height, panelHeight ?? PANEL_HEIGHT_MIN)
+            : rect.height,
         growX: dockCorner.endsWith("right") ? -1 : 1,
         growY: dockCorner.startsWith("bottom") ? -1 : 1,
       };

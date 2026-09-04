@@ -17,7 +17,7 @@ export type PanelSettingsFile = {
   theme?: PanelTheme;
   /** Panel Settings segment. Omit = ru. Reset does not clear. */
   locale?: PanelLocale;
-  /** Panel Settings: section reorder mode (Изменить / Сохранить). */
+  /** Panel Settings: edit-sections mode (grip, pin, icon picker). */
   reorderSections?: boolean;
   /** Section ids including Panel Settings. */
   sectionOrder?: string[];
@@ -31,7 +31,7 @@ export type PanelSettingsFile = {
   panelFloat?: { x: number; y: number } | null;
   /** Gear dock corner. Omit = top-left. Reset does not clear. */
   dockCorner?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
-  /** Section header Lucide glyphs. Omit / missing id = schema `icon`. Reset does not clear. */
+  /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
   sectionIcons?: Record<string, SfSymbolName>;
   /** @deprecated migrated to dockCorner */
   dockX?: number;

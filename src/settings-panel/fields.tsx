@@ -277,6 +277,8 @@ export function SettingToggle({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   label: string;
   onChange: (value: boolean) => void;
@@ -310,6 +312,8 @@ export function SettingToggle({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       >
         <div
           role="radiogroup"
@@ -372,6 +376,8 @@ export function SettingToggle({
           onResetValue={onResetValue}
           info={info}
           icon={icon}
+          onIconChange={onIconChange}
+          locale={locale}
         />
         <PanelSelectList
           ariaLabel={label}
@@ -397,6 +403,8 @@ export function SettingToggle({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       >
         <button
           type="button"
@@ -425,6 +433,8 @@ export function SettingToggle({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
       <button
         type="button"
@@ -468,6 +478,8 @@ export function SettingText({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   label: string;
   onChange: (value: string) => void;
@@ -481,6 +493,8 @@ export function SettingText({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       />
       <textarea
         spellCheck={false}
@@ -536,6 +550,8 @@ function SettingEnumSegment({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   label: string;
   onChange: (value: string) => void;
@@ -554,6 +570,8 @@ function SettingEnumSegment({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
       <div
         role="radiogroup"
@@ -615,6 +633,8 @@ export function SettingEnumDropdown({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale,
 }: {
   label: string;
   onChange: (value: string) => void;
@@ -635,6 +655,8 @@ export function SettingEnumDropdown({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       />
     );
   }
@@ -656,6 +678,8 @@ export function SettingEnumDropdown({
         onResetValue={onResetValue}
         info={info}
         icon={icon}
+        onIconChange={onIconChange}
+        locale={locale}
       />
       <PanelSelectList
         ariaLabel={label}

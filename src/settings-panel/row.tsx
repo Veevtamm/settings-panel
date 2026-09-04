@@ -15,6 +15,8 @@ import {
   SECTION_MS,
   rowLabelClass,
 } from "./chrome";
+import { SectionIconPicker } from "./icon-picker";
+import type { PanelLocale } from "./locale";
 import type { ResetDotProps } from "./types";
 
 let hintSessionUntil = 0;
@@ -227,13 +229,22 @@ export function RowLabel({
   onResetValue,
   info,
   icon,
+  onIconChange,
+  locale = "ru",
 }: {
   label: string;
   className?: string;
 } & ResetDotProps) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
-      {icon ? (
+      {onIconChange ? (
+        <SectionIconPicker
+          label={label}
+          locale={locale}
+          onChange={onIconChange}
+          value={icon}
+        />
+      ) : icon ? (
         <SfSymbol
           name={icon}
           className="size-5 shrink-0"
@@ -263,10 +274,7 @@ export function RowLabel({
 export function SettingRow({
   label,
   children,
-  modified,
-  onResetValue,
-  info,
-  icon,
+  ...dots
 }: {
   label: string;
   children: ReactNode;
@@ -276,13 +284,7 @@ export function SettingRow({
       className="group flex h-[28px] items-center justify-between gap-4"
       data-setting-row=""
     >
-      <RowLabel
-        label={label}
-        modified={modified}
-        onResetValue={onResetValue}
-        info={info}
-        icon={icon}
-      />
+      <RowLabel label={label} {...dots} />
       {children}
     </div>
   );

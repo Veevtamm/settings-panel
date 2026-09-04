@@ -13,6 +13,9 @@ export type ResetDotProps = {
   onResetValue?: () => void;
   info?: string;
   icon?: SfSymbolName;
+  /** Edit-sections mode: click the row glyph to pick another. */
+  onIconChange?: (name: SfSymbolName) => void;
+  locale?: PanelLocale;
 };
 
 export type NumberSetting<TSettings> = {
@@ -69,7 +72,7 @@ export type ToggleSetting<TSettings> = {
   offLabel?: Copy;
   /**
    * Omit = switch 52×28. Named pair of modes: `segment` (or `dropdown`).
-   * `action` = Panel / Action 86 — one button, label flips (Изменить / Сохранить).
+   * `action` = Panel / Action 86 — one button, label flips (`offLabel` / `onLabel`).
    * Not an enum cycle. Three or more values: `EnumSetting` dropdown.
    */
   control?: "dropdown" | "segment" | "action";
@@ -289,6 +292,8 @@ export type CustomSetting<TSettings> = {
 
 export type SettingsSection<TSettings> = {
   title: Copy;
+  /** Lucide glyph before the subsection title. Omit = no icon (until picked in Edit sections). */
+  icon?: SfSymbolName;
   /** Rows in the group body, no subsection header / collapse. */
   untitled?: boolean;
   settings?: NumberSetting<TSettings>[];

@@ -402,6 +402,7 @@ export function SettingColor({
   onResetValue,
   info,
   icon,
+  onIconChange,
 }: {
   label: string;
   onChange: (value: string) => void;
@@ -546,6 +547,8 @@ export function SettingColor({
       onResetValue={onResetValue}
       info={info}
       icon={icon}
+      onIconChange={onIconChange}
+      locale={locale}
     >
         <div
           className={cn(

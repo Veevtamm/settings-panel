@@ -14,6 +14,7 @@ import {
   EASE_OUT,
   GLASS,
   ICON,
+  MUTED,
   PANEL_ENTER_MS,
   PANEL_EXIT_MS,
   pickActive,
@@ -62,7 +63,7 @@ function IconPickerFlyout({
   reduceMotion: boolean;
   side: "below" | "above";
   top: number;
-  value: SfSymbolName;
+  value?: SfSymbolName;
   popoverRef: RefObject<HTMLDivElement | null>;
   theme: "dark" | "light";
 }) {
@@ -154,7 +155,9 @@ function IconPickerFlyout({
         }}
       >
         {SF_SYMBOL_NAMES.map((name) => {
-          const selected = resolvePanelIcon(name) === resolvePanelIcon(value);
+          const selected =
+            value != null &&
+            resolvePanelIcon(name) === resolvePanelIcon(value);
           return (
             <button
               key={name}
@@ -193,7 +196,7 @@ export function SectionIconPicker({
   label: string;
   locale: PanelLocale;
   onChange: (name: SfSymbolName) => void;
-  value: SfSymbolName;
+  value?: SfSymbolName;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -310,7 +313,11 @@ export function SectionIconPicker({
         }}
         className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
       >
-        <SfSymbol name={value} className="size-5" style={{ color: ICON }} />
+        <SfSymbol
+          name={value ?? "plus"}
+          className="size-5"
+          style={{ color: value ? ICON : MUTED }}
+        />
       </button>
       {host && mounted
         ? createPortal(
