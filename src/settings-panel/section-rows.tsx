@@ -256,10 +256,14 @@ export function SectionRows<TSettings>({
           scrub={item.scrub}
           stepper={item.stepper}
           step={item.step}
+          tickSnap={item.tickSnap}
           tickStops={item.tickStops?.map((stop) => ({
             value: stop.value,
             label: t(stop.label),
           }))}
+          trailing={item.trailing}
+          readOnly={item.readOnly}
+          readOnlyLabel={item.readOnlyLabel}
           unit={item.unit}
           value={Number(settings[item.key])}
           {...dotFor(item.key, infoOf(item.info), item.icon)}
@@ -345,7 +349,9 @@ export function SectionRows<TSettings>({
           options={item.options.map((option) => ({
             value: option.value,
             label: t(option.label),
+            mark: option.mark,
           }))}
+          control={item.control}
           controlWidth={item.controlWidth}
           reduceMotion={reduceMotion}
           value={String(settings[item.key] ?? "")}
@@ -417,7 +423,12 @@ export function SectionRows<TSettings>({
   const emit = (row: Row, parent: SectionRowKind | null) => {
     unused.delete(row);
     out.push(<Fragment key={row.id}>{row.node}</Fragment>);
-    for (const kind of followerKinds(row.kind, parent)) {
+    const preferred = followerKinds(row.kind, parent);
+    const kinds = [
+      ...preferred,
+      ...ROOT_ROW_KINDS.filter((kind) => !preferred.includes(kind)),
+    ];
+    for (const kind of kinds) {
       for (const child of rows) {
         if (!unused.has(child) || child.kind !== kind || child.after == null) {
           continue;

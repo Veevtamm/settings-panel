@@ -18,7 +18,7 @@ Compact context for AI agents. For people — `README.md`.
 
 - **Install:** `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel"`
 - **Install (local, while editing the panel):** `"file:../settings-panel"` — same folder on disk; do not edit `node_modules`
-- **Next.js consumer:** `transpilePackages: ["@veevtamm/settings-panel"]`
+- **Next.js consumer:** `transpilePackages: ["@veevtamm/settings-panel"]`. Local `file:` install: `turbopack.root` = parent of the app and this package (`path.join(__dirname, "..")`).
 - **CSS:** `@import "@veevtamm/settings-panel/styles.css"` and Tailwind `@source` on this package `src`
 - **Env vars:** none
 - **Portless / deploy:** none — this is a library

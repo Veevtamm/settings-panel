@@ -23,6 +23,7 @@ export type {
   CustomSetting,
   CustomSettingRender,
   EasingTarget,
+  EnumMark,
   EnumOption,
   EnumSetting,
   FrameOrientSetting,

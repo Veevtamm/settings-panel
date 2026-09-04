@@ -29,10 +29,21 @@ export type NumberSetting<TSettings> = {
   scrub?: boolean;
   /** 86 1×3 − / value / + (like Orient). Ignores `scrub`. */
   stepper?: boolean;
-  /** Named ticks on the scrub track (snap while dragging). */
+  /** Named ticks on the scrub track. Drag snaps to them unless `tickSnap` is false. */
   tickStops?: readonly { value: number; label: Copy }[];
+  /**
+   * When `tickStops` are set, drag and arrows snap to those values.
+   * `false` — ticks stay as named anchors, value can sit between (Figma Weight).
+   */
+  tickSnap?: boolean;
   step?: number;
   unit?: string;
+  /** Extra 28×28 control flush right of the 86 field. */
+  trailing?: ReactNode;
+  /** Locked field (Figma Width → Auto when Type is Stretch). */
+  readOnly?: boolean;
+  /** Shown instead of the number when `readOnly`. */
+  readOnlyLabel?: string;
   /** Render this field right under the matching toggle, not after all toggles. */
   after?: keyof TSettings;
 };
@@ -133,9 +144,13 @@ export type FrameOrientSetting<TSettings> = {
   icon?: SfSymbolName;
 };
 
+export type EnumMark = "from-start" | "from-center" | "from-end";
+
 export type EnumOption = {
   value: string;
   label: Copy;
+  /** Orient 1×3 glyph in a segment enum (folio Decrypt Порядок). */
+  mark?: EnumMark;
 };
 
 export type EnumSetting<TSettings> = {
@@ -144,6 +159,8 @@ export type EnumSetting<TSettings> = {
   info?: Copy;
   icon?: SfSymbolName;
   options: readonly EnumOption[];
+  /** `segment` = Orient 1×3 (2–3 options). Default dropdown 176. */
+  control?: "dropdown" | "segment";
   /**
    * Trigger width in px. Default **176** (Figma), not leftover fill.
    * Preset / bezier selects are separate and still fill the row.

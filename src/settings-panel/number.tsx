@@ -22,6 +22,7 @@ import {
   SCRUB_TICK_H,
   SCRUB_TICK_PAD_X,
   SCRUB_TICK_W,
+  fieldChrome,
   pickEase,
   pickIdle,
   pickerChrome,
@@ -112,6 +113,7 @@ export function TickSlider({
   onChange,
   onDragging,
   step = 1,
+  tickSnap = true,
   tickStops,
   value,
 }: {
@@ -123,6 +125,8 @@ export function TickSlider({
   onChange: (value: number) => void;
   onDragging?: (dragging: boolean) => void;
   step?: number;
+  /** When `tickStops` are set, drag and arrows snap unless this is false. */
+  tickSnap?: boolean;
   tickStops?: readonly { value: number; label: string }[];
   value: number;
 }) {
@@ -130,6 +134,7 @@ export function TickSlider({
   const draggingRef = useRef(false);
   const range = Math.max(max - min, step);
   const namedStops = tickStops && tickStops.length >= 2 ? tickStops : null;
+  const snapNamed = Boolean(namedStops) && tickSnap;
   const stopCount = namedStops
     ? namedStops.length
     : Math.round(range / step) + 1;
@@ -140,7 +145,7 @@ export function TickSlider({
     ? namedStops.indexOf(nearestTickStop(value, namedStops))
     : Math.round((value - min) / step);
   const ratio =
-    namedStops && activeStop >= 0
+    snapNamed && namedStops && activeStop >= 0
       ? activeStop / Math.max(namedStops.length - 1, 1)
       : scrubRatio(value, min, max);
 
@@ -156,7 +161,7 @@ export function TickSlider({
     const el = trackRef.current;
     if (!el) return value;
     const raw = valueFromTrackX(clientX, el, min, max, step);
-    if (namedStops) return nearestTickStop(raw, namedStops).value;
+    if (snapNamed && namedStops) return nearestTickStop(raw, namedStops).value;
     // Magnet: within a few px of the default notch the drag lands exactly on it.
     if (homeValue !== null) {
       const rect = el.getBoundingClientRect();
@@ -211,14 +216,14 @@ export function TickSlider({
       onKeyDown={(event) => {
         if (event.key === "ArrowLeft" || event.key === "ArrowDown") {
           event.preventDefault();
-          if (namedStops) {
+          if (snapNamed && namedStops) {
             onChange(namedStops[Math.max(0, activeStop - 1)]?.value ?? min);
           } else {
             onChange(Math.max(min, Number((value - step).toFixed(6))));
           }
         } else if (event.key === "ArrowRight" || event.key === "ArrowUp") {
           event.preventDefault();
-          if (namedStops) {
+          if (snapNamed && namedStops) {
             onChange(
               namedStops[Math.min(namedStops.length - 1, activeStop + 1)]
                 ?.value ?? max,
@@ -552,7 +557,11 @@ export function SettingNumber({
   scrub = false,
   step = 1,
   stepper = false,
+  tickSnap = true,
   tickStops,
+  trailing,
+  readOnly = false,
+  readOnlyLabel,
   unit,
   value,
   modified,
@@ -570,7 +579,11 @@ export function SettingNumber({
   scrub?: boolean;
   step?: number;
   stepper?: boolean;
+  tickSnap?: boolean;
   tickStops?: readonly { value: number; label: string }[];
+  trailing?: ReactNode;
+  readOnly?: boolean;
+  readOnlyLabel?: string;
   unit?: string;
   value: number;
 } & ResetDotProps) {
@@ -580,6 +593,28 @@ export function SettingNumber({
     Number.isFinite(value) && value > max ? value : max;
   const sliderMax = scrub ? (dragMax ?? overflowMax) : max;
   const aria = unit ? `${label} (${unit})` : label;
+
+  if (readOnly) {
+    return (
+      <SettingRow
+        label={label}
+        modified={modified}
+        onResetValue={onResetValue}
+        info={info}
+        icon={icon}
+      >
+        <div
+          className={cn(
+            "flex h-[28px] w-[86px] shrink-0 items-center px-1.5 text-[14px] leading-[18px]",
+            fieldChrome,
+          )}
+          style={{ background: FIELD, color: MUTED }}
+        >
+          {readOnlyLabel ?? "Auto"}
+        </div>
+      </SettingRow>
+    );
+  }
 
   if (stepper) {
     const commit = (next: number) => onChange(clampNumber(next, min, max));
@@ -646,7 +681,7 @@ export function SettingNumber({
     );
   }
 
-  const field = (
+  const numberField = (
     <NumberField
       ariaLabel={aria}
       max={sliderMax}
@@ -656,6 +691,14 @@ export function SettingNumber({
       unit={unit}
       value={value}
     />
+  );
+  const field = trailing ? (
+    <div className="flex shrink-0 items-center gap-1">
+      {numberField}
+      {trailing}
+    </div>
+  ) : (
+    numberField
   );
 
   if (!scrub) {
@@ -741,6 +784,7 @@ export function SettingNumber({
             setDragMax(dragging ? overflowMax : null);
           }}
           step={step}
+          tickSnap={tickSnap}
           tickStops={tickStops}
           value={value}
         />

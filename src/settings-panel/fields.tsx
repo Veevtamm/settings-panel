@@ -16,7 +16,7 @@ import {
   pickIdle,
   pickerChrome,
 } from "./chrome";
-import type { EnumOption, ResetDotProps } from "./types";
+import type { EnumMark, EnumOption, ResetDotProps } from "./types";
 import { RowLabel, SettingRow } from "./row";
 import { PanelSelectList } from "./select";
 
@@ -503,12 +503,113 @@ export function SettingText({
   );
 }
 
+function EnumMarkGlyph({ mark }: { mark: EnumMark }) {
+  const lit = mark === "from-start" ? 0 : mark === "from-center" ? 1 : 2;
+  return (
+    <svg
+      aria-hidden
+      className="pointer-events-none block size-3"
+      viewBox="0 0 12 12"
+    >
+      {[0, 1, 2].map((i) => (
+        <rect
+          key={i}
+          x={1.5 + i * 3.5}
+          y={3}
+          width={2}
+          height={6}
+          rx={0.5}
+          fill="currentColor"
+          opacity={i === lit ? 1 : 0.28}
+        />
+      ))}
+    </svg>
+  );
+}
+
+function SettingEnumSegment({
+  label,
+  onChange,
+  options,
+  value,
+  modified,
+  onResetValue,
+  info,
+  icon,
+}: {
+  label: string;
+  onChange: (value: string) => void;
+  options: readonly EnumOption[];
+  value: string;
+} & ResetDotProps) {
+  const cols =
+    options.length === 2
+      ? "grid-cols-[42px_1px_43px]"
+      : "grid-cols-[28px_1px_28px_1px_28px]";
+
+  return (
+    <SettingRow
+      label={label}
+      modified={modified}
+      onResetValue={onResetValue}
+      info={info}
+      icon={icon}
+    >
+      <div
+        role="radiogroup"
+        aria-label={label}
+        className={cn("grid h-[28px] w-[86px] shrink-0", cols, pickerChrome)}
+      >
+        {options.flatMap((option, index) => {
+          const optionLabel =
+            typeof option.label === "string" ? option.label : option.label.ru;
+          const active = value === option.value;
+          const cell = (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              aria-label={optionLabel}
+              onClick={() => onChange(option.value)}
+              className={cn(
+                "flex size-[28px] items-center justify-center outline-none",
+                options.length === 2 && "w-full",
+                pickEase,
+                active ? pickActive : pickIdle,
+              )}
+            >
+              {option.mark ? (
+                <EnumMarkGlyph mark={option.mark} />
+              ) : (
+                <span className="text-[9px] leading-none">
+                  {optionLabel.slice(0, 1)}
+                </span>
+              )}
+            </button>
+          );
+          if (index === options.length - 1) return [cell];
+          return [
+            cell,
+            <div
+              key={`rule-${option.value}`}
+              aria-hidden
+              className="bg-[color:var(--sp-fill-strong)]"
+            />,
+          ];
+        })}
+      </div>
+    </SettingRow>
+  );
+}
+
 export function SettingEnumDropdown({
   label,
   onChange,
   options,
   reduceMotion,
   value,
+  control = "dropdown",
   controlWidth,
   modified,
   onResetValue,
@@ -520,8 +621,23 @@ export function SettingEnumDropdown({
   options: readonly EnumOption[];
   reduceMotion: boolean;
   value: string;
+  control?: "dropdown" | "segment";
   controlWidth?: number;
 } & ResetDotProps) {
+  if (control === "segment" && options.length >= 2 && options.length <= 3) {
+    return (
+      <SettingEnumSegment
+        label={label}
+        onChange={onChange}
+        options={options}
+        value={value}
+        modified={modified}
+        onResetValue={onResetValue}
+        info={info}
+        icon={icon}
+      />
+    );
+  }
   const selectOptions = options.map((option) => ({
     id: option.value,
     label: typeof option.label === "string" ? option.label : option.label.ru,
