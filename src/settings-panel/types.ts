@@ -70,6 +70,10 @@ export type ToggleSetting<TSettings> = {
   onLabel?: Copy;
   /** Label on the control when value is false */
   offLabel?: Copy;
+  /** Segment glyph when value is true (Тема `moon`; ориентация `rectangle-horizontal`). */
+  onIcon?: SfSymbolName;
+  /** Segment glyph when value is false (Тема `sun`; ориентация `rectangle-vertical`). */
+  offIcon?: SfSymbolName;
   /**
    * Omit = switch 52×28. Named pair of modes: `segment` (or `dropdown`).
    * `action` = Panel / Action 86 — one button, label flips (`offLabel` / `onLabel`).
@@ -376,6 +380,15 @@ export type SettingsPanelProps<TSettings> = {
   places?: readonly SettingsPlace<TSettings>[];
   /** Extra 28×28 control stacked under the trigger (shifts below Reset when open). */
   dockExtra?: ReactNode;
+  /**
+   * Gear dock corner when `${panelId}:panel-settings` has no `dockCorner`.
+   * Omit = top-left. Drag still persists; scene Reset does not clear.
+   */
+  defaultDockCorner?:
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right";
   onSettingsChange: (next: Partial<TSettings>) => void;
   panelId: string;
   /** Previous panelId values; used to migrate `${id}:subsection-order` and `${id}:panel-settings`. */

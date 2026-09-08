@@ -188,6 +188,8 @@ export function SectionRows<TSettings>({
               ? t(item.offLabel)
               : tx(PANEL_COPY.off, locale)
           }
+          onIcon={item.onIcon}
+          offIcon={item.offIcon}
           control={item.control}
           controlWidth={item.controlWidth}
           reduceMotion={reduceMotion}

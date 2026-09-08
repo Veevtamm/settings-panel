@@ -15,7 +15,6 @@ import { createPortal } from "react-dom";
 import { EasingCurveEditor } from "../easing-curve-editor";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import {
-  formatBezierInput,
   parseBezierInput,
   type CubicBezier,
 } from "../lib/cubic-bezier";
@@ -55,13 +54,10 @@ import {
   SUBSECTION_DRAG_PX,
   SUBSECTION_HEADER_PX,
   fieldChrome,
-  fieldValueMono,
-  fieldValueSans,
   pickActive,
   pickEase,
   pickIdle,
   pickerChrome,
-  rowLabelClass,
 } from "./chrome";
 import {
   applyLiftTransform,
@@ -87,6 +83,7 @@ import {
   type LiftSize,
   type LiftXy,
 } from "./model";
+import { BezierCoordsRow } from "./bezier-coords";
 import { FieldButton, SettingToggle } from "./fields";
 import { useCopyFlash } from "./use-copy-flash";
 import { EasingPlayheadGate } from "./easing-playhead";
@@ -329,7 +326,7 @@ export function SectionDivider() {
   return (
     <div
       role="separator"
-      className="h-px shrink-0 bg-[color:var(--sp-line)]"
+      className="h-px shrink-0 bg-[color:var(--sp-section-line)]"
     />
   );
 }
@@ -776,6 +773,7 @@ export function SettingsPanelImpl<TSettings>({
   onReset,
   defaultSettings,
   dockExtra,
+  defaultDockCorner,
   places = NO_PLACES as readonly SettingsPlace<TSettings>[],
   onSettingsChange,
   panelId,
@@ -894,6 +892,7 @@ export function SettingsPanelImpl<TSettings>({
   } = usePanelWindow({
     panelId,
     legacyPanelIds,
+    defaultDockCorner,
     dockStackH: DOCK_BTN + extraShift + extraDockCount * (DOCK_BTN + GAP_IN),
   });
 
@@ -1792,8 +1791,10 @@ export function SettingsPanelImpl<TSettings>({
   const sectionVisible = (sectionId: string) => {
     if (sectionId === PANEL_SECTION_ID) return true;
     if (selectedPlace != null) return false;
-    if (sectionId === "bezier") return renderPlotSection;
-    if (sectionId === easingSectionId) return renderEasingEditor;
+    if (sectionId === "bezier") {
+      return showPlotSection ? renderPlotSection : renderEasingEditor;
+    }
+    if (sectionId === "curves") return renderEasingEditor;
     return filteredGroups.some((group) => group.id === sectionId);
   };
   const panelScroll =
@@ -2248,7 +2249,7 @@ export function SettingsPanelImpl<TSettings>({
                 }
                 reduceMotion={reduceMotion}
               >
-                {(playhead, replay) => (
+                {(playhead) => (
               <div className="flex w-full flex-col gap-1">
                 <div
                   className={cn("w-full overflow-hidden rounded", fieldChrome)}
@@ -2263,59 +2264,27 @@ export function SettingsPanelImpl<TSettings>({
                   />
                 </div>
 
-                <div className="flex h-[28px] w-full items-center gap-1">
-                  {onReplay ? (
-                    <FieldButton
-                      label="Replay selected easing"
-                      onClick={replay}
-                      className="overflow-hidden active:scale-[0.97] fine-hover:hover:bg-[color:var(--sp-fill-hover)]"
-                    >
-                      <SfSymbol name="rotate-ccw" className="size-5" />
-                    </FieldButton>
-                  ) : null}
+                <BezierCoordsRow
+                  locale={locale}
+                  storageLabel={storageLabel}
+                  value={activeEasing}
+                  onChange={patchEasing}
+                />
 
-                  <PanelSelectList
-                    value={easingPreset}
-                    options={PRESET_OPTIONS}
-                    ariaLabel={tx(PANEL_COPY.bezierPreset, locale)}
-                    reduceMotion={reduceMotion}
-                    className="min-w-0 flex-1"
-                    optionIcon={(id) => <PresetCurveIcon id={id} />}
-                    onChange={(presetId) => {
-                      const preset = presetId as EasingPresetId;
-                      if (preset === "custom") return;
-                      const easing = easingForPreset(preset);
-                      const parsed = easing ? parseBezierInput(easing) : null;
-                      if (parsed) patchEasing(parsed);
-                    }}
-                  />
-                </div>
-
-                <div className="group flex h-[28px] min-w-0 items-center justify-between gap-4">
-                  <span className={cn(rowLabelClass, "min-w-0")}>
-                    {tx(PANEL_COPY.curveParams, locale)}
-                  </span>
-                  <input
-                    type="text"
-                    spellCheck={false}
-                    autoComplete="off"
-                    aria-label={`${storageLabel} cubic-bezier`}
-                    value={formatBezierInput(activeEasing)}
-                    onChange={(event) => {
-                      const parsed = parseBezierInput(event.target.value);
-                      if (parsed) patchEasing(parsed);
-                    }}
-                    className={cn(
-                      "h-[28px] min-w-0 w-[180px] max-w-[180px] shrink-0 rounded px-1.5 text-left",
-                      fieldValueMono,
-                      fieldChrome,
-                    )}
-                    style={{
-                      background: FIELD,
-                      color: MUTED,
-                    }}
-                  />
-                </div>
+                <PanelSelectList
+                  value={easingPreset}
+                  options={PRESET_OPTIONS}
+                  ariaLabel={tx(PANEL_COPY.bezierPreset, locale)}
+                  reduceMotion={reduceMotion}
+                  optionIcon={(id) => <PresetCurveIcon id={id} />}
+                  onChange={(presetId) => {
+                    const preset = presetId as EasingPresetId;
+                    if (preset === "custom") return;
+                    const easing = easingForPreset(preset);
+                    const parsed = easing ? parseBezierInput(easing) : null;
+                    if (parsed) patchEasing(parsed);
+                  }}
+                />
               </div>
                 )}
               </EasingPlayheadGate>
@@ -2674,17 +2643,17 @@ export function SettingsPanelImpl<TSettings>({
             className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
             data-section-list=""
           >
-            <div className="shrink-0">
+            <div className="relative z-[1] shrink-0">
               {visibleTop.map((id, i) =>
                 renderOrderedSection(id, i > 0),
               )}
+              {visibleTop.length > 0 && visibleMid.length > 0 ? (
+                <SectionDivider />
+              ) : null}
             </div>
             <div className={cn("min-h-0 flex-1", panelScroll)}>
               {visibleMid.map((id, i) =>
-                renderOrderedSection(
-                  id,
-                  i > 0 || visibleTop.length > 0,
-                ),
+                renderOrderedSection(id, i > 0),
               )}
             </div>
           </div>

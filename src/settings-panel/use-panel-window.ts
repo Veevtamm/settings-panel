@@ -35,11 +35,13 @@ export function usePanelWindow({
   panelId,
   legacyPanelIds = [],
   dockStackH,
+  defaultDockCorner = "top-left",
 }: {
   panelId: string;
   legacyPanelIds?: readonly string[];
   /** Gear column height for magnet (trigger + reset/copy + extra dock). */
   dockStackH: number;
+  defaultDockCorner?: DockCorner;
 }) {
   const legacyPanelKey = legacyPanelIds.join("\0");
   const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH);
@@ -48,8 +50,10 @@ export function usePanelWindow({
     x: number;
     y: number;
   } | null>(null);
-  const [dockCorner, setDockCorner] = useState<DockCorner>("top-left");
-  const [dockPos, setDockPos] = useState(() => dockPosForCorner("top-left"));
+  const [dockCorner, setDockCorner] = useState<DockCorner>(defaultDockCorner);
+  const [dockPos, setDockPos] = useState(() =>
+    dockPosForCorner(defaultDockCorner),
+  );
   const [dockDragging, setDockDragging] = useState(false);
   const [panelResizing, setPanelResizing] = useState(false);
   const [panelMoving, setPanelMoving] = useState(false);
@@ -107,10 +111,10 @@ export function usePanelWindow({
       parsed.dockCorner ??
       (parsed.dockX != null && parsed.dockY != null
         ? nearestDockCorner(parsed.dockX, parsed.dockY)
-        : "top-left");
+        : defaultDockCorner);
     setDockCorner(corner);
     setDockPos(dockPosForCorner(corner));
-  }, [legacyPanelKey, panelId]);
+  }, [defaultDockCorner, legacyPanelKey, panelId]);
 
   useEffect(() => {
     const onResize = () => {
