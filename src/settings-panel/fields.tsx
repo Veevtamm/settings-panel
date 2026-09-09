@@ -115,7 +115,10 @@ export function FieldButton({
       aria-pressed={active || undefined}
       aria-expanded={expanded}
       title={label}
-      onClick={onClick}
+      onClick={(event) => {
+        if (event.detail > 1) return;
+        onClick();
+      }}
       className={cn(
         "group/field-btn flex size-[28px] shrink-0 items-center justify-center rounded outline-none",
         fieldChrome,

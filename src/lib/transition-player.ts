@@ -1,5 +1,9 @@
 import { clamp01 } from "./cubic-bezier";
-import type { PlayerController, PlayerState } from "../settings-panel/types";
+import type {
+  PlayerController,
+  PlayerSolo,
+  PlayerState,
+} from "../settings-panel/types";
 
 /** Pins closer than this (in q) count as the same moment. */
 export const PIN_EPSILON = 0.005;
@@ -11,6 +15,11 @@ function pinNear(pins: readonly number[], q: number) {
 /** WAAPI tracks of one transition — all start at 0, the longest ends at `totalMs`. */
 export type TransitionTracks = {
   animations: Animation[];
+  /**
+   * Phase index per animation. In solo, other tagged tracks freeze at `from`.
+   * Omit (or a hole) = that clip always follows the playhead.
+   */
+  phases?: readonly (number | undefined)[];
   totalMs: number;
 };
 
@@ -36,6 +45,7 @@ export class TransitionPlayer implements PlayerController {
   private tracks: TransitionTracks = EMPTY_TRACKS();
   private listeners = new Set<(state: PlayerState) => void>();
   private raf: number | null = null;
+  private loopLast = 0;
   private state: PlayerState = {
     q: 0,
     playing: false,
@@ -44,6 +54,7 @@ export class TransitionPlayer implements PlayerController {
     scrollView: false,
     open: false,
     pins: [],
+    solo: null,
   };
   private readonly opts: Required<TransitionPlayerOptions>;
   readonly id: string;
@@ -91,20 +102,22 @@ export class TransitionPlayer implements PlayerController {
   seek(q: number) {
     this.stopLoop();
     for (const anim of this.tracks.animations) anim.pause();
-    const next = clamp01(q);
+    const next = this.clampQ(q);
     this.applyTime(next * this.totalMs);
     this.set({ q: next, playing: false });
   }
 
   play(direction: 1 | -1) {
+    this.stopLoop();
     if (this.opts.reduceMotion() || this.totalMs <= 0) {
-      this.seek(direction > 0 ? 1 : 0);
+      this.seek(direction > 0 ? this.rangeEnd() : this.rangeStart());
       return;
     }
-    // Tracks can drift from the HUD q (finished, rebuilt while parked, seeked before mount).
     let from = this.state.q;
-    if (direction > 0 && from >= 1) from = 0;
-    if (direction < 0 && from <= 0) from = 1;
+    const start = this.rangeStart();
+    const end = this.rangeEnd();
+    if (direction > 0 && from >= end - 1e-4) from = start;
+    if (direction < 0 && from <= start + 1e-4) from = end;
     for (const anim of this.tracks.animations) anim.pause();
     this.applyTime(from * this.totalMs);
     this.set({ q: from });
@@ -112,7 +125,11 @@ export class TransitionPlayer implements PlayerController {
   }
 
   pause() {
-    this.seek(this.readQ());
+    this.stopLoop();
+    for (const anim of this.tracks.animations) anim.pause();
+    const next = this.clampQ(this.state.q);
+    this.applyTime(next * this.totalMs);
+    this.set({ q: next, playing: false });
   }
 
   /** Space: run on; running → turn around; at an end → run back. */
@@ -121,12 +138,11 @@ export class TransitionPlayer implements PlayerController {
       this.play(this.state.direction > 0 ? -1 : 1);
       return;
     }
-    this.play(this.state.q >= 1 ? -1 : 1);
+    this.play(this.state.q >= this.rangeEnd() ? -1 : 1);
   }
 
   setSpeed(speed: number) {
     this.set({ speed });
-    if (this.state.playing) this.applyRate();
   }
 
   setScrollView(on: boolean) {
@@ -145,7 +161,18 @@ export class TransitionPlayer implements PlayerController {
       direction: 1,
       scrollView: false,
       open: on,
+      solo: null,
     });
+  }
+
+  setSolo(solo: PlayerSolo | null) {
+    const next =
+      solo != null && solo.to - solo.from < 0.0005
+        ? null
+        : solo;
+    const q = this.clampQ(this.state.q, next);
+    this.applyTime(q * this.totalMs);
+    this.set({ solo: next, q });
   }
 
   togglePin() {
@@ -168,49 +195,65 @@ export class TransitionPlayer implements PlayerController {
     this.seek(this.state.q + deltaPx / this.opts.scrollPxPerTransition);
   }
 
+  private rangeStart(solo = this.state.solo) {
+    return solo?.from ?? 0;
+  }
+
+  private rangeEnd(solo = this.state.solo) {
+    return solo?.to ?? 1;
+  }
+
+  private clampQ(q: number, solo = this.state.solo) {
+    return Math.min(this.rangeEnd(solo), Math.max(this.rangeStart(solo), clamp01(q)));
+  }
+
   private run(direction: 1 | -1) {
     this.set({ playing: true, direction });
-    this.applyRate();
-    for (const anim of this.tracks.animations) anim.play();
+    this.loopLast = performance.now();
     this.startLoop();
   }
 
-  private applyRate() {
-    const scale = this.state.direction < 0 ? this.opts.reverseTimeScale : 1;
-    const rate = (this.state.direction / this.state.speed) / scale;
-    for (const anim of this.tracks.animations) anim.playbackRate = rate;
-  }
-
   private applyTime(ms: number) {
-    for (const anim of this.tracks.animations) anim.currentTime = ms;
-  }
-
-  private readQ() {
-    const { animations, totalMs } = this.tracks;
-    if (totalMs <= 0) return this.state.q;
-    const t = Number(animations[0]?.currentTime ?? this.state.q * totalMs);
-    return clamp01(t / totalMs);
+    const solo = this.state.solo;
+    const hold = solo != null ? solo.from * this.totalMs : ms;
+    this.tracks.animations.forEach((anim, i) => {
+      const phase = this.tracks.phases?.[i];
+      const freeze =
+        solo != null && phase != null && phase !== solo.phase;
+      anim.currentTime = freeze ? hold : ms;
+    });
   }
 
   private startLoop() {
     if (this.raf != null) return;
-    const tick = () => {
+    const tick = (now: number) => {
       this.raf = null;
-      const q = this.readQ();
-      const anims = this.tracks.animations;
-      const done =
-        anims.length === 0 ||
-        anims.every((anim) => anim.playState === "finished") ||
-        (this.state.direction > 0 && q >= 1) ||
-        (this.state.direction < 0 && q <= 0);
-      if (done) {
-        const end = this.state.direction > 0 ? 1 : 0;
-        for (const anim of anims) anim.pause();
-        this.applyTime(end * this.totalMs);
-        this.set({ q: end, playing: false });
+      if (!this.state.playing) return;
+      const dt = Math.min(now - this.loopLast, 48);
+      this.loopLast = now;
+      const total = this.totalMs;
+      if (total <= 0) {
+        this.set({ playing: false });
         return;
       }
-      if (q !== this.state.q) this.set({ q });
+      const scale = this.state.direction < 0 ? this.opts.reverseTimeScale : 1;
+      const rate = this.state.direction / this.state.speed / scale;
+      let ms = this.state.q * total + dt * rate;
+      const start = this.rangeStart() * total;
+      const end = this.rangeEnd() * total;
+      if (ms >= end) {
+        this.applyTime(end);
+        this.set({ q: end / total, playing: false });
+        return;
+      }
+      if (ms <= start) {
+        this.applyTime(start);
+        this.set({ q: start / total, playing: false });
+        return;
+      }
+      this.applyTime(ms);
+      const q = this.clampQ(ms / total);
+      this.set({ q });
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);

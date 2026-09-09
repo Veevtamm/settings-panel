@@ -39,6 +39,7 @@
     "./panel-theme": "./src/lib/panel-theme.ts",
     "./copy-text": "./src/lib/copy-text.ts",
     "./transition-player": "./src/lib/transition-player.ts",
+    "./player-clips": "./src/lib/player-clips.ts",
     "./sf-symbol": "./src/sf-symbol.tsx",
     "./easing-curve-editor": "./src/easing-curve-editor.tsx"
   },

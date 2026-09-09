@@ -222,12 +222,21 @@ export type PairSetting<TSettings> = {
   fields: readonly [PairField<TSettings>, PairField<TSettings>];
 };
 
-/** One segment of a phased transition: a phase (filled) or a pause (empty). */
+/** One clip on the player track. `kind: "pause"` is a packed hole (empty track), not a labeled clip. Prefer `startKey` on the next phase. */
 export type PlayerPhase<TSettings> = {
   key: keyof TSettings;
+  /** Absolute start. Omit = pack after the previous packed phase. */
+  startKey?: keyof TSettings;
   caption: Copy;
   kind: "phase" | "pause";
   max: number;
+};
+
+/** Loop one phase; other tagged tracks freeze at `from`. */
+export type PlayerSolo = {
+  phase: number;
+  from: number;
+  to: number;
 };
 
 /** Playhead snapshot the scene publishes to the panel. */
@@ -236,7 +245,7 @@ export type PlayerState = {
   q: number;
   playing: boolean;
   direction: 1 | -1;
-  /** Slow-down multiplier ×1 / ×3 / ×10 — not a setting. */
+  /** Slow-down multiplier ×1 / ×3 / ×5 / ×10 — not a setting. */
   speed: number;
   /** Wheel drives the phase instead of the scene. */
   scrollView: boolean;
@@ -244,6 +253,7 @@ export type PlayerState = {
   open: boolean;
   /** Pinned moments, 0…1. */
   pins: readonly number[];
+  solo: PlayerSolo | null;
 };
 
 /** Scene side of the player — the stand owns the transition, the panel only asks. */
@@ -263,13 +273,17 @@ export type PlayerController = {
   setOpen(on: boolean): void;
   /** Pin the current moment; pinning the same moment again clears it. */
   togglePin(): void;
+  /** Loop this phase window; `null` restores the full transition. */
+  setSolo(solo: PlayerSolo | null): void;
 };
 
-/** Phased transition row: total field + Player Toggle, then Плеер | Фазы. */
+/** Phased transition row: total field + Player Toggle, then Плеер + Блоки. */
 export type PlayerSetting<TSettings> = {
   label: Copy;
   info?: Copy;
   icon?: SfSymbolName;
+  /** Timeline length in ms — its own value; phases live inside it (min … total). */
+  totalKey: keyof TSettings;
   phases: readonly PlayerPhase<TSettings>[];
   unit?: string;
   min?: number;

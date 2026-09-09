@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import { EasingCurveEditor } from "../easing-curve-editor";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import {
+  formatBezierInput,
   parseBezierInput,
   type CubicBezier,
 } from "../lib/cubic-bezier";
@@ -845,20 +846,30 @@ export function SettingsPanelImpl<TSettings>({
   const settingDiffers = (key: keyof TSettings) =>
     defaultSettings != null &&
     !sameValue(settings[key], (defaultSettings as TSettings)[key]);
+  const liveEasings = readEasings(settings);
+  const defaultEasings = readEasings(defaultSettings);
+  const changedEasingTargets =
+    defaultSettings == null ||
+    liveEasings == null ||
+    defaultEasings == null ||
+    easingTargets.length === 0
+      ? []
+      : easingTargets.filter(
+          (target) =>
+            !sameValue(liveEasings[target.id], defaultEasings[target.id]),
+        );
   /** Keys that have a panel control. Hidden derived fields (frame W/H) stay out. */
   const listedChangedKeys =
     defaultSettings == null
       ? []
-      : pageKeys.filter((key) => {
-          if (String(key) === "easings") {
-            return easingTargets.length > 0 && settingDiffers(key);
-          }
-          return groupedKeys.has(key) && settingDiffers(key);
-        });
+      : pageKeys.filter(
+          (key) => String(key) !== "easings" && groupedKeys.has(key) && settingDiffers(key),
+        );
   const curvePlotChanged =
     Boolean(curveSection) && curveKeys.some(settingDiffers);
   const changedCount =
     listedChangedKeys.length +
+    changedEasingTargets.length +
     (curvePlotChanged ? 1 : 0) +
     Object.keys(sectionIcons).length;
 
@@ -972,6 +983,13 @@ export function SettingsPanelImpl<TSettings>({
         const name = label ? `${label} (${String(key)})` : String(key);
         return `${name}: ${fmt(settings[key])}`;
       });
+    for (const target of changedEasingTargets) {
+      const curve = liveEasings?.[target.id];
+      if (curve == null) continue;
+      lines.push(
+        `${tx(target.label, locale)} (easings.${target.id}): ${formatBezierInput(curve)}`,
+      );
+    }
     for (const [id, name] of Object.entries(sectionIcons)) {
       lines.push(tx(PANEL_COPY.copyIcon(labelForIconId(id), name), locale));
     }
@@ -1176,7 +1194,6 @@ export function SettingsPanelImpl<TSettings>({
     skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
 
-  const settingsEasings = readEasings(settings);
   const filteredGroups =
     selectedPlace != null
       ? filterGroupsByPlace(groups, new Set(selectedPlace.keys))
@@ -1199,8 +1216,8 @@ export function SettingsPanelImpl<TSettings>({
     setActiveEasingId((id) => (allowed.includes(id) ? id : allowed[0]!));
   }, [easingTargets, selectedPlace]);
   const activeEasing =
-    settingsEasings?.[activeEasingId] ??
-    settingsEasings?.[visibleEasingTargets[0]?.id ?? ""] ??
+    liveEasings?.[activeEasingId] ??
+    liveEasings?.[visibleEasingTargets[0]?.id ?? ""] ??
     ({ x1: 0.22, y1: 1, x2: 0.36, y2: 1 } satisfies CubicBezier);
   const easingPreset = matchEasingPreset(activeEasing);
   const showEasingEditor = easingTargets.length > 0;
@@ -1279,7 +1296,7 @@ export function SettingsPanelImpl<TSettings>({
     if (!activeEasingId) return;
     onSettingsChange({
       easings: {
-        ...settingsEasings,
+        ...liveEasings,
         [activeEasingId]: easing,
       },
     } as unknown as Partial<TSettings>);
@@ -2060,26 +2077,49 @@ export function SettingsPanelImpl<TSettings>({
               <SettingPlayer
                 label={tx(player.label, locale)}
                 locale={locale}
+                total={Number(settings[player.totalKey])}
                 segments={player.phases.map((phase) => ({
                   caption: tx(phase.caption, locale),
                   kind: phase.kind,
                   max: phase.max,
                   value: Number(settings[phase.key]),
+                  start:
+                    phase.startKey != null
+                      ? Number(settings[phase.startKey])
+                      : undefined,
                 }))}
                 min={player.min}
                 step={player.step}
                 unit={player.unit}
                 controller={player.controller}
                 reduceMotion={reduceMotion}
-                onChange={(values) =>
-                  onSettingsChange(
-                    Object.fromEntries(
-                      player.phases.map((phase, i) => [phase.key, values[i]]),
-                    ) as Partial<TSettings>,
-                  )
-                }
+                onChange={(next) => {
+                  const patch = Object.fromEntries(
+                    player.phases.flatMap((phase, i) => {
+                      const rows: [keyof TSettings, number][] = [
+                        [phase.key, next.durations[i]],
+                      ];
+                      if (i === 0) rows.push([player.totalKey, next.total]);
+                      if (
+                        phase.startKey != null &&
+                        next.starts[i] != null
+                      ) {
+                        rows.push([phase.startKey, next.starts[i]]);
+                      }
+                      return rows;
+                    }),
+                  ) as Partial<TSettings>;
+                  onSettingsChange(patch);
+                }}
                 {...rowDotForKeys(
-                  player.phases.map((phase) => phase.key),
+                  [
+                    player.totalKey,
+                    ...player.phases.flatMap((phase) =>
+                      phase.startKey != null
+                        ? [phase.key, phase.startKey]
+                        : [phase.key],
+                    ),
+                  ],
                   player.info == null ? undefined : tx(player.info, locale),
                   player.icon,
                 )}

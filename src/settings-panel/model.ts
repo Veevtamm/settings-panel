@@ -195,6 +195,12 @@ export function visitSectionKeys<TSettings>(
   if (player) {
     for (const phase of player.phases) {
       visit(phase.key, `${t(player.label)}: ${t(phase.caption)}`);
+      if (phase.startKey) {
+        visit(
+          phase.startKey,
+          `${t(player.label)}: ${t(phase.caption)} start`,
+        );
+      }
     }
   }
   for (const row of section.custom ?? []) {
@@ -245,7 +251,12 @@ export function closePlayersHiddenByPlace<TSettings>(
       const player = section.player;
       if (!player) continue;
       const visible =
-        keys == null || player.phases.some((phase) => keys.has(phase.key));
+        keys == null ||
+        player.phases.some(
+          (phase) =>
+            keys.has(phase.key) ||
+            (phase.startKey != null && keys.has(phase.startKey)),
+        );
       if (!visible && player.controller.getState().open) {
         player.controller.setOpen(false);
       }
@@ -291,7 +302,11 @@ export function filterSectionByPlace<TSettings>(
     ),
     player:
       section.player != null &&
-      section.player.phases.some((phase) => keep(phase.key))
+      section.player.phases.some(
+        (phase) =>
+          keep(phase.key) ||
+          (phase.startKey != null && keep(phase.startKey)),
+      )
         ? section.player
         : undefined,
   };

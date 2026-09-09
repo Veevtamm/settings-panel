@@ -34,6 +34,7 @@ export type {
   PlayerController,
   PlayerPhase,
   PlayerSetting,
+  PlayerSolo,
   PlayerState,
   RangeSetting,
   SettingAnchor,
@@ -57,6 +58,7 @@ export {
   usePlayerState,
 } from "./settings-panel/player";
 export { SettingsPanel } from "./settings-panel/shell";
+export { FieldButton, SettingToggle } from "./settings-panel/fields";
 export { pointInSelector, pointInSettingsPlace } from "./settings-panel/places";
 export { PickRadioGroup } from "./settings-panel/pick";
 export { SettingChips } from "./settings-panel/chips";
@@ -97,6 +99,16 @@ export type { PanelSettingsFile, PanelTheme } from "./lib/panel-theme";
 export { isOverSettingsPanel } from "./lib/is-over-settings-panel";
 export { usePrefersReducedMotion } from "./lib/prefers-reduced-motion";
 export { TransitionPlayer, PIN_EPSILON } from "./lib/transition-player";
+export type { TransitionTracks } from "./lib/transition-player";
+export {
+  captionsAtQ,
+  clipsTotal,
+  fitClipsToTotal,
+  layoutClips,
+  momentMs,
+  waapiSpan,
+} from "./lib/player-clips";
+export type { ClipInput, LaidClip } from "./lib/player-clips";
 export {
   clampNumber,
   cn,
