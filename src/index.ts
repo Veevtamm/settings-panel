@@ -22,6 +22,7 @@ export type {
   ColorSetting,
   CustomSetting,
   CustomSettingRender,
+  DerivedSetting,
   EasingTarget,
   EnumMark,
   EnumOption,
@@ -31,17 +32,20 @@ export type {
   PairField,
   PairFieldIcon,
   PairSetting,
+  ParamPlacement,
   PlayerController,
   PlayerPhase,
   PlayerSetting,
   PlayerSolo,
   PlayerState,
   RangeSetting,
+  RefSetting,
   SettingAnchor,
   SettingFrameOrient,
   SettingTextAlign,
   SettingXAnchor,
   SettingsGroup,
+  SettingsLayer,
   SettingsPlace,
   SettingsSection,
   TextAlignSetting,
@@ -49,6 +53,20 @@ export type {
   ToggleSetting,
   XAnchorSetting,
 } from "./settings-panel/types";
+export { resolvePlaces } from "./settings-panel/model";
+export {
+  defineParams,
+  defaultsOf,
+  placesOf,
+  rowsOf,
+  param,
+} from "./settings-panel/params";
+export type {
+  Params,
+  ParamsOf,
+  PlaceDef,
+  SettingsOf,
+} from "./settings-panel/params";
 export { RowLabel, SettingRow } from "./settings-panel/row";
 export {
   formatMoment,

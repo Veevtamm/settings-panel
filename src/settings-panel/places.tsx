@@ -18,7 +18,7 @@ export function placeVisibleKeys<TSettings>(
   groups: readonly SettingsGroup<TSettings>[],
 ) {
   const present = collectGroupKeys(groups);
-  return place.keys.filter((key) => present.has(key));
+  return (place.keys ?? []).filter((key) => present.has(key));
 }
 
 export function placeParamCount<TSettings>(
@@ -27,7 +27,7 @@ export function placeParamCount<TSettings>(
 ) {
   const keyCount = groups
     ? placeVisibleKeys(place, groups).length
-    : place.keys.length;
+    : (place.keys?.length ?? 0);
   return keyCount + (place.easingIds?.length ?? 0);
 }
 
@@ -251,7 +251,6 @@ export function usePlacesPicker<TSettings>({
 export function PlaceHoverLayer<TSettings>({
   active,
   places,
-  groups,
   locale,
   panelTheme,
   onPick,
@@ -259,7 +258,6 @@ export function PlaceHoverLayer<TSettings>({
 }: {
   active: boolean;
   places: readonly SettingsPlace<TSettings>[];
-  groups: readonly SettingsGroup<TSettings>[];
   locale: PanelLocale;
   panelTheme: "dark" | "light";
   onPick: (id: string) => void;
@@ -342,7 +340,7 @@ export function PlaceHoverLayer<TSettings>({
   const n = rects.length;
   const caption = `${tx(hover.label, locale)}${
     n > 1 ? ` \u00d7 ${n}` : ""
-  } · ${tx(PANEL_COPY.parameters(placeParamCount(hover, groups)), locale)}`;
+  } · ${placeParamCount(hover)}`;
 
   return createPortal(
     <div

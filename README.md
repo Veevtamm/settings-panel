@@ -113,6 +113,12 @@ export function Scene() {
 
 Open the scene and press ⌘M. Keep page schemas (`settings.ts`) in the app. This package is the panel, not the scene.
 
+## For AI agents
+
+The full agent guide (control map, schema, wiring, pitfalls) is [`AGENTS.md`](AGENTS.md). It ships with the GitHub package.
+
+After install, copy `.cursor/rules/settings-panel.mdc` from this package into your app’s `.cursor/rules/`, and point your app `AGENTS.md` at `node_modules/@veevtamm/settings-panel/AGENTS.md`.
+
 ## Persist
 
 Use `useLocalSettingsStore` when values should survive a reload. Storage key: `<project>-<scene>-settings`.

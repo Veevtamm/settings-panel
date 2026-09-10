@@ -104,6 +104,16 @@ export const PANEL_COPY = {
     "Установить новые значения по умолчанию",
     "Set new default values",
   ),
+  copyDefaultsAgentHeader: (label: string, n: number, m: number) =>
+    L(
+      `Новые значения по умолчанию · ${label} · изменено ${n} из ${m}`,
+      `New defaults · ${label} · ${n} of ${m} changed`,
+    ),
+  copyDefaultsIcons: L("Иконки", "Icons"),
+  copyDefaultsAgentFooter: L(
+    "Впиши эти значения в DEFAULTS сцены как новые значения по умолчанию.",
+    "Write these values into the scene DEFAULTS as the new default values.",
+  ),
   playerMode: L("Режим", "Mode"),
   player: L("Плеер", "Player"),
   phases: L("Блоки", "Blocks"),

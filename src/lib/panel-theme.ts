@@ -33,10 +33,28 @@ export type PanelSettingsFile = {
   dockCorner?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
   sectionIcons?: Record<string, SfSymbolName>;
+  /**
+   * Last group (and named subsection `copyKey`) where a row was edited.
+   * Scene Reset does not clear.
+   */
+  lastEdited?: { group: string; section?: string };
   /** @deprecated migrated to dockCorner */
   dockX?: number;
   dockY?: number;
 };
+
+function parseLastEdited(
+  raw: unknown,
+): { group: string; section?: string } | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
+  const rec = raw as Record<string, unknown>;
+  if (typeof rec.group !== "string" || rec.group.length === 0) return undefined;
+  const next: { group: string; section?: string } = { group: rec.group };
+  if (typeof rec.section === "string" && rec.section.length > 0) {
+    next.section = rec.section;
+  }
+  return next;
+}
 
 function parseSectionIcons(raw: unknown): Record<string, SfSymbolName> | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
@@ -112,6 +130,8 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     }
     const icons = parseSectionIcons(rec.sectionIcons);
     if (icons) next.sectionIcons = icons;
+    const lastEdited = parseLastEdited(rec.lastEdited);
+    if (lastEdited) next.lastEdited = lastEdited;
     return next;
   } catch {
     return {};

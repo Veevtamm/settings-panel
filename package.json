@@ -44,7 +44,9 @@
     "./easing-curve-editor": "./src/easing-curve-editor.tsx"
   },
   "files": [
-    "src"
+    "src",
+    "AGENTS.md",
+    ".cursor/rules/settings-panel.mdc"
   ],
   "peerDependencies": {
     "clsx": "^2",

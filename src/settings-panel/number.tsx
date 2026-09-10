@@ -613,12 +613,17 @@ export function SettingNumber({
       >
         <div
           className={cn(
-            "flex h-[28px] w-[86px] shrink-0 items-center px-1.5 text-[14px] leading-[18px]",
+            "flex h-[28px] w-[86px] shrink-0 cursor-default items-center justify-between gap-1 px-1.5 text-[14px] leading-[18px]",
             fieldChrome,
           )}
           style={{ background: FIELD, color: MUTED }}
         >
-          {readOnlyLabel ?? "Auto"}
+          <span>{readOnlyLabel ?? "Auto"}</span>
+          {unit ? (
+            <span className="pointer-events-none shrink-0 font-sans opacity-50" aria-hidden>
+              {unit}
+            </span>
+          ) : null}
         </div>
       </SettingRow>
     );

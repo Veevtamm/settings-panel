@@ -4,6 +4,7 @@ import {
   Fragment,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -28,6 +29,7 @@ import {
 } from "../lib/easing-presets";
 import {
   parsePanelSettingsObject,
+  readPanelSettings,
   writePanelLocale,
   writePanelSettings,
   writePanelTheme,
@@ -66,6 +68,8 @@ import {
   clampLiftY,
   collectGroupKeys,
   filterGroupsByPlace,
+  formatAgentDefaultsCopy,
+  formatSettingCopyValue,
   insertIndexFromClientY,
   mergeChromeSectionOrder,
   mergeSectionOrder,
@@ -81,6 +85,8 @@ import {
   valuesEqual,
   visitSectionKeys,
   withoutRetiredSectionIds,
+  closeOpenPlayers,
+  resolvePlaces,
   type LiftSize,
   type LiftXy,
 } from "./model";
@@ -107,7 +113,7 @@ import {
   rowIconKey,
   subsectionIconKey,
 } from "./panel-icons";
-import { SectionRows } from "./section-rows";
+import { SectionRows, indexRowsByKey } from "./section-rows";
 import { PanelSelectList } from "./select";
 import type {
   ResetDotProps,
@@ -118,6 +124,7 @@ import type {
 } from "./types";
 
 const NO_PLACES: readonly SettingsPlace<never>[] = [];
+const warnedEmptyPlaces = new Set<string>();
 
 export function SectionBlock({
   icon,
@@ -835,6 +842,23 @@ export function SettingsPanelImpl<TSettings>({
     };
   };
 
+  const resolvedPlaces = useMemo(
+    () => resolvePlaces(groups, places, easingTargets),
+    [groups, places, easingTargets],
+  );
+  useEffect(() => {
+    if (typeof console === "undefined") return;
+    for (const place of resolvedPlaces) {
+      if ((place.keys?.length ?? 0) > 0 || (place.easingIds?.length ?? 0) > 0) {
+        continue;
+      }
+      const id = place.id;
+      if (warnedEmptyPlaces.has(id)) continue;
+      warnedEmptyPlaces.add(id);
+      console.warn(`settings-panel: place "${id}" has no keys and no easingIds`);
+    }
+  }, [resolvedPlaces]);
+
   const groupedKeys = collectGroupKeys(groups);
   const pageKeys: readonly (keyof TSettings)[] =
     defaultSettings != null
@@ -859,14 +883,15 @@ export function SettingsPanelImpl<TSettings>({
             !sameValue(liveEasings[target.id], defaultEasings[target.id]),
         );
   /** Keys that have a panel control. Hidden derived fields (frame W/H) stay out. */
+  const listedControlKeys = pageKeys.filter(
+    (key) => String(key) !== "easings" && groupedKeys.has(key),
+  );
   const listedChangedKeys =
-    defaultSettings == null
-      ? []
-      : pageKeys.filter(
-          (key) => String(key) !== "easings" && groupedKeys.has(key) && settingDiffers(key),
-        );
+    defaultSettings == null ? [] : listedControlKeys.filter(settingDiffers);
   const curvePlotChanged =
     Boolean(curveSection) && curveKeys.some(settingDiffers);
+  const listedControlCount =
+    listedControlKeys.length + (curveSection ? 1 : 0);
   const changedCount =
     listedChangedKeys.length +
     changedEasingTargets.length +
@@ -879,7 +904,7 @@ export function SettingsPanelImpl<TSettings>({
   const dockActionsVisible =
     panelOpen && (defaultSettings == null || changedCount > 0);
   const extraDockCount =
-    (panelOpen ? 1 + (places.length > 0 ? 1 : 0) : 0) + (dockExtra ? 1 : 0);
+    (panelOpen ? 1 + (resolvedPlaces.length > 0 ? 1 : 0) : 0) + (dockExtra ? 1 : 0);
   const extraShift =
     dockActionsVisible && onReset
       ? (DOCK_BTN + GAP_IN) * (defaultSettings != null ? 2 : 1)
@@ -937,11 +962,7 @@ export function SettingsPanelImpl<TSettings>({
       }
     }
     put("easings" as keyof TSettings, easingTitle);
-    const fmt = (value: unknown) =>
-      typeof value === "string" ||
-      (typeof value === "object" && value !== null)
-        ? JSON.stringify(value)
-        : String(value);
+    const fmt = formatSettingCopyValue;
     const copyKeys: (keyof TSettings)[] = [
       ...listedChangedKeys,
       ...(curvePlotChanged
@@ -977,23 +998,95 @@ export function SettingsPanelImpl<TSettings>({
       const group = groups.find((item) => item.id === id);
       return group ? tx(group.title, locale) : id;
     };
-    const lines = copyKeys
-      .map((key) => {
-        const label = labels.get(key);
-        const name = label ? `${label} (${String(key)})` : String(key);
-        return `${name}: ${fmt(settings[key])}`;
-      });
+    const valueLine = (key: keyof TSettings, next: unknown, prev?: unknown) => {
+      const label = labels.get(key);
+      const name = label ? `${label} (${String(key)})` : String(key);
+      if (prev === undefined) return `${name}: ${fmt(next)}`;
+      return `${name}: ${fmt(prev)} → ${fmt(next)}`;
+    };
+    const remaining = new Set(copyKeys);
+    const emitKeys = (
+      keys: readonly (keyof TSettings)[],
+      title: string | null,
+      subsections: { title: string | null; lines: string[] }[],
+    ) => {
+      const lines: string[] = [];
+      for (const key of keys) {
+        if (!remaining.has(key)) continue;
+        remaining.delete(key);
+        lines.push(valueLine(key, settings[key], defaults[key]));
+      }
+      if (lines.length === 0) return;
+      const last = subsections[subsections.length - 1];
+      if (title == null && last && last.title == null) {
+        last.lines.push(...lines);
+        return;
+      }
+      subsections.push({ title, lines });
+    };
+    const groupBlocks: { title: string; subsections: { title: string | null; lines: string[] }[] }[] =
+      [];
+    for (const group of groups) {
+      const subsections: { title: string | null; lines: string[] }[] = [];
+      if (group.visibilityKey) {
+        emitKeys([group.visibilityKey], null, subsections);
+      }
+      for (const orderKey of mergeSectionOrder(
+        group.sections.map((section) => copyKey(section.title)),
+        subsectionOrder[group.id],
+      )) {
+        const section = group.sections.find(
+          (item) => copyKey(item.title) === orderKey,
+        );
+        if (!section) continue;
+        const keys: (keyof TSettings)[] = [];
+        if (section.visibilityKey) keys.push(section.visibilityKey);
+        visitSectionKeys(section, (key) => keys.push(key));
+        emitKeys(
+          keys,
+          section.untitled ? null : tx(section.title, locale),
+          subsections,
+        );
+      }
+      if (subsections.length > 0) {
+        groupBlocks.push({
+          title: tx(group.title, locale),
+          subsections,
+        });
+      }
+    }
+    const trailingLines = copyKeys
+      .filter((key) => remaining.has(key))
+      .map((key) => valueLine(key, settings[key], defaults[key]));
     for (const target of changedEasingTargets) {
       const curve = liveEasings?.[target.id];
       if (curve == null) continue;
-      lines.push(
-        `${tx(target.label, locale)} (easings.${target.id}): ${formatBezierInput(curve)}`,
+      const name = `${tx(target.label, locale)} (easings.${target.id})`;
+      const oldCurve = defaultEasings?.[target.id];
+      trailingLines.push(
+        oldCurve != null
+          ? `${name}: ${formatBezierInput(oldCurve)} → ${formatBezierInput(curve)}`
+          : `${name}: ${formatBezierInput(curve)}`,
       );
     }
-    for (const [id, name] of Object.entries(sectionIcons)) {
-      lines.push(tx(PANEL_COPY.copyIcon(labelForIconId(id), name), locale));
-    }
-    const text = `${tx(PANEL_COPY.copyDefaultsHeader, locale)}\n${lines.join("\n")}`;
+    const iconLines = Object.entries(sectionIcons).map(([id, name]) =>
+      tx(PANEL_COPY.copyIcon(labelForIconId(id), name), locale),
+    );
+    const text = formatAgentDefaultsCopy({
+      header: tx(
+        PANEL_COPY.copyDefaultsAgentHeader(
+          storageLabel,
+          changedCount,
+          listedControlCount,
+        ),
+        locale,
+      ),
+      iconsTitle: tx(PANEL_COPY.copyDefaultsIcons, locale),
+      footer: tx(PANEL_COPY.copyDefaultsAgentFooter, locale),
+      groups: groupBlocks,
+      trailingLines,
+      iconLines,
+    });
     await copyToClipboard(text);
   };
 
@@ -1101,12 +1194,23 @@ export function SettingsPanelImpl<TSettings>({
     if (snap == null) return false;
     return pageKeys.some((key) => !sameValue(settings[key], snap[key]));
   };
-  const [openSections, setOpenSections] = useState(
-    () => new Set(defaultOpenSections),
+  const lastEditedRef = useRef<{ group: string; section?: string } | null>(
+    null,
   );
+  const [openSections, setOpenSections] = useState(() => {
+    const next = new Set(defaultOpenSections);
+    const last = readPanelSettings(panelId, legacyPanelIds).lastEdited;
+    if (last?.group && groups.some((item) => item.id === last.group)) {
+      next.add(last.group);
+      lastEditedRef.current = last.section
+        ? { group: last.group, section: last.section }
+        : { group: last.group };
+    }
+    return next;
+  });
   const { pickPlace, setPickPlace, placeId, selectedPlace, applyPlace } =
     usePlacesPicker({
-      places,
+      places: resolvedPlaces,
       groups,
       onSelectPlace: () => {
         setPanelInstant(true);
@@ -1117,6 +1221,22 @@ export function SettingsPanelImpl<TSettings>({
   const [closedSubsections, setClosedSubsections] = useState(
     () => new Set<string>(),
   );
+  const markRowEdited = (groupId: string, section?: string) => {
+    if (placeId != null) return;
+    const prev = lastEditedRef.current;
+    if (
+      prev &&
+      prev.group === groupId &&
+      (prev.section ?? undefined) === section
+    ) {
+      return;
+    }
+    const next = section
+      ? { group: groupId, section }
+      : { group: groupId };
+    lastEditedRef.current = next;
+    writePanelSettings(panelId, { lastEdited: next });
+  };
   // Pointer mode belongs to the open panel — closing the panel cancels it.
   useEffect(() => {
     if (!panelOpen) setPickPlace(false);
@@ -1196,8 +1316,13 @@ export function SettingsPanelImpl<TSettings>({
 
   const filteredGroups =
     selectedPlace != null
-      ? filterGroupsByPlace(groups, new Set(selectedPlace.keys))
+      ? filterGroupsByPlace(
+          groups,
+          new Set(selectedPlace.keys ?? []),
+          selectedPlace.id,
+        )
       : groups;
+  const rowIndex = indexRowsByKey(groups);
   const placeEasingIds = selectedPlace?.easingIds ?? [];
   const visibleEasingTargets =
     selectedPlace == null
@@ -1397,6 +1522,27 @@ export function SettingsPanelImpl<TSettings>({
       setPinnedSections(withoutRetiredSectionIds(parsed.pinnedSections));
     }
     setSectionIcons(parsed.sectionIcons ?? {});
+    if (parsed.lastEdited?.group) {
+      const last = parsed.lastEdited;
+      lastEditedRef.current = last.section
+        ? { group: last.group, section: last.section }
+        : { group: last.group };
+      if (groups.some((item) => item.id === last.group)) {
+        setOpenSections((prev) => {
+          if (prev.has(last.group)) return prev;
+          return new Set(prev).add(last.group);
+        });
+      }
+      if (last.section) {
+        const subsectionId = `${last.group}:${last.section}`;
+        setClosedSubsections((prev) => {
+          if (!prev.has(subsectionId)) return prev;
+          const next = new Set(prev);
+          next.delete(subsectionId);
+          return next;
+        });
+      }
+    }
   }, [legacyPanelKey, panelId]);
 
   const persistPanelTheme = (value: "dark" | "light") => {
@@ -1805,6 +1951,13 @@ export function SettingsPanelImpl<TSettings>({
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+  useEffect(() => {
+    if (panelOpen) return;
+    closeOpenPlayers(groupsRef.current);
+  }, [panelOpen]);
+
   const sectionVisible = (sectionId: string) => {
     if (sectionId === PANEL_SECTION_ID) return true;
     if (selectedPlace != null) return false;
@@ -1909,7 +2062,7 @@ export function SettingsPanelImpl<TSettings>({
                   onToggle={toggleFoldAll}
                 />
               ) : null}
-              {panelOpen && places.length > 0 ? (
+              {panelOpen && resolvedPlaces.length > 0 ? (
                 <PlacePointerButton
                   active={pickPlace}
                   locale={locale}
@@ -2110,6 +2263,10 @@ export function SettingsPanelImpl<TSettings>({
                     }),
                   ) as Partial<TSettings>;
                   onSettingsChange(patch);
+                  markRowEdited(
+                    group.id,
+                    section.untitled ? undefined : copyKey(section.title),
+                  );
                 }}
                 {...rowDotForKeys(
                   [
@@ -2133,12 +2290,19 @@ export function SettingsPanelImpl<TSettings>({
                   <SectionRows
                     section={section}
                     settings={settings}
-                    onSettingsChange={onSettingsChange}
+                    onSettingsChange={(patch) => {
+                      onSettingsChange(patch);
+                      markRowEdited(
+                        group.id,
+                        section.untitled ? undefined : copyKey(section.title),
+                      );
+                    }}
                     reduceMotion={reduceMotion}
                     locale={locale}
                     numberDefault={numberDefault}
                     dotFor={rowDotFor}
                     dotForKeys={rowDotForKeys}
+                    rowIndex={rowIndex}
                   />
                 ) : null}
               </div>
@@ -2758,8 +2922,7 @@ export function SettingsPanelImpl<TSettings>({
       </div>
       <PlaceHoverLayer
         active={pickPlace}
-        places={places}
-        groups={groups}
+        places={resolvedPlaces}
         locale={locale}
         panelTheme={panelTheme}
         onPick={applyPlace}

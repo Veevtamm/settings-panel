@@ -7,6 +7,6 @@ alwaysApply: true
 
 Before adding dependencies, changing persistence, or changing deploy tooling, read and follow `AGENTS.md`.
 
-- Stack, non-goals, and publish path live only in `AGENTS.md` — do not duplicate them here.
-- When the stack or how projects consume this package changes, update `AGENTS.md` in the same task.
+- Stack, non-goals, publish path, control map, schema, and agent behavior live only in `AGENTS.md` — do not duplicate them here.
+- When the stack, how projects consume this package, or a row/control/feature of the panel changes, update `AGENTS.md` in the same task.
 - When the user-facing picture of the package changes, update `README.md` in the same task.

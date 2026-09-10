@@ -3,7 +3,12 @@
 import type { CubicBezier } from "../lib/cubic-bezier";
 import type { Copy, PanelLocale } from "./locale";
 import { PANEL_COPY, tx } from "./locale";
-import type { SettingsGroup, SettingsSection } from "./types";
+import type {
+  EasingTarget,
+  SettingsGroup,
+  SettingsPlace,
+  SettingsSection,
+} from "./types";
 import { SECTION_MS, EASE_OUT } from "./chrome";
 
 export function valuesEqual(a: unknown, b: unknown) {
@@ -225,6 +230,8 @@ const SECTION_ROW_BAGS = [
   "enums",
   "texts",
   "custom",
+  "refs",
+  "derived",
 ] as const;
 
 /** Non-player row bags — keep in sync with `SectionRows`. */
@@ -264,10 +271,25 @@ export function closePlayersHiddenByPlace<TSettings>(
   }
 }
 
+/** Exit player preview when the panel chrome closes. */
+export function closeOpenPlayers<TSettings>(
+  groups: readonly SettingsGroup<TSettings>[],
+) {
+  for (const group of groups) {
+    for (const section of group.sections) {
+      const player = section.player;
+      if (player?.controller.getState().open) {
+        player.controller.setOpen(false);
+      }
+    }
+  }
+}
+
 /** Keep only rows whose keys sit in the picked place. Empty section → null. */
 export function filterSectionByPlace<TSettings>(
   section: SettingsSection<TSettings>,
   keys: ReadonlySet<keyof TSettings>,
+  placeId?: string,
 ): SettingsSection<TSettings> | null {
   const keep = (key: keyof TSettings) => keys.has(key);
   const next: SettingsSection<TSettings> = {
@@ -300,6 +322,14 @@ export function filterSectionByPlace<TSettings>(
         (row.keys ?? []).some((item) => keep(item.key)),
       ),
     ),
+    refs: nonempty(section.refs?.filter((row) => keep(row.ref))),
+    derived: nonempty(
+      section.derived?.filter(
+        (row) =>
+          (placeId != null && row.where?.includes(placeId)) ||
+          (row.after != null && keep(row.after)),
+      ),
+    ),
     player:
       section.player != null &&
       section.player.phases.some(
@@ -316,11 +346,12 @@ export function filterSectionByPlace<TSettings>(
 export function filterGroupsByPlace<TSettings>(
   groups: SettingsGroup<TSettings>[],
   keys: ReadonlySet<keyof TSettings>,
+  placeId?: string,
 ): SettingsGroup<TSettings>[] {
   const out: SettingsGroup<TSettings>[] = [];
   for (const group of groups) {
     const sections = group.sections
-      .map((section) => filterSectionByPlace(section, keys))
+      .map((section) => filterSectionByPlace(section, keys, placeId))
       .filter((section): section is SettingsSection<TSettings> => section != null);
     if (sections.length === 0) continue;
     out.push({
@@ -333,6 +364,111 @@ export function filterGroupsByPlace<TSettings>(
     });
   }
   return out;
+}
+
+function inPlace(
+  where: readonly string[] | undefined,
+  placeId: string,
+) {
+  return where?.includes(placeId) === true;
+}
+
+/**
+ * Effective `keys` / `easingIds` for pointer mode: rows (and easing targets)
+ * whose `where` includes the place id, union explicit extras on the place.
+ * Order follows group → section → default row bags (player first).
+ */
+export function resolvePlaces<TSettings>(
+  groups: readonly SettingsGroup<TSettings>[],
+  places: readonly SettingsPlace<TSettings>[],
+  easingTargets?: readonly EasingTarget[],
+): SettingsPlace<TSettings>[] {
+  return places.map((place) => {
+    const keys: (keyof TSettings)[] = [];
+    const seen = new Set<PropertyKey>();
+    const add = (key: keyof TSettings | undefined) => {
+      if (key == null || seen.has(key)) return;
+      seen.add(key);
+      keys.push(key);
+    };
+
+    for (const group of groups) {
+      if (inPlace(group.where, place.id)) add(group.visibilityKey);
+      for (const section of group.sections) {
+        if (inPlace(section.where, place.id)) add(section.visibilityKey);
+        const player = section.player;
+        if (player && inPlace(player.where, place.id)) {
+          add(player.totalKey);
+          for (const phase of player.phases) {
+            add(phase.key);
+            add(phase.startKey);
+          }
+        }
+        for (const row of section.colors ?? []) {
+          if (!inPlace(row.where, place.id)) continue;
+          add(row.key);
+          add(row.opacityKey);
+        }
+        for (const row of section.orients ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.toggles ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.texts ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.custom ?? []) {
+          if (!inPlace(row.where, place.id)) continue;
+          for (const item of row.keys ?? []) add(item.key);
+        }
+        for (const row of section.settings ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.pairs ?? []) {
+          if (!inPlace(row.where, place.id)) continue;
+          add(row.fields[0].key);
+          add(row.fields[1].key);
+        }
+        for (const row of section.ranges ?? []) {
+          if (!inPlace(row.where, place.id)) continue;
+          add(row.fromKey);
+          add(row.toKey);
+        }
+        for (const row of section.enums ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.anchors ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.xAnchors ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.textAligns ?? []) {
+          if (inPlace(row.where, place.id)) add(row.key);
+        }
+        for (const row of section.refs ?? []) {
+          if (inPlace(row.where, place.id)) add(row.ref);
+        }
+      }
+    }
+
+    for (const key of place.keys ?? []) add(key);
+
+    const easingIds: string[] = [];
+    const seenEasing = new Set<string>();
+    const addEasing = (id: string) => {
+      if (seenEasing.has(id)) return;
+      seenEasing.add(id);
+      easingIds.push(id);
+    };
+    for (const target of easingTargets ?? []) {
+      if (inPlace(target.where, place.id)) addEasing(target.id);
+    }
+    for (const id of place.easingIds ?? []) addEasing(id);
+
+    return { ...place, keys, easingIds };
+  });
 }
 
 export function collectGroupKeys<TSettings>(
@@ -371,6 +507,53 @@ export function readMigratedPanelUi(
     return raw;
   }
   return null;
+}
+
+export function formatSettingCopyValue(value: unknown): string {
+  return typeof value === "string" ||
+    (typeof value === "object" && value !== null)
+    ? JSON.stringify(value)
+    : String(value);
+}
+
+export type AgentDefaultsSubsection = {
+  title: string | null;
+  lines: string[];
+};
+
+export type AgentDefaultsGroup = {
+  title: string;
+  subsections: AgentDefaultsSubsection[];
+};
+
+export function formatAgentDefaultsCopy(args: {
+  header: string;
+  iconsTitle: string;
+  footer: string;
+  groups: AgentDefaultsGroup[];
+  trailingLines: string[];
+  iconLines: string[];
+}): string {
+  const lines: string[] = [args.header];
+  for (const group of args.groups) {
+    lines.push(group.title);
+    for (const sub of group.subsections) {
+      if (sub.title != null) {
+        lines.push(`  ${sub.title}`);
+        for (const line of sub.lines) lines.push(`    ${line}`);
+      } else {
+        for (const line of sub.lines) lines.push(`  ${line}`);
+      }
+    }
+  }
+  for (const line of args.trailingLines) lines.push(line);
+  if (args.iconLines.length > 0) {
+    lines.push(args.iconsTitle);
+    for (const line of args.iconLines) lines.push(`  ${line}`);
+  }
+  lines.push("");
+  lines.push(args.footer);
+  return lines.join("\n");
 }
 
 export function readEasings(

@@ -49,6 +49,12 @@ CSS (Tailwind 4). `@source` смотрит на `src` пакета относи�
 
 Полный пример компонента — в [английском README](README.md#quick-start). Схемы страниц (`settings.ts`) пишутся в каждом проекте.
 
+## Для ИИ-агентов
+
+Полный гайд (карта контролов, схема, подключение, ловушки) — [`AGENTS.md`](AGENTS.md). Он едет вместе с пакетом на GitHub.
+
+После установки скопируй `.cursor/rules/settings-panel.mdc` из пакета в `.cursor/rules/` приложения и укажи в `AGENTS.md` приложения путь `node_modules/@veevtamm/settings-panel/AGENTS.md`.
+
 Пока правишь панель рядом с сайтом: `"file:../settings-panel"` и `turbopack.root` = родитель обеих папок. Не править копию в `node_modules`.
 
 ## Лицензия

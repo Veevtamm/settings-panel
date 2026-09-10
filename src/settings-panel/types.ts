@@ -4,6 +4,20 @@ import type { SfSymbolName } from "../sf-symbol";
 import type { Copy, PanelLocale } from "./locale";
 export type { Copy, PanelLocale };
 
+export type SettingsLayer =
+  | "timings"
+  | "layout"
+  | "type"
+  | "color"
+  | "motion"
+  | "grid";
+
+/** Ignored by rendering. `where` = pointer place ids; omit = page-wide. */
+export type ParamPlacement = {
+  where?: readonly string[];
+  layer?: SettingsLayer;
+};
+
 /**
  * Reset dot: value differs from default; click restores the default.
  * Info: optional ⓘ after the label with a hover tooltip.
@@ -49,7 +63,7 @@ export type NumberSetting<TSettings> = {
   readOnlyLabel?: string;
   /** Render this field right under the matching toggle, not after all toggles. */
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type ColorSetting<TSettings> = {
   key: keyof TSettings;
@@ -59,7 +73,7 @@ export type ColorSetting<TSettings> = {
   /** Field 86 + `%` to the right of hex. Swatch stays solid RGB. */
   opacityKey?: keyof TSettings;
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type ToggleSetting<TSettings> = {
   key: keyof TSettings;
@@ -86,7 +100,7 @@ export type ToggleSetting<TSettings> = {
   after?: keyof TSettings;
   /** Switch on = stored false (label describes the default-off key). */
   invert?: boolean;
-};
+} & ParamPlacement;
 
 export const SETTING_ANCHORS = [
   "top left",
@@ -125,7 +139,7 @@ export type AnchorSetting<TSettings> = {
   icon?: SfSymbolName;
   /** Render this picker right under the matching toggle. */
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type XAnchorSetting<TSettings> = {
   key: keyof TSettings;
@@ -134,7 +148,7 @@ export type XAnchorSetting<TSettings> = {
   icon?: SfSymbolName;
   /** Render this picker right under the matching toggle or number field. */
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type TextAlignSetting<TSettings> = {
   key: keyof TSettings;
@@ -142,14 +156,14 @@ export type TextAlignSetting<TSettings> = {
   info?: Copy;
   icon?: SfSymbolName;
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type FrameOrientSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
   icon?: SfSymbolName;
-};
+} & ParamPlacement;
 
 export type EnumMark = "from-start" | "from-center" | "from-end";
 
@@ -175,7 +189,7 @@ export type EnumSetting<TSettings> = {
   controlWidth?: number;
   /** Render this control right under the matching toggle. */
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type TextSetting<TSettings> = {
   key: keyof TSettings;
@@ -184,7 +198,7 @@ export type TextSetting<TSettings> = {
   icon?: SfSymbolName;
   /** Render this field right under the matching toggle. */
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type RangeSetting<TSettings> = {
   fromKey: keyof TSettings;
@@ -199,7 +213,7 @@ export type RangeSetting<TSettings> = {
   /** Dual-thumb track under the row (default). `false` = pair of fields only, like Figma Wght. */
   track?: boolean;
   after?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type PairFieldIcon = "gapX" | "gapY" | "padX" | "padY";
 
@@ -220,7 +234,7 @@ export type PairSetting<TSettings> = {
   info?: Copy;
   icon?: SfSymbolName;
   fields: readonly [PairField<TSettings>, PairField<TSettings>];
-};
+} & ParamPlacement;
 
 /** One clip on the player track. `kind: "pause"` is a packed hole (empty track), not a labeled clip. Prefer `startKey` on the next phase. */
 export type PlayerPhase<TSettings> = {
@@ -289,7 +303,7 @@ export type PlayerSetting<TSettings> = {
   min?: number;
   step?: number;
   controller: PlayerController;
-};
+} & ParamPlacement;
 
 /** Scene widget inside a subsection — not a new core row type. */
 export type CustomSettingRender<TSettings> = (ctx: {
@@ -306,6 +320,27 @@ export type CustomSetting<TSettings> = {
   after?: keyof TSettings;
   /** Keys this widget writes — Reset / Copy count them. */
   keys?: readonly { key: keyof TSettings; label: Copy }[];
+} & ParamPlacement;
+
+/** Same control again in another section — looks up the original row by key. */
+export type RefSetting<TSettings> = {
+  ref: keyof TSettings;
+  after?: keyof TSettings;
+} & ParamPlacement;
+
+/** Read-only computed field. `id` is not a settings key. */
+export type DerivedSetting<TSettings> = {
+  id: string;
+  label: Copy;
+  info?: Copy;
+  icon?: SfSymbolName;
+  unit?: string;
+  compute: (settings: TSettings) => number | string;
+  /** Format the computed value for the field; default: numbers → up to 2 decimals trimmed, strings as-is. */
+  format?: (value: number | string) => string;
+  after?: keyof TSettings;
+  where?: readonly string[];
+  layer?: SettingsLayer;
 };
 
 export type SettingsSection<TSettings> = {
@@ -326,10 +361,12 @@ export type SettingsSection<TSettings> = {
   enums?: EnumSetting<TSettings>[];
   texts?: TextSetting<TSettings>[];
   custom?: CustomSetting<TSettings>[];
+  refs?: RefSetting<TSettings>[];
+  derived?: DerivedSetting<TSettings>[];
   player?: PlayerSetting<TSettings>;
   /** Eye next to the subsection chevron — boolean visibility, not a row. */
   visibilityKey?: keyof TSettings;
-};
+} & ParamPlacement;
 
 export type SettingsGroup<TSettings> = {
   id: string;
@@ -340,11 +377,13 @@ export type SettingsGroup<TSettings> = {
   visibilityKey?: keyof TSettings;
   /** Control left of the group chevron (folio Decrypt Replay). */
   headerAction?: ReactNode;
-};
+} & ParamPlacement;
 
 export type EasingTarget = {
   id: string;
   label: Copy;
+  /** Place ids this curve acts on; omit = page-wide (still listed if `place.easingIds` names it). */
+  where?: readonly string[];
 };
 
 /**
@@ -355,8 +394,9 @@ export type EasingTarget = {
 export type SettingsPlace<TSettings> = {
   id: string;
   label: Copy;
-  keys: readonly (keyof TSettings)[];
-  /** Bezier target ids (`easings.*`) that belong to this place. */
+  /** Extra keys beyond rows whose `where` includes this id. The panel unions them in `resolvePlaces`. */
+  keys?: readonly (keyof TSettings)[];
+  /** Extra bezier target ids beyond `EasingTarget.where`. */
   easingIds?: readonly string[];
   /** Keep `curveSection` visible while this place is selected. */
   includeCurve?: boolean;
@@ -367,6 +407,7 @@ export type SettingsPlace<TSettings> = {
    * `pointer-events: none`, canvas). If set, `where` is only for outlines.
    */
   hit?: (x: number, y: number) => boolean;
+  layer?: SettingsLayer;
 };
 
 export type SettingsPanelProps<TSettings> = {
