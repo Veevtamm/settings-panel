@@ -451,4 +451,9 @@ export type SettingsPanelProps<TSettings> = {
   settings: TSettings;
   groups: SettingsGroup<TSettings>[];
   storageLabel: string;
+  /**
+   * ⌘M toggles the panel. Pass `false` on a public site (dilusa) — gear still works.
+   * Omit = on.
+   */
+  shortcut?: boolean;
 };

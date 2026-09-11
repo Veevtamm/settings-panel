@@ -2,7 +2,7 @@
 
 [Русский](README.ru.md)
 
-Scene settings panel for Next.js. Press **⌘M** to tune timings, easing, colors, and layout live — without editing code.
+Scene settings panel for Next.js. Press **⌘M** to tune timings, easing, colors, and layout live — without editing code. Pass `shortcut={false}` to turn the hotkey off; the gear still opens the panel.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 

@@ -31,6 +31,7 @@ import {
   GLASS,
   ICON,
   MUTED,
+  rowLabelClass,
   SUBSECTION_DRAG_PX,
   CHEVRON_MS,
   EASE_OUT,
@@ -52,6 +53,8 @@ import {
 import type { PlayerController, PlayerSetting } from "./types";
 
 const INSPECTOR = 328;
+/** Cap so an ultrawide does not stretch clips across the whole screen. */
+const TIMELINE_WIDTH_MAX = 1600;
 /** Inspector / lane row 28 + `gap-1`. */
 const ELEMENT_ROW_PX = 32;
 
@@ -426,8 +429,8 @@ export function SettingsTimeline({
           style={{
             background: GLASS,
             left: glassLeft,
-            right: glassRight,
             bottom: glassPad,
+            width: `min(${TIMELINE_WIDTH_MAX}px, calc(100vw - ${glassLeft + glassRight}px))`,
           }}
         >
           <div className="flex flex-col gap-2 py-2 pl-3 pr-2">
@@ -465,10 +468,7 @@ export function SettingsTimeline({
                 className="flex h-[28px] shrink-0 items-center justify-between gap-2"
                 style={{ width: INSPECTOR }}
               >
-                <span
-                  className="min-w-0 truncate text-[15px] leading-[20px]"
-                  style={{ color: ICON }}
-                >
+                <span className={cn("min-w-0 truncate", rowLabelClass)}>
                   {tx(PANEL_COPY.animationTime, locale)}
                 </span>
                 <NumberField
@@ -600,10 +600,7 @@ export function SettingsTimeline({
                                 />
                               </span>
                             ) : null}
-                            <span
-                              className="min-w-0 truncate text-[15px] leading-[20px]"
-                              style={{ color: ICON }}
-                            >
+                            <span className={cn("min-w-0 truncate", rowLabelClass)}>
                               {segment.caption}
                             </span>
                           </span>

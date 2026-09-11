@@ -793,6 +793,7 @@ export function SettingsPanelImpl<TSettings>({
   settings,
   groups,
   storageLabel,
+  shortcut = true,
 }: SettingsPanelProps<TSettings>) {
   useEffect(() => {
     reportSettingsSchemaLint(
@@ -1974,6 +1975,7 @@ export function SettingsPanelImpl<TSettings>({
   }, [easingSectionId, panelId]);
 
   useEffect(() => {
+    if (!shortcut) return;
     const onKey = (event: KeyboardEvent) => {
       // Physical M + Command (meta). Ignore when typing in fields.
       if (!(event.metaKey && event.code === "KeyM")) return;
@@ -1996,7 +1998,7 @@ export function SettingsPanelImpl<TSettings>({
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [shortcut]);
 
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
@@ -2046,7 +2048,7 @@ export function SettingsPanelImpl<TSettings>({
               id={`${panelId}-trigger`}
               aria-expanded={panelOpen}
               aria-controls={panelId}
-              aria-keyshortcuts="Meta+M"
+              aria-keyshortcuts={shortcut ? "Meta+M" : undefined}
               aria-label={
                 panelOpen
                   ? tx(PANEL_COPY.closePanel, locale)
