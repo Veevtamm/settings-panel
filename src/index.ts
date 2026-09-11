@@ -55,6 +55,16 @@ export type {
 } from "./settings-panel/types";
 export { resolvePlaces } from "./settings-panel/model";
 export {
+  lintSettingsSchema,
+  reportSettingsSchemaLint,
+  LAYER_GROUP_IDS,
+  LAYER_GROUP_TITLES,
+} from "./settings-panel/schema-lint";
+export type {
+  SchemaLintIssue,
+  SchemaLintInput,
+} from "./settings-panel/schema-lint";
+export {
   defineParams,
   defaultsOf,
   placesOf,
@@ -72,9 +82,19 @@ export {
   formatMoment,
   momentCopyText,
   momentUrl,
+  patchPlayerClips,
   readMoment,
   usePlayerState,
 } from "./settings-panel/player";
+export type {
+  PlayerClipsChange,
+  PlayerSegment,
+} from "./settings-panel/player";
+export {
+  SettingsTimeline,
+  SettingsTimelineDockButton,
+  timelinePropsFromPlayer,
+} from "./settings-panel/timeline";
 export { SettingsPanel } from "./settings-panel/shell";
 export { FieldButton, SettingToggle } from "./settings-panel/fields";
 export { pointInSelector, pointInSettingsPlace } from "./settings-panel/places";
@@ -100,7 +120,9 @@ export {
 export { EasingCurveEditor } from "./easing-curve-editor";
 
 export {
+  PANEL_FOCUS_EVENT,
   PANEL_THEME_EVENT,
+  focusPanel,
   panelThemeStorageKey,
   parsePanelSettingsObject,
   readPanelLocale,
@@ -113,7 +135,11 @@ export {
   writePanelSettings,
   writePanelTheme,
 } from "./lib/panel-theme";
-export type { PanelSettingsFile, PanelTheme } from "./lib/panel-theme";
+export type {
+  PanelFocusDetail,
+  PanelSettingsFile,
+  PanelTheme,
+} from "./lib/panel-theme";
 export { isOverSettingsPanel } from "./lib/is-over-settings-panel";
 export { usePrefersReducedMotion } from "./lib/prefers-reduced-motion";
 export { TransitionPlayer, PIN_EPSILON } from "./lib/transition-player";

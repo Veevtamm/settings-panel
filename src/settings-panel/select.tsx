@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import {
@@ -21,6 +22,7 @@ export function PanelSelectList({
   className,
   optionIcon,
   width,
+  overlay = false,
 }: {
   value: string;
   options: readonly { id: string; label: string }[];
@@ -32,14 +34,31 @@ export function PanelSelectList({
   optionIcon?: (id: string) => ReactNode;
   /** Fixed trigger width (px). Omit = size from className (Preset fills leftover). */
   width?: number;
+  /**
+   * Open over content below (portal). Parent height stays 28.
+   * In-flow Open still grows the row — timeline dock is overflow-hidden.
+   */
+  overlay?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [fadeTop, setFadeTop] = useState(false);
   const [fadeBottom, setFadeBottom] = useState(false);
+  const [box, setBox] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    theme: string;
+  } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const anchorRef = useRef<HTMLDivElement | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
   const selectedLabel =
     options.find((option) => option.id === value)?.label ?? value;
+  const canOpen = options.length > 1;
+
+  useEffect(() => {
+    if (!canOpen) setOpen(false);
+  }, [canOpen]);
 
   const updateFades = () => {
     const el = listRef.current;
@@ -48,6 +67,33 @@ export function PanelSelectList({
     setFadeTop(scrollTop > 1);
     setFadeBottom(scrollTop + clientHeight < scrollHeight - 1);
   };
+
+  function readBox(from: HTMLElement | null) {
+    if (!from) return;
+    const rect = from.getBoundingClientRect();
+    setBox({
+      top: rect.top,
+      left: rect.left,
+      width: rect.width,
+      theme:
+        from.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
+        "dark",
+    });
+  }
+
+  useLayoutEffect(() => {
+    if (!overlay || !open) return;
+    const anchor = anchorRef.current;
+    if (!anchor) return;
+    const place = () => readBox(anchor);
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, overlay]);
 
   useEffect(() => {
     if (!open) return;
@@ -98,7 +144,7 @@ export function PanelSelectList({
           ? "linear-gradient(to bottom, black 0%, black calc(100% - 1.25rem), transparent)"
           : undefined;
 
-  return (
+  const chrome = (
     <div
       ref={rootRef}
       className={cn(
@@ -107,14 +153,22 @@ export function PanelSelectList({
       )}
       style={{
         background: FIELD,
-        ...(width != null ? { width } : {}),
+        ...(width != null && !overlay ? { width } : undefined),
+        ...(overlay && open && box ? { width: box.width } : undefined),
       }}
     >
       <button
         type="button"
-        aria-expanded={open}
+        aria-expanded={canOpen && open}
+        aria-haspopup={canOpen ? "listbox" : undefined}
         aria-label={ariaLabel}
-        onClick={() => setOpen((prev) => !prev)}
+        onClick={() => {
+          if (!canOpen) return;
+          if (!open && overlay) {
+            readBox(anchorRef.current ?? rootRef.current);
+          }
+          setOpen((prev) => !prev);
+        }}
         className="group/preset-trigger flex h-[28px] w-full items-center justify-between gap-2 px-1.5 text-left outline-none"
       >
         <span className="flex min-w-0 items-center gap-2 text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:group-hover/preset-trigger:text-[color:var(--sp-fg)]">
@@ -141,7 +195,7 @@ export function PanelSelectList({
         />
       </button>
 
-      <SectionCollapse open={open} reduceMotion={reduceMotion}>
+      <SectionCollapse open={canOpen && open} reduceMotion={reduceMotion}>
         <ul
           ref={listRef}
           className="flex max-h-48 flex-col gap-2 overflow-y-auto px-1.5 pb-2 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -181,6 +235,30 @@ export function PanelSelectList({
             ))}
         </ul>
       </SectionCollapse>
+    </div>
+  );
+
+  if (!overlay) return chrome;
+
+  return (
+    <div
+      ref={anchorRef}
+      className="relative h-[28px] shrink-0 overflow-hidden"
+      style={width != null ? { width } : undefined}
+    >
+      {open && box
+        ? createPortal(
+            <div
+              className="fixed z-[130]"
+              data-settings-panel=""
+              data-panel-theme={box.theme}
+              style={{ top: box.top, left: box.left, width: box.width }}
+            >
+              {chrome}
+            </div>,
+            document.body,
+          )
+        : chrome}
     </div>
   );
 }

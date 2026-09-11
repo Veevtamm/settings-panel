@@ -35,18 +35,23 @@ import type { PlayerController, PlayerState, ResetDotProps } from "./types";
 
 /** ×1 → ×3 → ×5 → ×10 → ×1: slow-down steps, click cycles. */
 const PLAYER_SPEEDS = [1, 3, 5, 10] as const;
-/** Captions under Блоки hide when their segment is narrower than this (px). */
+/** Captions under Элементы hide when their segment is narrower than this (px). */
 const PHASE_CAPTION_MIN_PX = 24;
-/** Clip inset from the lane's outer edge (Figma Tools `344:3639`: 1px stroke + 2px = 3; clip 22 tall in 28). */
-const PHASE_BAR_INSET = 3;
-/** q=0 and q=1 sit this far inside the field so the 1px border doesn't clip them. */
-const TRACK_PAD_PX = 2;
+/**
+ * Shared time scale for lanes + ruler (Figma `07 Timeline` `445:4349`).
+ * 0 and total sit 3px in — same as the clip’s left/right, so adjacent clips touch.
+ */
+export const LANE_PAD_PX = 3;
+/** q=0 and q=1 sit this far inside the Player Track field so the 1px border doesn't clip them. */
+export const TRACK_PAD_PX = 2;
 /** Pointer distance from a clip edge that reveals its in/out handle. */
 const EDGE_HIT_PX = 12;
 /** Leaving the lanes block by more than this ends the drag. */
 const DRAG_EXIT_PX = 24;
 
 export type PlayerSegment = {
+  /** Stable id (phase setting key) — timeline row order. */
+  id?: string;
   caption: string;
   kind: "phase" | "pause";
   max: number;
@@ -164,11 +169,44 @@ function usePlayerOpen(controller: PlayerController) {
   );
 }
 
-function trackMarkerLeft(q: number) {
-  return `calc(${TRACK_PAD_PX}px + (100% - ${TRACK_PAD_PX * 2}px) * ${q})`;
+export function trackMarkerLeft(q: number, pad: number = TRACK_PAD_PX) {
+  return `calc(${pad}px + (100% - ${pad * 2}px) * ${q})`;
 }
 
-function PlayerTrack({
+function trackQFromClientX(rect: DOMRect, clientX: number, pad: number) {
+  const inner = rect.width - pad * 2;
+  if (inner <= 0) return 0;
+  return clampNumber((clientX - rect.left - pad) / inner, 0, 1);
+}
+
+function trackX(rect: DOMRect, q: number, pad: number) {
+  return rect.left + pad + q * (rect.width - pad * 2);
+}
+
+/** Patch `totalKey` + phase keys from a timeline/player edit. */
+export function patchPlayerClips<TSettings>(
+  player: {
+    totalKey: keyof TSettings;
+    phases: readonly {
+      key: keyof TSettings;
+      startKey?: keyof TSettings;
+    }[];
+  },
+  next: PlayerClipsChange,
+): Partial<TSettings> {
+  return Object.fromEntries(
+    player.phases.flatMap((phase, i) => {
+      const rows: [keyof TSettings, number][] = [[phase.key, next.durations[i]]];
+      if (i === 0) rows.push([player.totalKey, next.total]);
+      if (phase.startKey != null && next.starts[i] != null) {
+        rows.push([phase.startKey, next.starts[i]]);
+      }
+      return rows;
+    }),
+  ) as Partial<TSettings>;
+}
+
+export function PlayerTrack({
   ariaLabel,
   state,
   controller,
@@ -186,9 +224,7 @@ function PlayerTrack({
     const el = trackRef.current;
     if (!el) return state.q;
     const rect = el.getBoundingClientRect();
-    const inner = rect.width - TRACK_PAD_PX * 2;
-    if (inner <= 0) return state.q;
-    return clampNumber((clientX - rect.left - TRACK_PAD_PX) / inner, 0, 1);
+    return trackQFromClientX(rect, clientX, TRACK_PAD_PX);
   }
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -249,8 +285,8 @@ function PlayerTrack({
           aria-hidden
           className="pointer-events-none absolute top-1/2 h-[22px] -translate-y-1/2 rounded-[2px] bg-[color:var(--sp-fill-strong)]"
           style={{
-            left: `calc(${state.solo.from * 100}% + ${PHASE_BAR_INSET}px)`,
-            width: `calc(${(state.solo.to - state.solo.from) * 100}% - ${PHASE_BAR_INSET * 2}px)`,
+            left: trackMarkerLeft(state.solo.from),
+            width: `calc((100% - ${TRACK_PAD_PX * 2}px) * ${state.solo.to - state.solo.from})`,
           }}
         />
       ) : (
@@ -286,7 +322,7 @@ function PlayerTrack({
   );
 }
 
-function TransportRow({
+export function TransportRow({
   label,
   state,
   controller,
@@ -389,12 +425,12 @@ type LaneDrag =
   | { type: "press"; i: number; grab: number };
 
 /**
- * Блоки — one lane per phase (chrome Field 28). Caption + duration sit left
+ * Элементы — one lane per clip (chrome Field 28). Caption + duration sit left
  * in the field, not in the clip. Body drag slides the clip and shows start/end
  * badges; in/out handles trim one edge. Double-click the lane (the whole
  * field, not just the clip) = solo.
  */
-function PhaseLanes({
+export function PhaseLanes({
   ariaLabel,
   segments,
   total,
@@ -404,6 +440,8 @@ function PhaseLanes({
   onChange,
   controller,
   locale,
+  captions = true,
+  rowOrder,
 }: {
   ariaLabel: string;
   segments: readonly PlayerSegment[];
@@ -414,6 +452,10 @@ function PhaseLanes({
   onChange: (next: PlayerClipsChange) => void;
   controller: PlayerController;
   locale: PanelLocale;
+  /** In-panel lanes print name + ms in the field. Dock inspector owns those. */
+  captions?: boolean;
+  /** Visual stack of source indices. Omit = schema order. Clip times stay on those indices. */
+  rowOrder?: readonly number[];
 }) {
   const state = usePlayerState(controller);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -430,6 +472,9 @@ function PhaseLanes({
     theme: string;
   } | null>(null);
   const layout = layoutOf(segments);
+  const rows = (
+    rowOrder ?? segments.map((_, index) => index)
+  ).filter((index) => segments[index]?.kind !== "pause");
   /** Lane scale = the timeline; clips stop at its right edge, the length changes only via the ms field. */
   const safeScale = total > 0 ? total : 1;
 
@@ -438,7 +483,7 @@ function PhaseLanes({
     if (!el) return 0;
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0) return 0;
-    return clampNumber((clientX - rect.left) / rect.width, 0, 1) * safeScale;
+    return trackQFromClientX(rect, clientX, LANE_PAD_PX) * safeScale;
   }
 
   function showEdgeHints(i: number, times: readonly number[]) {
@@ -450,7 +495,7 @@ function PhaseLanes({
         const t = snapStep(ms, step);
         return {
           ms: Math.round(t),
-          x: rect.left + (t / safeScale) * rect.width,
+          x: trackX(rect, t / safeScale, LANE_PAD_PX),
         };
       }),
       y: rect.top,
@@ -552,8 +597,8 @@ function PhaseLanes({
     if (!lane) return null;
     const clip = layout[i];
     const rect = lane.getBoundingClientRect();
-    const left = rect.left + (clip.start / safeScale) * rect.width;
-    const right = rect.left + (clip.end / safeScale) * rect.width;
+    const left = trackX(rect, clip.start / safeScale, LANE_PAD_PX);
+    const right = trackX(rect, clip.end / safeScale, LANE_PAD_PX);
     if (Math.abs(clientX - left) <= EDGE_HIT_PX) return "in";
     if (Math.abs(clientX - right) <= EDGE_HIT_PX) return "out";
     return null;
@@ -686,17 +731,18 @@ function PhaseLanes({
       role="group"
       aria-label={ariaLabel}
     >
-      {layout.map((clip, i) => {
+      {rows.map((i) => {
+        const clip = layout[i];
         const segment = segments[i];
-        if (segment.kind === "pause") return null;
+        if (!clip || !segment) return null;
         const active = hover === i || drag?.i === i;
         const solo = state.solo?.phase === i;
         const lit = active || solo;
-        const left = (clip.start / safeScale) * 100;
-        const width = (clip.duration / safeScale) * 100;
+        const startQ = clip.start / safeScale;
+        const spanQ = clip.duration / safeScale;
         return (
           <div
-            key={`${segment.caption}-${i}`}
+            key={segment.id ?? `${segment.caption}-${i}`}
             ref={(el) => {
               laneRefs.current[i] = el;
             }}
@@ -735,23 +781,25 @@ function PhaseLanes({
                 : active && "after:border-[color:var(--sp-line-strong)]",
             )}
           >
-            <span
-              aria-hidden
-              className={cn(
-                "pointer-events-none absolute top-[6px] left-[6px] z-[5] flex max-w-[calc(100%-12px)] items-center gap-3 font-sans text-[11px] leading-[14px] transition-colors duration-150",
-                solo
-                  ? "text-[color:var(--sp-fg)]"
-                  : active
-                    ? "text-[color:var(--sp-label)]"
-                    : "text-[color:var(--sp-fg-dim)]",
-              )}
-            >
-              <span className="min-w-0 truncate uppercase">{segment.caption}</span>
-              <span className="shrink-0 font-mono tabular-nums">
-                {Math.round(clip.duration)}
-                {unit ? ` ${unit}` : ""}
+            {captions ? (
+              <span
+                aria-hidden
+                className={cn(
+                  "pointer-events-none absolute top-[6px] left-[6px] z-[5] flex max-w-[calc(100%-12px)] items-center gap-3 font-sans text-[11px] leading-[14px] transition-colors duration-150",
+                  solo
+                    ? "text-[color:var(--sp-fg)]"
+                    : active
+                      ? "text-[color:var(--sp-label)]"
+                      : "text-[color:var(--sp-fg-dim)]",
+                )}
+              >
+                <span className="min-w-0 truncate uppercase">{segment.caption}</span>
+                <span className="shrink-0 font-mono tabular-nums">
+                  {Math.round(clip.duration)}
+                  {unit ? ` ${unit}` : ""}
+                </span>
               </span>
-            </span>
+            ) : null}
             <div
               onPointerDown={(event) => onBarDown(i, event)}
               className={cn(
@@ -763,8 +811,8 @@ function PhaseLanes({
                 lit ? "bg-[color:var(--sp-fill-strong)]" : "bg-[color:var(--sp-fill)]",
               )}
               style={{
-                left: `calc(${left}% + ${PHASE_BAR_INSET}px)`,
-                width: `calc(${Math.max(width, 0)}% - ${PHASE_BAR_INSET * 2}px)`,
+                left: trackMarkerLeft(startQ, LANE_PAD_PX),
+                width: `calc((100% - ${LANE_PAD_PX * 2}px) * ${Math.max(spanQ, 0)})`,
               }}
             >
               {showHandle(i, "in") ? handleAt(i, "in") : null}

@@ -619,7 +619,10 @@ export function SettingColor({
                 step={1}
                 value={opacity}
               />
-              <span className="pointer-events-none shrink-0 font-sans opacity-50" aria-hidden>
+              <span
+                className="pointer-events-none shrink-0 font-sans opacity-50 transition-opacity duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:group-hover/field:opacity-0"
+                aria-hidden
+              >
                 %
               </span>
               <StepperZones

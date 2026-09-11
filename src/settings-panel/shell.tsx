@@ -28,11 +28,13 @@ import {
   type EasingPresetId,
 } from "../lib/easing-presets";
 import {
+  PANEL_FOCUS_EVENT,
   parsePanelSettingsObject,
   readPanelSettings,
   writePanelLocale,
   writePanelSettings,
   writePanelTheme,
+  type PanelFocusDetail,
 } from "../lib/panel-theme";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { cn } from "../lib/utils";
@@ -46,6 +48,7 @@ import {
   GLASS,
   ICON,
   MUTED,
+  PANEL_DOCK_GAP,
   PANEL_ENTER_MS,
   PANEL_EXIT_MS,
   PANEL_HEIGHT_MIN,
@@ -90,12 +93,13 @@ import {
   type LiftSize,
   type LiftXy,
 } from "./model";
+import { lintSettingsSchema, reportSettingsSchemaLint } from "./schema-lint";
 import { BezierCoordsRow } from "./bezier-coords";
 import { FieldButton, SettingToggle } from "./fields";
 import { useCopyFlash } from "./use-copy-flash";
 import { EasingPlayheadGate } from "./easing-playhead";
 import { copyKey, PANEL_COPY, tx, type PanelLocale } from "./locale";
-import { SettingPlayer } from "./player";
+import { SettingPlayer, patchPlayerClips } from "./player";
 import {
   PlaceClearButton,
   PlaceHoverLayer,
@@ -770,7 +774,7 @@ export function SettingsPanel<TSettings>(props: SettingsPanelProps<TSettings>) {
 }
 
 export function SettingsPanelImpl<TSettings>({
-  defaultOpenSections = ["bezier", "timings", "elements"],
+  defaultOpenSections = ["bezier", "timings"],
   easingTargets = [],
   curveSection,
   curveSectionTitle,
@@ -790,8 +794,32 @@ export function SettingsPanelImpl<TSettings>({
   groups,
   storageLabel,
 }: SettingsPanelProps<TSettings>) {
+  useEffect(() => {
+    reportSettingsSchemaLint(
+      panelId,
+      lintSettingsSchema({
+        groups,
+        defaultSettings,
+        defaultOpenSections,
+        places,
+        easingTargets,
+      }),
+    );
+  }, [
+    panelId,
+    groups,
+    defaultSettings,
+    defaultOpenSections,
+    places,
+    easingTargets,
+  ]);
+
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelInstant, setPanelInstant] = useState(false);
+  const [windowHost, setWindowHost] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setWindowHost(document.body);
+  }, []);
   const [sectionIcons, setSectionIcons] = useState<
     Record<string, SfSymbolName>
   >({});
@@ -919,6 +947,7 @@ export function SettingsPanelImpl<TSettings>({
     dockRight,
     dockBottom,
     shownPos,
+    viewportH,
     maxPanelH,
     frameW,
     frameH,
@@ -1927,6 +1956,24 @@ export function SettingsPanelImpl<TSettings>({
   }, [activeEasingId, placeId, easingTargets]);
 
   useEffect(() => {
+    const onFocus = (event: Event) => {
+      if (!(event instanceof CustomEvent)) return;
+      const detail = event.detail as PanelFocusDetail | undefined;
+      if (detail?.panelId !== panelId) return;
+      setPanelInstant(true);
+      setPanelOpen(true);
+      const group =
+        detail.group ?? (detail.easingId ? easingSectionId : undefined);
+      if (group) {
+        setOpenSections((prev) => new Set(prev).add(group));
+      }
+      if (detail.easingId) setActiveEasingId(detail.easingId);
+    };
+    window.addEventListener(PANEL_FOCUS_EVENT, onFocus);
+    return () => window.removeEventListener(PANEL_FOCUS_EVENT, onFocus);
+  }, [easingSectionId, panelId]);
+
+  useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       // Physical M + Command (meta). Ignore when typing in fields.
       if (!(event.metaKey && event.code === "KeyM")) return;
@@ -2150,9 +2197,13 @@ export function SettingsPanelImpl<TSettings>({
           ) : null}
         </div>
 
+        {(() => {
+        const panelWindow = (
         <div
           id={panelId}
+          data-settings-panel=""
           data-settings-panel-window=""
+          data-panel-theme={panelTheme}
           role="region"
           aria-label={`${storageLabel} animation settings`}
           aria-roledescription={tx(PANEL_COPY.movePanel, locale)}
@@ -2160,23 +2211,17 @@ export function SettingsPanelImpl<TSettings>({
           inert={panelOpen ? undefined : true}
           onPointerDown={startPanelMove}
           className={cn(
-            "relative flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] backdrop-blur-[8px]",
+            "flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
+            "fixed",
             panelFloat == null
-              ? cn(
-                  "absolute",
-                  dockBottom ? "bottom-0 top-auto" : "top-0",
-                  dockRight
-                    ? "right-full left-auto mr-1.5"
-                    : "left-full ml-1.5",
-                  dockBottom
-                    ? dockRight
-                      ? "origin-bottom-right"
-                      : "origin-bottom-left"
-                    : dockRight
-                      ? "origin-top-right"
-                      : "origin-top-left",
-                )
-              : "fixed origin-center",
+              ? dockBottom
+                ? dockRight
+                  ? "origin-bottom-right"
+                  : "origin-bottom-left"
+                : dockRight
+                  ? "origin-top-right"
+                  : "origin-top-left"
+              : "origin-center",
             skipPanelMotion
               ? panelOpen
                 ? "opacity-100"
@@ -2194,9 +2239,10 @@ export function SettingsPanelImpl<TSettings>({
           )}
           style={{
             background: GLASS,
+            zIndex: 100,
             width: frameW,
             maxHeight: frameH ?? maxPanelH,
-            height: "fit-content",
+            height: "auto",
             ...(panelFloat != null
               ? {
                   left: panelFloat.x,
@@ -2205,7 +2251,17 @@ export function SettingsPanelImpl<TSettings>({
                   bottom: "auto",
                   margin: 0,
                 }
-              : {}),
+              : {
+                  left: dockRight
+                    ? shownPos.x - PANEL_DOCK_GAP - frameW
+                    : shownPos.x + DOCK_BTN + PANEL_DOCK_GAP,
+                  top: dockBottom ? "auto" : shownPos.y,
+                  right: "auto",
+                  bottom: dockBottom
+                    ? viewportH - shownPos.y - DOCK_BTN
+                    : "auto",
+                  margin: 0,
+                }),
             ...(skipPanelMotion || panelMoving || panelResizing
               ? {}
               : {
@@ -2247,22 +2303,7 @@ export function SettingsPanelImpl<TSettings>({
                 controller={player.controller}
                 reduceMotion={reduceMotion}
                 onChange={(next) => {
-                  const patch = Object.fromEntries(
-                    player.phases.flatMap((phase, i) => {
-                      const rows: [keyof TSettings, number][] = [
-                        [phase.key, next.durations[i]],
-                      ];
-                      if (i === 0) rows.push([player.totalKey, next.total]);
-                      if (
-                        phase.startKey != null &&
-                        next.starts[i] != null
-                      ) {
-                        rows.push([phase.startKey, next.starts[i]]);
-                      }
-                      return rows;
-                    }),
-                  ) as Partial<TSettings>;
-                  onSettingsChange(patch);
+                  onSettingsChange(patchPlayerClips(player, next));
                   markRowEdited(
                     group.id,
                     section.untitled ? undefined : copyKey(section.title),
@@ -2844,7 +2885,7 @@ export function SettingsPanelImpl<TSettings>({
             : sectionRails.mid.filter(sectionVisible);
           return (
           <div
-            className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
+            className="grid min-h-0 w-full grid-rows-[auto_minmax(0,auto)] overflow-hidden"
             data-section-list=""
           >
             <div className="relative z-[1] shrink-0">
@@ -2855,7 +2896,7 @@ export function SettingsPanelImpl<TSettings>({
                 <SectionDivider />
               ) : null}
             </div>
-            <div className={cn("min-h-0 flex-1", panelScroll)}>
+            <div className={cn("min-h-0", panelScroll)}>
               {visibleMid.map((id, i) =>
                 renderOrderedSection(id, i > 0),
               )}
@@ -2919,6 +2960,11 @@ export function SettingsPanelImpl<TSettings>({
           ) : null}
 
         </div>
+        );
+        return windowHost
+          ? createPortal(panelWindow, windowHost)
+          : panelWindow;
+        })()}
       </div>
       <PlaceHoverLayer
         active={pickPlace}

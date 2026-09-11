@@ -10,6 +10,7 @@ Scene settings panel for Next.js. Press **⌘M** to tune timings, easing, colors
 
 - Glass dock in any of the four corners, like the Next.js Dev Tools indicator
 - Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
+- Bottom animation timeline (`SettingsTimeline`) with the same player controller
 - Shared custom widgets: chips, skip cells, shuffle replay, stroke join
 - Russian and English UI
 - Dark and light themes

@@ -8,6 +8,28 @@ export type PanelTheme = "dark" | "light";
 export type { PanelLocale };
 
 export const PANEL_THEME_EVENT = "experimental:panel-theme";
+/** Open the settings panel on a section (Bezier) and/or an easing target. */
+export const PANEL_FOCUS_EVENT = "settings-panel:focus";
+
+export type PanelFocusDetail = {
+  panelId: string;
+  /** Section id: `bezier` · `curves` · a layer group. */
+  group?: string;
+  /** `easingTargets[].id` — also opens the Bezier section. */
+  easingId?: string;
+};
+
+export function focusPanel(
+  panelId: string,
+  detail: Omit<PanelFocusDetail, "panelId"> = {},
+) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(
+    new CustomEvent<PanelFocusDetail>(PANEL_FOCUS_EVENT, {
+      detail: { panelId, ...detail },
+    }),
+  );
+}
 
 export function panelThemeStorageKey(panelId: string) {
   return `${panelId}:panel-settings`;

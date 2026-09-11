@@ -263,7 +263,7 @@ export type PlayerState = {
   speed: number;
   /** Wheel drives the phase instead of the scene. */
   scrollView: boolean;
-  /** Player toggle in the panel — scene shows the Moment HUD while open. */
+  /** Timeline / in-panel player is open — scene shows the Moment HUD. */
   open: boolean;
   /** Pinned moments, 0…1. */
   pins: readonly number[];
@@ -291,7 +291,7 @@ export type PlayerController = {
   setSolo(solo: PlayerSolo | null): void;
 };
 
-/** Phased transition row: total field + Player Toggle, then Плеер + Блоки. */
+/** Phased transition: keys for `SettingsTimeline` (canonical) or in-panel `SettingPlayer`. */
 export type PlayerSetting<TSettings> = {
   label: Copy;
   info?: Copy;

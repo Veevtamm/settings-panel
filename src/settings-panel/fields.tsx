@@ -190,7 +190,10 @@ export function NumberField({
         value={value}
       />
       {unit ? (
-        <span className="pointer-events-none shrink-0 font-sans opacity-50" aria-hidden>
+        <span
+          className="pointer-events-none shrink-0 font-sans opacity-50 transition-opacity duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:group-hover/field:opacity-0"
+          aria-hidden
+        >
           {unit}
         </span>
       ) : null}
@@ -632,6 +635,7 @@ export function SettingEnumDropdown({
   value,
   control = "dropdown",
   controlWidth,
+  overlay,
   modified,
   onResetValue,
   info,
@@ -646,6 +650,8 @@ export function SettingEnumDropdown({
   value: string;
   control?: "dropdown" | "segment";
   controlWidth?: number;
+  /** Portal the open list over content below. Timeline dock. */
+  overlay?: boolean;
 } & ResetDotProps) {
   if (control === "segment" && options.length >= 2 && options.length <= 3) {
     return (
@@ -692,6 +698,7 @@ export function SettingEnumDropdown({
         reduceMotion={reduceMotion}
         value={value}
         width={controlWidth ?? ENUM_DROPDOWN_W}
+        overlay={overlay}
       />
     </div>
   );

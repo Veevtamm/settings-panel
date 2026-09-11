@@ -3,6 +3,8 @@
 export const GLASS = "var(--sp-glass)";
 export const FIELD = "var(--sp-field)";
 export const MUTED = "var(--sp-muted)";
+/** Figma `text/dim` — ruler numbers, not row labels. */
+export const DIM = "var(--sp-fg-dim)";
 /** Panel / Icon fill — Figma `text/bright` (`--sp-fg`), not muted text. */
 export const ICON = "var(--sp-fg)";
 export const rowLabelClass =
