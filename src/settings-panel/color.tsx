@@ -99,6 +99,7 @@ export function ColorPickerFlyout({
   originX,
   originY,
   side,
+  theme,
   top,
   popoverRef,
 }: {
@@ -116,6 +117,7 @@ export function ColorPickerFlyout({
   originY: number;
   reduceMotion: boolean;
   side: "below" | "above";
+  theme: "dark" | "light";
   top: number;
   popoverRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -180,6 +182,8 @@ export function ColorPickerFlyout({
       ref={popoverRef}
       role="dialog"
       aria-label={`${label} color`}
+      data-settings-panel=""
+      data-panel-theme={theme}
       className={cn(
         "fixed z-[110] flex flex-col gap-2 rounded-lg border border-[color:var(--sp-line)] p-2 backdrop-blur-[8px]",
         reduceMotion
@@ -534,10 +538,11 @@ export function SettingColor({
     draggingRef.current = false;
   }
 
-  const host =
-    typeof document !== "undefined"
-      ? (swatchRef.current?.closest("[data-settings-panel]") ?? document.body)
-      : null;
+  const host = typeof document !== "undefined" ? document.body : null;
+  const themeAttr = swatchRef.current
+    ?.closest("[data-panel-theme]")
+    ?.getAttribute("data-panel-theme");
+  const theme = themeAttr === "light" ? "light" : "dark";
 
   return (
     <div ref={rootRef}>
@@ -659,6 +664,7 @@ export function SettingColor({
               originY={pos.originY}
               reduceMotion={reduceMotion}
               side={pos.side}
+              theme={theme}
               top={pos.top}
               popoverRef={popoverRef}
             />,

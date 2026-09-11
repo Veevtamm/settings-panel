@@ -650,7 +650,7 @@ export function SettingEnumDropdown({
   value: string;
   control?: "dropdown" | "segment";
   controlWidth?: number;
-  /** Portal the open list over content below. Timeline dock. */
+  /** Portal the open list (default). Pass `false` to grow in flow. */
   overlay?: boolean;
 } & ResetDotProps) {
   if (control === "segment" && options.length >= 2 && options.length <= 3) {

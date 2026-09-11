@@ -22,7 +22,7 @@ export function PanelSelectList({
   className,
   optionIcon,
   width,
-  overlay = false,
+  overlay = true,
 }: {
   value: string;
   options: readonly { id: string; label: string }[];
@@ -35,8 +35,9 @@ export function PanelSelectList({
   /** Fixed trigger width (px). Omit = size from className (Preset fills leftover). */
   width?: number;
   /**
-   * Open over content below (portal). Parent height stays 28.
-   * In-flow Open still grows the row — timeline dock is overflow-hidden.
+   * Open in a body portal (default). Parent stays 28 — panel window is
+   * overflow-hidden, so in-flow Open would grow hug height or get clipped.
+   * Pass `false` only if the list must push layout.
    */
   overlay?: boolean;
 }) {
@@ -198,7 +199,7 @@ export function PanelSelectList({
       <SectionCollapse open={canOpen && open} reduceMotion={reduceMotion}>
         <ul
           ref={listRef}
-          className="flex max-h-48 flex-col gap-2 overflow-y-auto px-1.5 pb-2 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex max-h-48 flex-col gap-2 overflow-y-auto overscroll-contain px-1.5 pb-2 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="listbox"
           aria-label={ariaLabel}
           style={
@@ -243,7 +244,10 @@ export function PanelSelectList({
   return (
     <div
       ref={anchorRef}
-      className="relative h-[28px] shrink-0 overflow-hidden"
+      className={cn(
+        "relative h-[28px] overflow-hidden",
+        width != null ? "shrink-0" : "w-full min-w-0",
+      )}
       style={width != null ? { width } : undefined}
     >
       {open && box
