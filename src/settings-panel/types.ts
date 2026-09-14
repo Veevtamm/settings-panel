@@ -456,4 +456,10 @@ export type SettingsPanelProps<TSettings> = {
    * Omit = on.
    */
   shortcut?: boolean;
+  /**
+   * Timeline players that are **not** in `groups` (canonical dock). Their
+   * `totalKey` / phase / start keys join Reset, Copy, and the dock badge.
+   * Omit when `section.player` is already in the schema.
+   */
+  players?: readonly PlayerSetting<TSettings>[];
 };

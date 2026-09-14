@@ -137,6 +137,7 @@ export const PANEL_COPY = {
   openTimeline: L("Открыть таймлайн", "Open timeline"),
   closeTimeline: L("Закрыть таймлайн", "Close timeline"),
   animationTime: L("Время анимации", "Animation time"),
+  clipStart: L("старт", "start"),
   editCurve: L("Кривая элемента", "Edit curve"),
   timelineTarget: L("Анимация", "Animation"),
   soloPhase: L("Только эта фаза", "Solo this phase"),

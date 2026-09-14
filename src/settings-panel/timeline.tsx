@@ -23,6 +23,7 @@ import {
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { SfSymbol } from "../sf-symbol";
+import { RowLabel } from "./row";
 import {
   DOCK_BTN,
   DOCK_INSET,
@@ -137,7 +138,9 @@ function writeTimelineOrder(
   }
 }
 
-function inputsOf(segments: readonly PlayerSegment[]): ClipInput[] {
+function inputsOf(
+  segments: readonly { value: number; start?: number }[],
+): ClipInput[] {
   return segments.map((segment) =>
     segment.start == null
       ? { duration: segment.value }
@@ -236,6 +239,7 @@ export function SettingsTimeline({
   onEditCurve,
   targets,
   onTargetChange,
+  defaults,
 }: {
   panelId?: string;
   label: string;
@@ -254,6 +258,11 @@ export function SettingsTimeline({
   /** Animation picker (Figma `ex / Dropdown`). Omit = the current player only. */
   targets?: readonly { id: string; label: string }[];
   onTargetChange?: (id: string) => void;
+  /** Live `total` / clips vs these — reset dots like ⌘M rows. */
+  defaults?: {
+    total: number;
+    segments: readonly { value: number; start?: number }[];
+  };
 }) {
   const theme = usePanelTheme(panelId ?? "__timeline__");
   const storedLocale = usePanelLocale(panelId ?? "__timeline__");
@@ -263,6 +272,9 @@ export function SettingsTimeline({
   const state = usePlayerState(controller);
   const open = state.open;
   const layout = layoutClips(inputsOf(segments));
+  const defaultLayout = defaults
+    ? layoutClips(inputsOf(defaults.segments))
+    : undefined;
   const maxTotal = Math.max(
     total,
     segments.reduce((sum, segment) => sum + segment.max, 0),
@@ -390,6 +402,31 @@ export function SettingsTimeline({
     );
   }
 
+  function resetTotal() {
+    if (defaults == null) return;
+    applyTotal(defaults.total);
+  }
+
+  function resetPhase(index: number) {
+    const fallback = defaultLayout?.[index];
+    if (!fallback) return;
+    onChange(
+      emitClips(
+        layout.map((item, i) =>
+          i === index
+            ? {
+                ...fallback,
+              }
+            : item,
+        ),
+        total,
+      ),
+    );
+  }
+
+  const totalModified =
+    defaults != null && defaults.total !== total;
+
   const dockBottom = dockCorner.startsWith("bottom");
   const dockRight = dockCorner.endsWith("right");
   const phasesTitle = tx(PANEL_COPY.phases, locale);
@@ -468,9 +505,12 @@ export function SettingsTimeline({
                 className="flex h-[28px] shrink-0 items-center justify-between gap-2"
                 style={{ width: INSPECTOR }}
               >
-                <span className={cn("min-w-0 truncate", rowLabelClass)}>
-                  {tx(PANEL_COPY.animationTime, locale)}
-                </span>
+                <RowLabel
+                  label={tx(PANEL_COPY.animationTime, locale)}
+                  locale={locale}
+                  modified={totalModified}
+                  onResetValue={totalModified ? resetTotal : undefined}
+                />
                 <NumberField
                   ariaLabel={tx(PANEL_COPY.animationTime, locale)}
                   max={maxTotal}
@@ -561,6 +601,11 @@ export function SettingsTimeline({
                       const segment = segments[index];
                       const clip = layout[index];
                       if (!segment || !clip) return null;
+                      const baseline = defaultLayout?.[index];
+                      const phaseModified =
+                        baseline != null &&
+                        (clip.start !== baseline.start ||
+                          clip.duration !== baseline.duration);
                       return (
                         <div
                           key={segmentId(segment, index)}
@@ -600,9 +645,17 @@ export function SettingsTimeline({
                                 />
                               </span>
                             ) : null}
-                            <span className={cn("min-w-0 truncate", rowLabelClass)}>
-                              {segment.caption}
-                            </span>
+                            <RowLabel
+                              className="min-w-0"
+                              label={segment.caption}
+                              locale={locale}
+                              modified={phaseModified}
+                              onResetValue={
+                                phaseModified
+                                  ? () => resetPhase(index)
+                                  : undefined
+                              }
+                            />
                           </span>
                           {onEditCurve ? (
                             <FieldButton
@@ -665,6 +718,7 @@ export function timelinePropsFromPlayer<TSettings>(
   player: PlayerSetting<TSettings>,
   settings: TSettings,
   locale: PanelLocale,
+  defaultSettings?: TSettings,
 ): {
   label: string;
   total: number;
@@ -673,7 +727,20 @@ export function timelinePropsFromPlayer<TSettings>(
   step?: number;
   unit?: string;
   controller: PlayerController;
+  defaults?: {
+    total: number;
+    segments: { value: number; start?: number }[];
+  };
 } {
+  const segments: PlayerSegment[] = player.phases.map((phase) => ({
+    id: String(phase.key),
+    caption: tx(phase.caption, locale),
+    kind: phase.kind,
+    max: phase.max,
+    value: Number(settings[phase.key]),
+    start:
+      phase.startKey != null ? Number(settings[phase.startKey]) : undefined,
+  }));
   return {
     label: tx(player.label, locale),
     total: Number(settings[player.totalKey]),
@@ -681,14 +748,19 @@ export function timelinePropsFromPlayer<TSettings>(
     step: player.step,
     unit: player.unit,
     controller: player.controller,
-    segments: player.phases.map((phase) => ({
-      id: String(phase.key),
-      caption: tx(phase.caption, locale),
-      kind: phase.kind,
-      max: phase.max,
-      value: Number(settings[phase.key]),
-      start:
-        phase.startKey != null ? Number(settings[phase.startKey]) : undefined,
-    })),
+    segments,
+    defaults:
+      defaultSettings == null
+        ? undefined
+        : {
+            total: Number(defaultSettings[player.totalKey]),
+            segments: player.phases.map((phase) => ({
+              value: Number(defaultSettings[phase.key]),
+              start:
+                phase.startKey != null
+                  ? Number(defaultSettings[phase.startKey])
+                  : undefined,
+            })),
+          },
   };
 }

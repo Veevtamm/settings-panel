@@ -70,6 +70,7 @@ import {
   blockTopsByAttr,
   clampLiftY,
   collectGroupKeys,
+  collectPlayerKeys,
   filterGroupsByPlace,
   formatAgentDefaultsCopy,
   formatSettingCopyValue,
@@ -86,6 +87,7 @@ import {
   sectionHasStandardRows,
   splitPinnedSectionRails,
   valuesEqual,
+  visitPlayerKeys,
   visitSectionKeys,
   withoutRetiredSectionIds,
   closeOpenPlayers,
@@ -794,6 +796,7 @@ export function SettingsPanelImpl<TSettings>({
   groups,
   storageLabel,
   shortcut = true,
+  players = [],
 }: SettingsPanelProps<TSettings>) {
   useEffect(() => {
     reportSettingsSchemaLint(
@@ -889,6 +892,7 @@ export function SettingsPanelImpl<TSettings>({
   }, [resolvedPlaces]);
 
   const groupedKeys = collectGroupKeys(groups);
+  const playerKeys = collectPlayerKeys(players);
   const pageKeys: readonly (keyof TSettings)[] =
     defaultSettings != null
       ? (Object.keys(defaultSettings) as (keyof TSettings)[])
@@ -913,7 +917,9 @@ export function SettingsPanelImpl<TSettings>({
         );
   /** Keys that have a panel control. Hidden derived fields (frame W/H) stay out. */
   const listedControlKeys = pageKeys.filter(
-    (key) => String(key) !== "easings" && groupedKeys.has(key),
+    (key) =>
+      String(key) !== "easings" &&
+      (groupedKeys.has(key) || playerKeys.has(key)),
   );
   const listedChangedKeys =
     defaultSettings == null ? [] : listedControlKeys.filter(settingDiffers);
@@ -986,6 +992,7 @@ export function SettingsPanelImpl<TSettings>({
         visitSectionKeys(section, put, locale);
       }
     }
+    for (const player of players) visitPlayerKeys(player, put, locale);
     if (curveSection) {
       for (const key of curveKeys) {
         put(key, `${curveTitle}: ${String(key)}`);
@@ -1081,6 +1088,18 @@ export function SettingsPanelImpl<TSettings>({
       if (subsections.length > 0) {
         groupBlocks.push({
           title: tx(group.title, locale),
+          subsections,
+        });
+      }
+    }
+    for (const player of players) {
+      const keys: (keyof TSettings)[] = [];
+      visitPlayerKeys(player, (key) => keys.push(key), locale);
+      const subsections: { title: string | null; lines: string[] }[] = [];
+      emitKeys(keys, null, subsections);
+      if (subsections.length > 0) {
+        groupBlocks.push({
+          title: tx(player.label, locale),
           subsections,
         });
       }

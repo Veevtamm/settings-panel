@@ -6,6 +6,7 @@ import { PANEL_COPY, tx } from "./locale";
 import type {
   EasingTarget,
   SettingsGroup,
+  PlayerSetting,
   SettingsPlace,
   SettingsSection,
 } from "./types";
@@ -486,6 +487,42 @@ export function collectGroupKeys<TSettings>(
     }
   }
   return keys;
+}
+
+/** Keys owned by a dock `SettingsTimeline` (`PlayerSetting` not in `groups`). */
+export function collectPlayerKeys<TSettings>(
+  players: readonly PlayerSetting<TSettings>[] | undefined,
+): Set<keyof TSettings> {
+  const keys = new Set<keyof TSettings>();
+  if (players == null) return keys;
+  for (const player of players) {
+    keys.add(player.totalKey);
+    for (const phase of player.phases) {
+      keys.add(phase.key);
+      if (phase.startKey != null) keys.add(phase.startKey);
+    }
+  }
+  return keys;
+}
+
+export function visitPlayerKeys<TSettings>(
+  player: PlayerSetting<TSettings>,
+  visit: (key: keyof TSettings, label: string) => void,
+  locale: PanelLocale,
+) {
+  const name = tx(player.label, locale);
+  visit(player.totalKey, `${name}: ${tx(PANEL_COPY.animationTime, locale)}`);
+  for (const phase of player.phases) {
+    if (phase.kind === "pause") continue;
+    const caption = tx(phase.caption, locale);
+    visit(phase.key, `${name}: ${caption}`);
+    if (phase.startKey != null) {
+      visit(
+        phase.startKey,
+        `${name}: ${caption} · ${tx(PANEL_COPY.clipStart, locale)}`,
+      );
+    }
+  }
 }
 
 export function readMigratedPanelUi(
