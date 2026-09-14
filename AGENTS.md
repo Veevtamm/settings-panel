@@ -190,6 +190,7 @@ const [settings, setSettings] = useLocalSettingsStore({
   panelId={PANEL_ID} storageLabel="scene-name"
   settings={settings} groups={groups}
   places={PLACES}
+  players={[player]}
   onSettingsChange={(patch) => setSettings((prev) => ({ ...prev, ...patch }))}
   onReset={() => setSettings(DEFAULTS)}
   defaultSettings={DEFAULTS}
@@ -198,7 +199,7 @@ const [settings, setSettings] = useLocalSettingsStore({
 />
 <SettingsTimeline
   panelId={PANEL_ID}
-  {...timelinePropsFromPlayer(player, settings, locale)}
+  {...timelinePropsFromPlayer(player, settings, locale, DEFAULTS)}
   showDockButton={false}
   onChange={(next) =>
     setSettings((prev) => ({ ...prev, ...patchPlayerClips(player, next) }))
@@ -209,7 +210,7 @@ const [settings, setSettings] = useLocalSettingsStore({
 />
 ```
 
-Нижний таймлайн — канон для фаз. Если он есть, **`player` из `groups` не класть** (один `controller`, иначе два UI). Кнопка таймера — `dockExtra={<SettingsTimelineDockButton controller={player} />}` + `showDockButton={false}`, чтобы она жила в стеке Fold/указка. Корень дока — `data-settings-panel` (жесты сцены игнорят). `showDockButton` default true — таймер сам под шестерёнкой, без панели.
+Нижний таймлайн — канон для фаз. Если он есть, **`player` из `groups` не класть** (один `controller`, иначе два UI). Чтобы сдвиг/трим клипов шёл в счётчик Copy, Reset и точку-reset как остальные настройки: проп **`players={[player]}`** на `SettingsPanel` (ключи `totalKey` / фазы / `startKey`) и четвёртый аргумент **`timelinePropsFromPlayer(..., defaultSettings)`** (точки на «Время анимации» и рядах Элементов). Без `players` Copy не видит дрейф клипов. Кнопка таймера — `dockExtra={<SettingsTimelineDockButton controller={player} />}` + `showDockButton={false}`, чтобы она жила в стеке Fold/указка. Корень дока — `data-settings-panel` (жесты сцены игнорят). `showDockButton` default true — таймер сам под шестерёнкой, без панели.
 
 `defaultSettings` передавать всегда: он включает точку-reset у каждого изменённого ряда (клик — вернуть дефолт этого параметра), счётчик изменённых параметров на доке и кнопку «Скопировать новые дефолты» (копирует изменённые ключи со значениями и лейблами — чтобы вшить их в `DEFAULT_*` кода).
 
@@ -246,7 +247,7 @@ const [settings, setSettings] = useLocalSettingsStore({
 
 - `scrub` — opt-in: только для значений, которые реально крутят (px, %, columns); не на ms-тайминги по умолчанию, не на seed/span/format.
 - `custom` — не новый тип ряда ядра: Пропуски / Мест в строке / Shuffle / Join — виджеты пакета, в схему через `custom`. В Figma это `Panel / Cells` / `Panel / Chips` / `Panel / Replay` / `Panel / Pick` Kind=Join в слоте `Panel / Row`, не отдельные * Row. Plot — `curveSection`. `keys` + `rowReset` — чтобы Reset/Copy и точка-reset работали. Grid Kind Switch — сцена `/7-grids`, не npm-пакет; в Tools — `Panel / Kind Switch` + `Panel / Kind Item` (не папка 06 Custom).
-- `SettingsTimeline` — не новый тип ряда. Не класть `player` в схему, если док уже на странице. Кнопка таймера в `dockExtra`, не второй независимый док рядом с Fold. Клипы и линейка делят `LANE_PAD_PX`; не вычитать inset из ширины каждого куска — иначе между соседними фазами появляется ложный зазор. Линейка: засечки каждые **100** ms, подписи 0 / каждые **500** / total.
+- `SettingsTimeline` — не новый тип ряда. Не класть `player` в схему, если док уже на странице. Без `players={[player]}` на `SettingsPanel` Copy / бейдж / Reset не считают `totalKey` и клипы (они не в `groups`). Без 4-го аргумента `timelinePropsFromPlayer` нет точек-reset на доке. Кнопка таймера в `dockExtra`, не второй независимый док рядом с Fold. Клипы и линейка делят `LANE_PAD_PX`; не вычитать inset из ширины каждого куска — иначе между соседними фазами появляется ложный зазор. Линейка: засечки каждые **100** ms, подписи 0 / каждые **500** / total.
 - `refs` / `derived` не считаются в Reset/Copy (`refs` — исходный ряд один раз; `derived` не хранится). `derived` без `after`/`where` в указке исчезает. `defineParams` не экспортирует голые `number`/`text` — только `param.*`. Панель сама вызывает `lintSettingsSchema` (один `console.warn` на issue): `unknown-open-section` · `unknown-group-id` · `layer-title` · `bare-copy` · `unknown-after` · `missing-ref` · `duplicate-row` · `row-without-default` · `empty-place` · `unknown-place`. `row-without-control` — только если в вызов передали `params` (панель `P` не знает). `defaultOpenSections` без группы слоя не ругается (`layout` можно открывать, даже если группа скрыта тогглом); ругается на id вне словаря слоёв/`honeycomb`/служебных (`panel` · `bezier` · `curves` · `place`).
 - Ряд без `where` не попадает ни в одно место (уровень страницы) — если параметр «пропал» из указки, это первое, что проверить. `where` у `param.value` (ключ без ряда: край range, поле pair, фаза плеера) панель не видит — место читается с **ряда** (`RangeSetting.where` и т.п.); если один ряд делится между местами (range «Зона замедления» → места Зона слева / Зона справа), ключи пишут явно в `place.keys`, либо собирают `placesOf(P, PLACE_DEFS)`.
 - Hex — uppercase `#RRGGBB` (`normalizeHex`), и в поле, и в persist.

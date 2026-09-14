@@ -32,7 +32,6 @@ import {
   GLASS,
   ICON,
   MUTED,
-  rowLabelClass,
   SUBSECTION_DRAG_PX,
   CHEVRON_MS,
   EASE_OUT,

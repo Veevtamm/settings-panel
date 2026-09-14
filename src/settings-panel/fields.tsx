@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { evalNumberExpression } from "../lib/eval-number-expression";
 import { cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
@@ -38,6 +38,9 @@ export function NumberInput({
   value: number;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
+  useEffect(() => {
+    setDraft(null);
+  }, [value]);
 
   const commit = (raw: string) => {
     const result = evalNumberExpression(raw, value);

@@ -898,7 +898,10 @@ export function SettingsPanelImpl<TSettings>({
       ? (Object.keys(defaultSettings) as (keyof TSettings)[])
       : (Object.keys(settings as object) as (keyof TSettings)[]);
   const curveKeys = pageKeys.filter(
-    (key) => String(key) !== "easings" && !groupedKeys.has(key),
+    (key) =>
+      String(key) !== "easings" &&
+      !groupedKeys.has(key) &&
+      !playerKeys.has(key),
   );
   const settingDiffers = (key: keyof TSettings) =>
     defaultSettings != null &&
