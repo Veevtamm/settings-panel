@@ -21,11 +21,11 @@ import {
   type CubicBezier,
 } from "../lib/cubic-bezier";
 import {
-  EASING_PRESET_LABELS,
-  EASING_PRESET_LIST,
   easingForPreset,
+  easingPresetOptions,
   matchEasingPreset,
-  type EasingPresetId,
+  presetCurvePath,
+  type ExtraEasingPreset,
 } from "../lib/easing-presets";
 import {
   PANEL_FOCUS_EVENT,
@@ -729,7 +729,13 @@ export const PRESET_CURVE_D: Record<string, string> = {
   easeInOutBack: "M0.75 13.538C10.27 20.483 5.23 -4.983 14.75 1.962",
 };
 
-export function PresetCurveIcon({ id }: { id: string }) {
+export function PresetCurveIcon({
+  id,
+  extras = [],
+}: {
+  id: string;
+  extras?: readonly ExtraEasingPreset[];
+}) {
   const stroke = {
     fill: "none" as const,
     stroke: "currentColor",
@@ -753,7 +759,10 @@ export function PresetCurveIcon({ id }: { id: string }) {
     );
   }
 
-  const d = PRESET_CURVE_D[id];
+  const extraEase = easingForPreset(id, extras);
+  const extraCurve = extraEase ? parseBezierInput(extraEase) : null;
+  const d =
+    PRESET_CURVE_D[id] ?? (extraCurve ? presetCurvePath(extraCurve) : undefined);
   if (!d) return <span aria-hidden className="size-[14px] shrink-0" />;
   return (
     <svg
@@ -766,10 +775,7 @@ export function PresetCurveIcon({ id }: { id: string }) {
   );
 }
 
-export const PRESET_OPTIONS = EASING_PRESET_LIST.map((id) => ({
-  id,
-  label: EASING_PRESET_LABELS[id],
-}));
+export const PRESET_OPTIONS = easingPresetOptions();
 
 export function SettingsPanel<TSettings>(props: SettingsPanelProps<TSettings>) {
   return <SettingsPanelImpl key={props.panelId} {...props} />;
@@ -778,6 +784,7 @@ export function SettingsPanel<TSettings>(props: SettingsPanelProps<TSettings>) {
 export function SettingsPanelImpl<TSettings>({
   defaultOpenSections = ["bezier", "timings"],
   easingTargets = [],
+  easingPresetExtras = [],
   curveSection,
   curveSectionTitle,
   curveSectionIcon = "spline",
@@ -1396,7 +1403,8 @@ export function SettingsPanelImpl<TSettings>({
     liveEasings?.[activeEasingId] ??
     liveEasings?.[visibleEasingTargets[0]?.id ?? ""] ??
     ({ x1: 0.22, y1: 1, x2: 0.36, y2: 1 } satisfies CubicBezier);
-  const easingPreset = matchEasingPreset(activeEasing);
+  const easingPreset = matchEasingPreset(activeEasing, easingPresetExtras);
+  const presetOptions = easingPresetOptions(easingPresetExtras);
   const showEasingEditor = easingTargets.length > 0;
   const showPlotSection = Boolean(curveSection);
   const renderPlotSection =
@@ -2542,14 +2550,18 @@ export function SettingsPanelImpl<TSettings>({
 
                 <PanelSelectList
                   value={easingPreset}
-                  options={PRESET_OPTIONS}
+                  options={presetOptions}
                   ariaLabel={tx(PANEL_COPY.bezierPreset, locale)}
                   reduceMotion={reduceMotion}
-                  optionIcon={(id) => <PresetCurveIcon id={id} />}
+                  optionIcon={(id) => (
+                    <PresetCurveIcon id={id} extras={easingPresetExtras} />
+                  )}
                   onChange={(presetId) => {
-                    const preset = presetId as EasingPresetId;
-                    if (preset === "custom") return;
-                    const easing = easingForPreset(preset);
+                    if (presetId === "custom") return;
+                    const easing = easingForPreset(
+                      presetId,
+                      easingPresetExtras,
+                    );
                     const parsed = easing ? parseBezierInput(easing) : null;
                     if (parsed) patchEasing(parsed);
                   }}

@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { FRAME_ORIENTS, type FrameOrient } from "../lib/frame-orient";
+import type { ExtraEasingPreset } from "../lib/easing-presets";
 import type { SfSymbolName } from "../sf-symbol";
 import type { Copy, PanelLocale } from "./locale";
-export type { Copy, PanelLocale };
+export type { Copy, ExtraEasingPreset, PanelLocale };
 
 export type SettingsLayer =
   | "timings"
@@ -413,6 +414,11 @@ export type SettingsPlace<TSettings> = {
 export type SettingsPanelProps<TSettings> = {
   defaultOpenSections?: string[];
   easingTargets?: readonly EasingTarget[];
+  /**
+   * Scene-only Bezier presets appended to the built-in list.
+   * Omit = package list only. Do not put these curves in `EASING_PRESETS`.
+   */
+  easingPresetExtras?: readonly ExtraEasingPreset[];
   /** Replace / prepend a plot section (e.g. zone or axis editor). */
   curveSection?: ReactNode;
   curveSectionTitle?: Copy;

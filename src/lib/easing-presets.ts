@@ -17,6 +17,13 @@ export const EASING_PRESETS = {
 
 export type EasingPresetId = keyof typeof EASING_PRESETS | "custom";
 
+/** Scene-only curves appended to the Bezier preset list. Do not add these to `EASING_PRESETS`. */
+export type ExtraEasingPreset = {
+  id: string;
+  label: string;
+  easing: string;
+};
+
 /** Labels as in Figma Motion Panel preset list */
 export const EASING_PRESET_LABELS: Record<EasingPresetId, string> = {
   custom: "Custom bezier",
@@ -69,9 +76,45 @@ export const EASING_PRESET_GROUPS: {
   },
 ];
 
-export function easingForPreset(id: EasingPresetId) {
+export function extraEasingPresets(
+  extras: readonly ExtraEasingPreset[] = [],
+): ExtraEasingPreset[] {
+  return extras.filter(
+    (extra) => extra.id !== "custom" && !(extra.id in EASING_PRESETS),
+  );
+}
+
+export function easingPresetOptions(
+  extras: readonly ExtraEasingPreset[] = [],
+): { id: string; label: string }[] {
+  return [
+    ...EASING_PRESET_LIST.map((id) => ({
+      id,
+      label: EASING_PRESET_LABELS[id],
+    })),
+    ...extraEasingPresets(extras).map((extra) => ({
+      id: extra.id,
+      label: extra.label,
+    })),
+  ];
+}
+
+export function easingForPreset(
+  id: string,
+  extras: readonly ExtraEasingPreset[] = [],
+) {
   if (id === "custom") return null;
-  return EASING_PRESETS[id];
+  if (id in EASING_PRESETS) {
+    return EASING_PRESETS[id as keyof typeof EASING_PRESETS];
+  }
+  return extraEasingPresets(extras).find((extra) => extra.id === id)?.easing ?? null;
+}
+
+/** 16×16 preset glyph path for a cubic-bezier (same frame as built-in icons). */
+export function presetCurvePath(curve: CubicBezier) {
+  const x = (t: number) => 0.75 + t * 14;
+  const y = (t: number) => 14.75 - t * 14;
+  return `M0.75 14.75C${x(curve.x1)} ${y(curve.y1)} ${x(curve.x2)} ${y(curve.y2)} 14.75 0.75`;
 }
 
 function approxEq(a: number, b: number) {
@@ -88,14 +131,21 @@ function bezierEq(a: CubicBezier, b: CubicBezier) {
 }
 
 /** Match by curve values — keywords and cubic-bezier() both resolve. */
-export function matchEasingPreset(value: string | CubicBezier): EasingPresetId {
+export function matchEasingPreset(
+  value: string | CubicBezier,
+  extras: readonly ExtraEasingPreset[] = [],
+): string {
   const target =
     typeof value === "string" ? parseBezierInput(value) : value;
   if (!target) return "custom";
 
   for (const [id, easing] of Object.entries(EASING_PRESETS)) {
     const preset = parseBezierInput(easing);
-    if (preset && bezierEq(preset, target)) return id as EasingPresetId;
+    if (preset && bezierEq(preset, target)) return id;
+  }
+  for (const extra of extraEasingPresets(extras)) {
+    const preset = parseBezierInput(extra.easing);
+    if (preset && bezierEq(preset, target)) return extra.id;
   }
   return "custom";
 }

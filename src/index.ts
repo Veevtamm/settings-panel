@@ -180,6 +180,8 @@ export {
   EASING_PRESET_LABELS,
   EASING_PRESET_LIST,
   easingForPreset,
+  easingPresetOptions,
   matchEasingPreset,
   type EasingPresetId,
+  type ExtraEasingPreset,
 } from "./lib/easing-presets";
