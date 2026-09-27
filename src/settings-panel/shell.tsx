@@ -734,7 +734,7 @@ function DockSearchField({
       data-dock-search=""
       className={cn(
         "relative flex h-[34px] shrink-0 items-center overflow-hidden rounded",
-        open ? fieldChrome : "border border-transparent",
+        open && fieldChrome,
         !reduceMotion && "transition-[width,border-color,background-color]",
       )}
       style={{
