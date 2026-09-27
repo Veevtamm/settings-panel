@@ -6,7 +6,7 @@ import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import { GLASS, ICON, MUTED } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
-import { closePlayersHiddenByPlace, collectGroupKeys } from "./model";
+import { collectGroupKeys } from "./model";
 import type { SettingsGroup, SettingsPlace } from "./types";
 
 /** Place marks on the scene — not a panel token. */
@@ -180,35 +180,23 @@ export function PlaceClearButton({
 
 export function usePlacesPicker<TSettings>({
   places,
-  groups,
   onSelectPlace,
 }: {
   places: readonly SettingsPlace<TSettings>[];
-  groups: readonly SettingsGroup<TSettings>[];
   /** Open the panel on the place section — the picker does not own panel chrome. */
   onSelectPlace: () => void;
 }) {
   const [pickPlace, setPickPlace] = useState(false);
   const [placeId, setPlaceId] = useState<string | null>(null);
   const selectedPlace = places.find((item) => item.id === placeId) ?? null;
-  const groupsRef = useRef(groups);
   const onSelectRef = useRef(onSelectPlace);
-  const placesRef = useRef(places);
   useEffect(() => {
-    groupsRef.current = groups;
     onSelectRef.current = onSelectPlace;
-    placesRef.current = places;
   });
 
   const applyPlace = (id: string | null) => {
     setPlaceId(id);
     writePlaceParam(id);
-    const list = placesRef.current;
-    const keys =
-      id == null
-        ? null
-        : new Set(list.find((place) => place.id === id)?.keys ?? []);
-    closePlayersHiddenByPlace(groupsRef.current, keys);
     if (id) onSelectRef.current();
   };
 

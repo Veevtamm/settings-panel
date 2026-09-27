@@ -125,12 +125,6 @@ function collectSectionCopies<TSettings>(
     visit(row.label);
     visit(row.info);
   }
-  const player = section.player;
-  if (player) {
-    visit(player.label);
-    visit(player.info);
-    for (const phase of player.phases) visit(phase.caption);
-  }
 }
 
 function collectAfter<TSettings>(
@@ -172,9 +166,6 @@ function sourceKeysOf<TSettings>(
   for (const group of groups) {
     for (const section of group.sections) {
       visitSectionKeys(section, (key) => bump(key));
-      if (section.player && !counts.has(String(section.player.totalKey))) {
-        bump(section.player.totalKey);
-      }
       if (
         section.visibilityKey &&
         !counts.has(String(section.visibilityKey))

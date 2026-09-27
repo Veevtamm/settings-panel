@@ -307,7 +307,7 @@ export type PlayerController = {
   setSolo(solo: PlayerSolo | null): void;
 };
 
-/** Phased transition: keys for `SettingsTimeline` (canonical) or in-panel `SettingPlayer`. */
+/** Phased transition: keys for the `SettingsTimeline` dock. */
 export type PlayerSetting<TSettings> = {
   label: Copy;
   info?: Copy;
@@ -405,7 +405,6 @@ export type SettingsSection<TSettings> = {
   custom?: CustomSetting<TSettings>[];
   refs?: RefSetting<TSettings>[];
   derived?: DerivedSetting<TSettings>[];
-  player?: PlayerSetting<TSettings>;
   /** Eye next to the subsection chevron — boolean visibility, not a row. */
   visibilityKey?: keyof TSettings;
 } & ParamPlacement;
@@ -527,9 +526,8 @@ export type SettingsPanelProps<TSettings> = {
    */
   hideBelow?: number;
   /**
-   * Timeline players that are **not** in `groups` (canonical dock). Their
-   * `totalKey` / phase / start keys join Reset, Copy, and the dock badge.
-   * Omit when `section.player` is already in the schema.
+   * Players of the `SettingsTimeline` dock. Their `totalKey` / phase / start
+   * keys join Reset, Copy, and the dock badge.
    */
   players?: readonly PlayerSetting<TSettings>[];
 };

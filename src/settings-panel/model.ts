@@ -6,7 +6,6 @@ import { PANEL_COPY, tx } from "./locale";
 import type {
   EasingTarget,
   SettingsGroup,
-  PlayerController,
   PlayerSetting,
   SettingsPlace,
   SettingsSection,
@@ -198,8 +197,6 @@ export function visitSectionKeys<TSettings>(
   for (const row of section.orients ?? []) visit(row.key, t(row.label));
   for (const row of section.enums ?? []) visit(row.key, t(row.label));
   for (const row of section.texts ?? []) visit(row.key, t(row.label));
-  const player = section.player;
-  if (player) visitPlayerKeys(player, visit, locale);
   for (const row of section.custom ?? []) {
     for (const item of row.keys ?? []) visit(item.key, t(item.label));
   }
@@ -226,63 +223,12 @@ const SECTION_ROW_BAGS = [
   "derived",
 ] as const;
 
-/** Non-player row bags — keep in sync with `SectionRows`. */
-export function sectionHasStandardRows<TSettings>(
-  section: SettingsSection<TSettings>,
-) {
+/** Row bags — keep in sync with `SectionRows`. */
+export function sectionHasRows<TSettings>(section: SettingsSection<TSettings>) {
   return SECTION_ROW_BAGS.some((key) => {
     const bag = section[key];
     return Array.isArray(bag) && bag.length > 0;
   });
-}
-
-export function sectionHasRows<TSettings>(section: SettingsSection<TSettings>) {
-  return sectionHasStandardRows(section) || section.player != null;
-}
-
-/** Hide a player that a place filter unmounted — HUD / scroll-view stay on `controller.open`. */
-export function closePlayersHiddenByPlace<TSettings>(
-  groups: readonly SettingsGroup<TSettings>[],
-  keys: ReadonlySet<keyof TSettings> | null,
-) {
-  for (const group of groups) {
-    for (const section of group.sections) {
-      const player = section.player;
-      if (!player) continue;
-      const visible =
-        keys == null ||
-        player.phases.some((phase) =>
-          phaseKeys(phase).some((key) => keys.has(key)),
-        );
-      if (!visible && player.controller.getState().open) {
-        player.controller.setOpen(false);
-      }
-    }
-  }
-}
-
-/**
- * Drop in-panel `section.player` when the bottom timeline owns the same
- * clips (`players` on SettingsPanel). Empty leftover sections disappear.
- */
-export function omitSectionPlayers<TSettings>(
-  groups: readonly SettingsGroup<TSettings>[],
-): SettingsGroup<TSettings>[] {
-  const out: SettingsGroup<TSettings>[] = [];
-  for (const group of groups) {
-    const sections: SettingsSection<TSettings>[] = [];
-    for (const section of group.sections) {
-      if (section.player == null) {
-        sections.push(section);
-        continue;
-      }
-      const next = { ...section, player: undefined };
-      if (sectionHasStandardRows(next)) sections.push(next);
-    }
-    if (sections.length === 0) continue;
-    out.push({ ...group, sections });
-  }
-  return out;
 }
 
 /** Keys one phase writes: duration, absolute start, stagger step. */
@@ -346,22 +292,6 @@ export function omitPlayerKeyRows<TSettings>(
   return out;
 }
 
-/** Exit in-panel player preview when the settings window closes. */
-export function closeOpenPlayers<TSettings>(
-  groups: readonly SettingsGroup<TSettings>[],
-  keep?: ReadonlySet<PlayerController>,
-) {
-  for (const group of groups) {
-    for (const section of group.sections) {
-      const player = section.player;
-      if (!player || keep?.has(player.controller)) continue;
-      if (player.controller.getState().open) {
-        player.controller.setOpen(false);
-      }
-    }
-  }
-}
-
 /** Keep only rows whose keys sit in the picked place. Empty section → null. */
 export function filterSectionByPlace<TSettings>(
   section: SettingsSection<TSettings>,
@@ -407,11 +337,6 @@ export function filterSectionByPlace<TSettings>(
           (row.after != null && keep(row.after)),
       ),
     ),
-    player:
-      section.player != null &&
-      section.player.phases.some((phase) => phaseKeys(phase).some(keep))
-        ? section.player
-        : undefined,
   };
   return sectionHasRows(next) ? next : null;
 }
@@ -505,10 +430,6 @@ function sectionKeySet<TSettings>(section: SettingsSection<TSettings>) {
   }
   for (const row of section.refs ?? []) add(row.ref);
   for (const row of section.derived ?? []) add(row.id);
-  const player = section.player;
-  if (player) {
-    for (const key of playerKeySet([player])) add(key);
-  }
   return keys;
 }
 
@@ -657,27 +578,6 @@ function filterSectionBySearch<TSettings>(
         searchMatch(q, row.label, row.id),
       ),
     ),
-    player:
-      section.player != null &&
-      (searchMatch(
-        q,
-        section.player.label,
-        section.player.totalLabel,
-        String(section.player.totalKey),
-      ) ||
-        section.player.phases.some((phase) =>
-          searchMatch(
-            q,
-            phase.caption,
-            String(phase.key),
-            phase.startKey != null ? String(phase.startKey) : "",
-            phase.stagger?.stepKey != null
-              ? String(phase.stagger.stepKey)
-              : "",
-          ),
-        ))
-        ? section.player
-        : undefined,
   };
   const shown = untetherOrphanAfter(next);
   return sectionHasRows(shown) ? shown : null;
@@ -734,13 +634,6 @@ export function resolvePlaces<TSettings>(
       if (inPlace(group.where, place.id)) add(group.visibilityKey);
       for (const section of group.sections) {
         if (inPlace(section.where, place.id)) add(section.visibilityKey);
-        const player = section.player;
-        if (player && inPlace(player.where, place.id)) {
-          add(player.totalKey);
-          for (const phase of player.phases) {
-            for (const key of phaseKeys(phase)) add(key);
-          }
-        }
         for (const row of section.colors ?? []) {
           if (!inPlace(row.where, place.id)) continue;
           add(row.key);

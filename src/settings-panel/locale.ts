@@ -115,7 +115,6 @@ export const PANEL_COPY = {
   playerMode: L("Режим", "Mode"),
   player: L("Плеер", "Player"),
   phases: L("Элементы", "Elements"),
-  scrollView: L("Просмотр скроллом", "Scroll view"),
   back: L("Назад", "Back"),
   freeze: L("Стоп-кадр", "Freeze frame"),
   play: L("Пуск", "Play"),
@@ -125,10 +124,6 @@ export const PANEL_COPY = {
   copyMoment: L("Скопировать момент", "Copy moment"),
   copied: L("скопировано", "copied"),
   speed: (n: number) => L(`Скорость ×${n}`, `Speed ×${n}`),
-  openPlayer: (label: string) =>
-    L(`Открыть плеер ${label}`, `Open player ${label}`),
-  closePlayer: (label: string) =>
-    L(`Закрыть плеер ${label}`, `Close player ${label}`),
   playerPosition: (label: string) =>
     L(`${label}: позиция`, `${label}: position`),
   playerPhases: (label: string) => L(`${label}: элементы`, `${label}: elements`),

@@ -91,17 +91,14 @@ import {
   playListFlip,
   readEasings,
   readMigratedPanelUi,
-  sectionHasStandardRows,
+  sectionHasRows,
   splitPinnedSectionRails,
   valuesEqual,
   visitPlayerKeys,
   visitSectionKeys,
   withoutRetiredSectionIds,
-  closeOpenPlayers,
   omitPlayerKeyRows,
-  omitSectionPlayers,
   resolvePlaces,
-  playerKeySet,
   type LiftSize,
   type LiftXy,
 } from "./model";
@@ -113,8 +110,6 @@ import { FieldButton, SettingToggle } from "./fields";
 import { useCopyFlash } from "./use-copy-flash";
 import { EasingPlayheadGate } from "./easing-playhead";
 import { copyKey, PANEL_COPY, tx, type PanelLocale } from "./locale";
-import { SettingPlayer } from "./setting-player";
-import { patchPlayerClips, playerSegments } from "./player";
 import {
   PlaceClearButton,
   PlaceHoverLayer,
@@ -1417,7 +1412,6 @@ export function SettingsPanelImpl<TSettings>({
   const { pickPlace, setPickPlace, placeId, selectedPlace, applyPlace } =
     usePlacesPicker({
       places: resolvedPlaces,
-      groups,
       onSelectPlace: () => {
         closeSearch();
         setPanelInstant(true);
@@ -1525,7 +1519,7 @@ export function SettingsPanelImpl<TSettings>({
   const groupsForPanel = useMemo(
     () =>
       players.length > 0
-        ? omitPlayerKeyRows(omitSectionPlayers(groups), players)
+        ? omitPlayerKeyRows(groups, players)
         : groups,
     [groups, players],
   );
@@ -2258,14 +2252,6 @@ export function SettingsPanelImpl<TSettings>({
   }, [hideShortcut, chromeVisible]);
 
   useEffect(() => {
-    if (panelOpen) return;
-    closeOpenPlayers(
-      groupsRef.current,
-      new Set(playersRef.current.map((item) => item.controller)),
-    );
-  }, [panelOpen]);
-
-  useEffect(() => {
     const list = playersRef.current;
     const sync = () =>
       setTimelineOpen(
@@ -2575,38 +2561,9 @@ export function SettingsPanelImpl<TSettings>({
           ): ReactNode => {
             const subsectionId = `${group.id}:${orderKey}`;
             const sectionTitle = tx(section.title, locale);
-            const player = section.player;
-            const timelineBlock = player ? (
-              <SettingPlayer
-                label={tx(player.label, locale)}
-                locale={locale}
-                total={Number(settings[player.totalKey])}
-                totalAuto={player.totalAuto}
-                segments={playerSegments(player, settings, locale)}
-                min={player.min}
-                step={player.step}
-                unit={player.unit}
-                controller={player.controller}
-                reduceMotion={reduceMotion}
-                onChange={(next) => {
-                  onSettingsChange(patchPlayerClips(player, next));
-                  markRowEdited(
-                    group.id,
-                    section.untitled ? undefined : copyKey(section.title),
-                  );
-                }}
-                {...rowDotForKeys(
-                  [...playerKeySet([player])],
-                  player.info == null ? undefined : tx(player.info, locale),
-                  player.icon,
-                )}
-              />
-            ) : null;
-            const hasStandardRows = sectionHasStandardRows(section);
             const rows = (
               <div className="flex flex-col gap-2">
-                {timelineBlock}
-                {hasStandardRows ? (
+                {sectionHasRows(section) ? (
                   <SectionRows
                     section={section}
                     settings={settings}
@@ -2629,9 +2586,7 @@ export function SettingsPanelImpl<TSettings>({
             );
             const flatten =
               mode === "plain" ||
-              (mode === "auto" &&
-                (section.untitled ||
-                  Boolean(timelineBlock && !hasStandardRows)));
+              (mode === "auto" && section.untitled);
             if (flatten) {
               return (
                 <div key={orderKey} data-subsection-title={orderKey}>
