@@ -2,15 +2,15 @@
 
 [Русский](README.ru.md)
 
-Scene settings panel for Next.js. Press **⌘M** to tune timings, easing, colors, and layout live — without editing code. Pass `shortcut={false}` to turn the hotkey off; the gear still opens the panel.
+Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens scene timings, easing, colors, and layout. The **gear** opens the panel’s own language and theme. Pass `shortcut={true}` if you want ⌘M for the scene panel. ⌘S hides and shows the whole dock by default (`preventDefault` — the browser will not save the page); `hideShortcut={false}` leaves ⌘S to the scene.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
 
-- Glass dock in any of the four corners, like the Next.js Dev Tools indicator
+- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, search by parameter name, fold all, pointer, Reset, Copy), top center by default; drag it to any corner or to bottom center
 - Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
-- Bottom animation timeline (`SettingsTimeline`) with the same player controller
+- Bottom animation timeline (`SettingsTimeline`): several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
 - Shared custom widgets: chips, skip cells, shuffle replay, stroke join
 - Russian and English UI
 - Dark and light themes
@@ -112,7 +112,9 @@ export function Scene() {
 }
 ```
 
-Open the scene and press ⌘M. Keep page schemas (`settings.ts`) in the app. This package is the panel, not the scene.
+Open the scene and click the sliders button in the Dock Bar (the gear is language and theme). Keep page schemas (`settings.ts`) in the app. This package is the panel, not the scene.
+
+Phases and a playhead: pass `players={[player]}` to `SettingsPanel`, then mount `SettingsTimeline` with `showDockButton={false}` and `targets={[…]}` plus `SettingsMomentHud`. Canonical wiring is in [`AGENTS.md`](AGENTS.md).
 
 ## For AI agents
 
@@ -136,7 +138,21 @@ While you edit this repo next to an app:
 "@veevtamm/settings-panel": "file:../settings-panel"
 ```
 
-Set `turbopack.root` to the parent of the app and this package. Do not edit the copy inside `node_modules`.
+Set `turbopack.root` to the parent of the app and this package:
+
+```js
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+const nextConfig = {
+  transpilePackages: ["@veevtamm/settings-panel"],
+  turbopack: { root: path.join(__dirname, "..") },
+};
+```
+
+Do not edit the copy inside `node_modules`.
 
 ## License
 

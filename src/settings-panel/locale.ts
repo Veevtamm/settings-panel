@@ -23,10 +23,11 @@ export function copyKey(copy: Copy): string {
 export const PANEL_COPY = {
   presets: L("Пресеты", "Presets"),
   presetsInfo: L(
-    "Слот хранит весь набор настроек этой страницы, не всего сайта. Пустой: клик — сохранить текущие. Сохранённый: клик — применить, ⌥-клик — перезаписать, × на ховере — очистить.",
-    "A slot stores this page’s full settings, not the whole site. Empty: click to save. Saved: click to apply, ⌥-click to overwrite, hover × to clear.",
+    "Слот хранит весь набор настроек этой страницы, не всего сайта. Пустой: клик — сохранить текущие. Сохранённый: клик — применить, ⌥-клик — перезаписать, × на ховере — очистить. Иконка сохранить — в первый пустой слот, иначе в активный.",
+    "A slot stores this page’s full settings, not the whole site. Empty: click to save. Saved: click to apply, ⌥-click to overwrite, hover × to clear. Save icon writes the first empty slot, or the active one if all are filled.",
   ),
   presetsAria: L("Пресеты настроек", "Settings presets"),
+  savePreset: L("Сохранить текущие настройки", "Save current settings"),
   clearPreset: (index: number) =>
     L(`Очистить пресет ${index}`, `Clear preset ${index}`),
   presetSlot: (index: number, state: "active" | "apply" | "empty") =>
@@ -46,14 +47,9 @@ export const PANEL_COPY = {
             : "empty — save current settings"
       }`,
     ),
-  panelSettings: L("Panel Settings", "Panel Settings"),
+  panelSettings: L("Настройки панели", "Panel Settings"),
   language: L("Язык", "Language"),
   theme: L("Тема", "Theme"),
-  sectionOrder: L("Изменение секций", "Edit sections"),
-  sectionOrderInfo: L(
-    "Ручка — перетащить секцию. Пин рядом — закрепить сверху, чтобы секция не уезжала со скроллом. Клик по иконке секции, подсекции или параметра — выбрать другой глиф. Panel Settings тоже в этом списке.",
-    "Grip to drag a section. Pin beside it keeps the section at the top of the scroll. Click a section, subsection, or row icon to pick another glyph. Panel Settings is in the same list.",
-  ),
   resizePanelWidth: L("Изменить ширину панели", "Resize panel width"),
   resizePanelHeight: L("Изменить высоту панели", "Resize panel height"),
   resizePanelCorner: L("Изменить размер панели", "Resize panel"),
@@ -89,6 +85,8 @@ export const PANEL_COPY = {
       `Open motion settings (changed: ${count})`,
     ),
   closePanel: L("Закрыть настройки motion", "Close motion settings"),
+  openPanelSettings: L("Открыть настройки панели", "Open Panel Settings"),
+  closePanelSettings: L("Закрыть настройки панели", "Close Panel Settings"),
   resetSettings: (count: number) =>
     L(
       `Сбросить настройки motion (изменено: ${count})`,
@@ -137,11 +135,21 @@ export const PANEL_COPY = {
   openTimeline: L("Открыть таймлайн", "Open timeline"),
   closeTimeline: L("Закрыть таймлайн", "Close timeline"),
   animationTime: L("Время анимации", "Animation time"),
+  totalAuto: L("Auto", "Auto"),
+  unlockTotal: L("Задать длину вручную", "Set length manually"),
   clipStart: L("старт", "start"),
+  resetClip: L("Вернуть клип на место по умолчанию", "Move the clip back to its default"),
+  staggerLine: L("строка", "line"),
+  staggerStep: L("Шаг", "Step"),
   editCurve: L("Кривая элемента", "Edit curve"),
   timelineTarget: L("Анимация", "Animation"),
   soloPhase: L("Только эта фаза", "Solo this phase"),
   clearSolo: L("Снять соло", "Clear solo"),
+  openSearch: L("Найти параметр", "Find a parameter"),
+  closeSearch: L("Закрыть поиск", "Close search"),
+  searchField: L("Поиск параметра", "Search parameters"),
+  searchPlaceholder: L("Поиск", "Search"),
+  searchEmpty: L("Ничего не нашлось", "No matching parameters"),
   pickPlace: L("Выбрать место на сцене", "Pick a place on the scene"),
   cancelPickPlace: L("Выключить указку", "Turn off the pointer"),
   showAllSettings: L("Показать все параметры", "Show all settings"),

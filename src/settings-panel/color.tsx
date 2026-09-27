@@ -24,6 +24,7 @@ import {
   SCRUB_PAD_X,
   fieldValueMono,
   pickEase,
+  pointerHeld,
 } from "./chrome";
 import type { ResetDotProps } from "./types";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
@@ -233,9 +234,7 @@ export function ColorPickerFlyout({
           onPointerDown={onSvPointerDown}
           onPointerMove={(event) => {
             if (!draggingSv.current) return;
-            // Stale drag guard: if the button is no longer held (missed
-            // pointerup), stop following the cursor.
-            if (event.pointerType === "mouse" && event.buttons === 0) {
+            if (!pointerHeld(event)) {
               draggingSv.current = false;
               onDragEnd();
               return;
@@ -310,7 +309,7 @@ export function ColorPickerFlyout({
         onPointerDown={onHuePointerDown}
         onPointerMove={(event) => {
           if (!draggingHue.current) return;
-          if (event.pointerType === "mouse" && event.buttons === 0) {
+          if (!pointerHeld(event)) {
             draggingHue.current = false;
             onDragEnd();
             return;

@@ -1,6 +1,11 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import {
+  DEFAULT_DOCK_CORNER,
+  DOCK_CORNERS,
+  type DockCorner,
+} from "../settings-panel/chrome";
 import type { PanelLocale } from "../settings-panel/locale";
 import { isSfSymbolName, resolvePanelIcon, type SfSymbolName } from "../sf-symbol";
 
@@ -51,8 +56,8 @@ export type PanelSettingsFile = {
   panelHeight?: number;
   /** Viewport top-left of a free-floating panel. Omit / null = docked to the gear. */
   panelFloat?: { x: number; y: number } | null;
-  /** Gear dock corner. Omit = top-left. Reset does not clear. */
-  dockCorner?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Reset does not clear. */
+  dockSlot?: DockCorner;
   /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
   sectionIcons?: Record<string, SfSymbolName>;
   /**
@@ -60,10 +65,9 @@ export type PanelSettingsFile = {
    * Scene Reset does not clear.
    */
   lastEdited?: { group: string; section?: string };
-  /** @deprecated migrated to dockCorner */
-  dockX?: number;
-  dockY?: number;
 };
+
+export type { DockCorner as DockSlot };
 
 function parseLastEdited(
   raw: unknown,
@@ -90,8 +94,12 @@ function parseSectionIcons(raw: unknown): Record<string, SfSymbolName> | undefin
   return Object.keys(next).length ? next : undefined;
 }
 
+const parsedFileCache = new Map<string, PanelSettingsFile>();
+
 export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile {
   if (!raw) return {};
+  const cached = parsedFileCache.get(raw);
+  if (cached) return cached;
   try {
     const parsed: unknown = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -116,13 +124,8 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     ) {
       next.pinnedSections = rec.pinnedSections;
     }
-    if (
-      rec.dockCorner === "top-left" ||
-      rec.dockCorner === "top-right" ||
-      rec.dockCorner === "bottom-left" ||
-      rec.dockCorner === "bottom-right"
-    ) {
-      next.dockCorner = rec.dockCorner;
+    if (DOCK_CORNERS.includes(rec.dockSlot as DockCorner)) {
+      next.dockSlot = rec.dockSlot as DockCorner;
     }
     if (typeof rec.panelWidth === "number" && Number.isFinite(rec.panelWidth)) {
       next.panelWidth = rec.panelWidth;
@@ -144,16 +147,12 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
         next.panelFloat = { x: pos.x, y: pos.y };
       }
     }
-    if (typeof rec.dockX === "number" && Number.isFinite(rec.dockX)) {
-      next.dockX = rec.dockX;
-    }
-    if (typeof rec.dockY === "number" && Number.isFinite(rec.dockY)) {
-      next.dockY = rec.dockY;
-    }
     const icons = parseSectionIcons(rec.sectionIcons);
     if (icons) next.sectionIcons = icons;
     const lastEdited = parseLastEdited(rec.lastEdited);
     if (lastEdited) next.lastEdited = lastEdited;
+    if (parsedFileCache.size > 64) parsedFileCache.clear();
+    parsedFileCache.set(raw, next);
     return next;
   } catch {
     return {};
@@ -171,6 +170,45 @@ export function readPanelSettings(
     const raw = window.localStorage.getItem(panelThemeStorageKey(legacyId));
     if (!raw) continue;
     return parsePanelSettingsObject(raw);
+  }
+  return {};
+}
+
+export function pickPanelLayout(file: PanelSettingsFile): PanelSettingsFile {
+  const next: PanelSettingsFile = {};
+  if (file.dockSlot) next.dockSlot = file.dockSlot;
+  if (file.panelFloat !== undefined) next.panelFloat = file.panelFloat;
+  if (file.panelWidth != null) next.panelWidth = file.panelWidth;
+  if (file.panelHeight != null) next.panelHeight = file.panelHeight;
+  if (file.theme) next.theme = file.theme;
+  if (file.locale) next.locale = file.locale;
+  return next;
+}
+
+export function panelLayoutHasChrome(file: PanelSettingsFile) {
+  return (
+    file.dockSlot != null ||
+    file.panelFloat != null ||
+    file.panelWidth != null ||
+    file.panelHeight != null
+  );
+}
+
+/** Dock, float, and window size. `layoutPanelId` shares them across scenes. */
+export function readPanelLayout(
+  panelId: string,
+  layoutPanelId?: string,
+  legacyPanelIds: readonly string[] = [],
+): PanelSettingsFile {
+  if (layoutPanelId) {
+    const shared = readPanelSettings(layoutPanelId);
+    if (panelLayoutHasChrome(shared)) return pickPanelLayout(shared);
+  }
+  const scene = readPanelSettings(panelId, legacyPanelIds);
+  if (panelLayoutHasChrome(scene)) {
+    const layout = pickPanelLayout(scene);
+    if (layoutPanelId) writePanelSettings(layoutPanelId, layout);
+    return layout;
   }
   return {};
 }
@@ -196,8 +234,6 @@ export function writePanelSettings(
     if (Object.keys(patch.sectionIcons).length === 0) delete next.sectionIcons;
     else next.sectionIcons = patch.sectionIcons;
   }
-  delete next.dockX;
-  delete next.dockY;
   try {
     window.localStorage.setItem(
       panelThemeStorageKey(panelId),
@@ -278,5 +314,20 @@ export function usePanelLocale(
     (onChange) => subscribePanelTheme(panelId, onChange),
     () => readPanelLocale(panelId, legacyPanelIds),
     () => "ru",
+  );
+}
+
+/** Dock Bar slot from `${layoutPanelId ?? panelId}:panel-settings`. */
+export function useDockSlot(
+  panelId: string | undefined,
+  layoutPanelId?: string,
+  fallback: DockCorner = DEFAULT_DOCK_CORNER,
+) {
+  const storeId = layoutPanelId ?? panelId;
+  return useSyncExternalStore(
+    (onChange) => (storeId ? subscribePanelTheme(storeId, onChange) : () => {}),
+    () =>
+      (storeId ? readPanelSettings(storeId).dockSlot : undefined) ?? fallback,
+    () => fallback,
   );
 }

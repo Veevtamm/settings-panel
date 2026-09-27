@@ -6,6 +6,15 @@ export type ClipInput = {
   start?: number;
 };
 
+/** E1: `count` lines, each `step` later than the previous. */
+export type ClipStagger = { count: number; step: number };
+
+/** Parent clip length: one line + the offset of the last line. */
+export function staggerSpan(duration: number, stagger?: ClipStagger) {
+  if (stagger == null || stagger.count < 2) return duration;
+  return duration + (stagger.count - 1) * stagger.step;
+}
+
 export type LaidClip = {
   start: number;
   duration: number;
@@ -27,6 +36,31 @@ export function layoutClips(segments: readonly ClipInput[]): LaidClip[] {
 /** Furthest clip end — the timeline itself is a separate value and may be longer. */
 export function clipsTotal(layout: readonly LaidClip[]): number {
   return layout.reduce((max, clip) => Math.max(max, clip.end), 0);
+}
+
+/**
+ * Stored `totalKey` ≤ 0 means Auto (A4): the length is max(clip end), not a
+ * ceiling. Existing scenes keep a positive total and stay manual.
+ */
+export const TOTAL_AUTO = 0;
+
+export function isTotalAuto(stored: number) {
+  return !Number.isFinite(stored) || stored <= 0;
+}
+
+export function autoTotal(layout: readonly LaidClip[], min = 0) {
+  return Math.max(clipsTotal(layout), min);
+}
+
+/** Visual / WAAPI length: Auto → span of clips, else the stored ceiling. */
+export function resolveTotal(
+  stored: number,
+  layout: readonly LaidClip[],
+  min = 0,
+  allowAuto = false,
+) {
+  if (allowAuto && isTotalAuto(stored)) return autoTotal(layout, min);
+  return Math.max(stored, min);
 }
 
 /** Clips trimmed to a timeline of `total` ms: start ≤ total − min, end ≤ total. */

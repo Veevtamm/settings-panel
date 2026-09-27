@@ -8,41 +8,60 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
-  parsePanelSettingsObject,
+  readPanelLayout,
   writePanelSettings,
 } from "../lib/panel-theme";
 import {
-  DOCK_BTN,
+  DEFAULT_DOCK_CORNER,
+  DOCK_BAR_H,
   DOCK_DRAG_PX,
   DOCK_INSET,
+  PANEL_ENTER_MS,
   PANEL_HEIGHT_MIN,
   PANEL_WIDTH,
+  bindPointerDrag,
+  pointerHeld,
   clampDockPos,
   clampPanelHeight,
   clampPanelPos,
   clampPanelWidth,
   dockPosForCorner,
   dockedPanelPos,
+  dockedPanelX,
   isPanelMoveTarget,
   nearestDockCorner,
   panelMaxHeightPx,
   shouldMagnetPanel,
   type DockCorner,
 } from "./chrome";
-import { readMigratedPanelUi } from "./model";
+import { useViewportSize } from "./use-chrome-visible";
+
+/** Last painted dock size — next scene paints here instead of the default slot. */
+const lastDockBarW = new Map<string, number>();
+
+export function readLastDockBarW(storeId: string) {
+  return lastDockBarW.get(storeId);
+}
+
+export function writeLastDockBarW(storeId: string, width: number) {
+  lastDockBarW.set(storeId, width);
+}
 
 export function usePanelWindow({
   panelId,
+  layoutPanelId,
   legacyPanelIds = [],
-  dockStackH,
-  defaultDockCorner = "top-left",
+  barW,
+  defaultDockCorner = DEFAULT_DOCK_CORNER,
 }: {
   panelId: string;
+  layoutPanelId?: string;
   legacyPanelIds?: readonly string[];
-  /** Gear column height for magnet (trigger + reset/copy + extra dock). */
-  dockStackH: number;
+  /** Measured Dock Bar width (grows as buttons appear). */
+  barW: number;
   defaultDockCorner?: DockCorner;
 }) {
+  const layoutStoreId = layoutPanelId ?? panelId;
   const legacyPanelKey = legacyPanelIds.join("\0");
   const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH);
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
@@ -52,15 +71,15 @@ export function usePanelWindow({
   } | null>(null);
   const [dockCorner, setDockCorner] = useState<DockCorner>(defaultDockCorner);
   const [dockPos, setDockPos] = useState(() =>
-    dockPosForCorner(defaultDockCorner),
+    dockPosForCorner(defaultDockCorner, barW, 1280, 800),
   );
   const [dockDragging, setDockDragging] = useState(false);
+  const [dockSnap, setDockSnap] = useState(false);
   const [panelResizing, setPanelResizing] = useState(false);
   const [panelMoving, setPanelMoving] = useState(false);
-  const [viewportW, setViewportW] = useState(1280);
-  const [viewportH, setViewportH] = useState(800);
+  const { vw: viewportW, vh: viewportH } = useViewportSize();
   const dockMovedRef = useRef(false);
-  const dockStackHRef = useRef(dockStackH);
+  const barWRef = useRef(barW);
   const dockDragRef = useRef<{
     pointerId: number;
     startX: number;
@@ -77,7 +96,7 @@ export function usePanelWindow({
     startY: number;
     startW: number;
     startH: number;
-    growX: 1 | -1;
+    growX: 1 | 2 | -1;
     growY: 1 | -1;
   } | null>(null);
   const panelMoveRef = useRef<{
@@ -94,43 +113,32 @@ export function usePanelWindow({
   } | null>(null);
 
   useEffect(() => {
-    dockStackHRef.current = dockStackH;
+    barWRef.current = barW;
   });
 
+  useEffect(() => {
+    if (!dockSnap) return;
+    const id = window.setTimeout(() => setDockSnap(false), PANEL_ENTER_MS);
+    return () => window.clearTimeout(id);
+  }, [dockSnap]);
+
   useLayoutEffect(() => {
-    const raw = readMigratedPanelUi(
+    const parsed = readPanelLayout(
       panelId,
-      ":panel-settings",
+      layoutPanelId,
       legacyPanelKey ? legacyPanelKey.split("\0") : [],
     );
-    const parsed = parsePanelSettingsObject(raw);
     if (parsed.panelWidth != null) setPanelWidth(parsed.panelWidth);
     if (parsed.panelHeight != null) setPanelHeight(parsed.panelHeight);
     if (parsed.panelFloat) setPanelFloat(parsed.panelFloat);
-    const corner: DockCorner =
-      parsed.dockCorner ??
-      (parsed.dockX != null && parsed.dockY != null
-        ? nearestDockCorner(parsed.dockX, parsed.dockY)
-        : defaultDockCorner);
-    setDockCorner(corner);
-    setDockPos(dockPosForCorner(corner));
-  }, [defaultDockCorner, legacyPanelKey, panelId]);
-
-  useEffect(() => {
-    const onResize = () => {
-      setViewportW(window.innerWidth);
-      setViewportH(window.innerHeight);
-    };
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    setDockCorner(parsed.dockSlot ?? defaultDockCorner);
+  }, [defaultDockCorner, layoutPanelId, legacyPanelKey, panelId]);
 
   useEffect(() => {
     setPanelWidth((w) => clampPanelWidth(w, viewportW));
     const maxH = panelMaxHeightPx(
       dockCorner.startsWith("bottom"),
-      dockPosForCorner(dockCorner, viewportW, viewportH).y,
+      dockPosForCorner(dockCorner, barWRef.current, viewportW, viewportH).y,
       viewportH,
     );
     setPanelHeight((h) => (h == null ? null : clampPanelHeight(h, maxH)));
@@ -155,6 +163,7 @@ export function usePanelWindow({
       const rect = el.getBoundingClientRect();
       const cornerNwse =
         dockCorner.endsWith("right") === dockCorner.startsWith("bottom");
+      const centered = dockCorner.endsWith("center");
       panelResizeRef.current = {
         edge,
         cursor:
@@ -176,7 +185,7 @@ export function usePanelWindow({
           edge === "y" || edge === "xy"
             ? Math.max(rect.height, panelHeight ?? PANEL_HEIGHT_MIN)
             : rect.height,
-        growX: dockCorner.endsWith("right") ? -1 : 1,
+        growX: dockCorner.endsWith("right") ? -1 : centered ? 2 : 1,
         growY: dockCorner.startsWith("bottom") ? -1 : 1,
       };
       try {
@@ -197,11 +206,15 @@ export function usePanelWindow({
     document.documentElement.dataset.panelResizing = drag.cursor;
     const onMove = (event: PointerEvent) => {
       if (event.pointerId !== drag.pointerId) return;
+      if (!pointerHeld(event)) {
+        onUp(event);
+        return;
+      }
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const maxH = panelMaxHeightPx(
         dockCorner.startsWith("bottom"),
-        dockPosForCorner(dockCorner, vw, vh).y,
+        dockPosForCorner(dockCorner, barWRef.current, vw, vh).y,
         vh,
       );
       if (drag.edge === "x" || drag.edge === "xy") {
@@ -229,7 +242,7 @@ export function usePanelWindow({
       const vh = window.innerHeight;
       const maxH = panelMaxHeightPx(
         dockCorner.startsWith("bottom"),
-        dockPosForCorner(dockCorner, vw, vh).y,
+        dockPosForCorner(dockCorner, barWRef.current, vw, vh).y,
         vh,
       );
       const w =
@@ -248,7 +261,7 @@ export function usePanelWindow({
           : null;
       if (w != null) setPanelWidth(w);
       if (h != null) setPanelHeight(h);
-      writePanelSettings(panelId, {
+      writePanelSettings(layoutStoreId, {
         ...(w != null ? { panelWidth: w } : {}),
         ...(h != null ? { panelHeight: h } : {}),
       });
@@ -262,7 +275,7 @@ export function usePanelWindow({
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
     };
-  }, [dockCorner, panelId, panelResizing]);
+  }, [dockCorner, layoutStoreId, panelResizing]);
 
   const startPanelMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (event.button !== 0 || panelResizing) return;
@@ -284,107 +297,100 @@ export function usePanelWindow({
     };
     panelMoveRef.current = drag;
 
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== pointerId) return;
-      const nextDrag = panelMoveRef.current;
-      if (!nextDrag) return;
-      const dx = ev.clientX - nextDrag.startX;
-      const dy = ev.clientY - nextDrag.startY;
-      if (!nextDrag.moved && Math.hypot(dx, dy) < DOCK_DRAG_PX) return;
-      if (!nextDrag.moved) {
-        nextDrag.moved = true;
-        setPanelMoving(true);
-        document.documentElement.dataset.panelMoving = "";
-        try {
-          el.setPointerCapture(pointerId);
-        } catch {
-          /* already released */
+    bindPointerDrag(pointerId, {
+      onMove(ev) {
+        const nextDrag = panelMoveRef.current;
+        if (!nextDrag) return;
+        const dx = ev.clientX - nextDrag.startX;
+        const dy = ev.clientY - nextDrag.startY;
+        if (!nextDrag.moved && Math.hypot(dx, dy) < DOCK_DRAG_PX) return;
+        if (!nextDrag.moved) {
+          nextDrag.moved = true;
+          setPanelMoving(true);
+          document.documentElement.dataset.panelMoving = "";
+          try {
+            el.setPointerCapture(pointerId);
+          } catch {
+            /* already released */
+          }
         }
-      }
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const gear = dockPosForCorner(dockCorner, vw, vh);
-      const next = clampPanelPos(
-        nextDrag.originX + dx,
-        nextDrag.originY + dy,
-        nextDrag.width,
-        nextDrag.height,
-        vw,
-        vh,
-      );
-      const docked = dockedPanelPos(
-        dockCorner,
-        gear,
-        nextDrag.width,
-        nextDrag.height,
-      );
-      const stackH = dockStackHRef.current;
-      const buttons = {
-        x: gear.x,
-        y: dockCorner.startsWith("bottom")
-          ? gear.y + DOCK_BTN - stackH
-          : gear.y,
-        w: DOCK_BTN,
-        h: stackH,
-      };
-      const magnet = shouldMagnetPanel(
-        { x: next.x, y: next.y, w: nextDrag.width, h: nextDrag.height },
-        docked,
-        buttons,
-      );
-      nextDrag.magnet = magnet;
-      nextDrag.lastPos = magnet ? null : next;
-      setPanelFloat(magnet ? null : next);
-    };
-
-    const onUp = (ev: PointerEvent) => {
-      if (ev.pointerId !== pointerId) return;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      delete document.documentElement.dataset.panelMoving;
-      const nextDrag = panelMoveRef.current;
-      panelMoveRef.current = null;
-      setPanelMoving(false);
-      if (!nextDrag?.moved) return;
-      const suppressClick = (click: MouseEvent) => {
-        click.preventDefault();
-        click.stopPropagation();
-      };
-      window.addEventListener("click", suppressClick, true);
-      window.setTimeout(() => {
-        window.removeEventListener("click", suppressClick, true);
-      }, 0);
-      const stored = nextDrag.lastPos;
-      writePanelSettings(panelId, { panelFloat: stored });
-      setPanelFloat(stored);
-    };
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const bw = barWRef.current;
+        const bar = dockPosForCorner(dockCorner, bw, vw, vh);
+        const next = clampPanelPos(
+          nextDrag.originX + dx,
+          nextDrag.originY + dy,
+          nextDrag.width,
+          nextDrag.height,
+          vw,
+          vh,
+        );
+        const docked = dockedPanelPos(
+          dockCorner,
+          { x: bar.x, y: bar.y, w: bw },
+          nextDrag.width,
+          nextDrag.height,
+          vw,
+        );
+        const buttons = { x: bar.x, y: bar.y, w: bw, h: DOCK_BAR_H };
+        const magnet = shouldMagnetPanel(
+          { x: next.x, y: next.y, w: nextDrag.width, h: nextDrag.height },
+          docked,
+          buttons,
+        );
+        nextDrag.magnet = magnet;
+        nextDrag.lastPos = magnet ? null : next;
+        setPanelFloat(magnet ? null : next);
+      },
+      onEnd() {
+        if (el.hasPointerCapture(pointerId)) {
+          el.releasePointerCapture(pointerId);
+        }
+        delete document.documentElement.dataset.panelMoving;
+        const nextDrag = panelMoveRef.current;
+        panelMoveRef.current = null;
+        setPanelMoving(false);
+        if (!nextDrag?.moved) return;
+        const suppressClick = (click: MouseEvent) => {
+          click.preventDefault();
+          click.stopPropagation();
+        };
+        window.addEventListener("click", suppressClick, true);
+        window.setTimeout(() => {
+          window.removeEventListener("click", suppressClick, true);
+        }, 0);
+        const stored = nextDrag.lastPos;
+        writePanelSettings(layoutStoreId, { panelFloat: stored });
+        setPanelFloat(stored);
+      },
+    });
   };
 
   const persistDock = (corner: DockCorner) => {
     setDockCorner(corner);
-    setDockPos(
-      dockPosForCorner(corner, window.innerWidth, window.innerHeight),
-    );
-    writePanelSettings(panelId, { dockCorner: corner });
+    writePanelSettings(layoutStoreId, { dockSlot: corner });
   };
 
-  const onDockPointerDown = (
-    event: ReactPointerEvent<HTMLButtonElement>,
-  ) => {
+  const onDockPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
+    const hit = event.target;
+    if (
+      hit instanceof Element &&
+      hit.closest("input, textarea, [data-dock-search]")
+    ) {
+      return;
+    }
     const pointerId = event.pointerId;
+    const barEl = event.currentTarget;
     const origin = dockPosForCorner(
       dockCorner,
+      barWRef.current,
       window.innerWidth,
       window.innerHeight,
     );
     dockMovedRef.current = false;
-    const drag = {
+    dockDragRef.current = {
       pointerId,
       startX: event.clientX,
       startY: event.clientY,
@@ -392,67 +398,64 @@ export function usePanelWindow({
       originY: origin.y,
       moved: false,
     };
-    dockDragRef.current = drag;
 
-    try {
-      event.currentTarget.setPointerCapture(pointerId);
-    } catch {
-      /* already released */
-    }
-
-    const onMove = (ev: PointerEvent) => {
-      if (ev.pointerId !== pointerId) return;
-      const next = dockDragRef.current;
-      if (!next) return;
-      const dx = ev.clientX - next.startX;
-      const dy = ev.clientY - next.startY;
-      if (!next.moved && Math.hypot(dx, dy) < DOCK_DRAG_PX) return;
-      if (!next.moved) {
-        next.moved = true;
-        dockMovedRef.current = true;
-        setDockDragging(true);
-      }
-      ev.preventDefault();
-      setDockPos(
-        clampDockPos(
-          next.originX + dx,
-          next.originY + dy,
-          window.innerWidth,
-          window.innerHeight,
-        ),
-      );
-    };
-
-    const onUp = (ev: PointerEvent) => {
-      if (ev.pointerId !== pointerId) return;
-      window.removeEventListener("pointermove", onMove, true);
-      window.removeEventListener("pointerup", onUp, true);
-      window.removeEventListener("pointercancel", onUp, true);
-      const next = dockDragRef.current;
-      dockDragRef.current = null;
-      setDockDragging(false);
-      if (next?.moved) {
-        persistDock(
-          nearestDockCorner(
-            next.originX + (ev.clientX - next.startX),
-            next.originY + (ev.clientY - next.startY),
+    bindPointerDrag(pointerId, {
+      onMove(ev) {
+        const next = dockDragRef.current;
+        if (!next) return;
+        const dx = ev.clientX - next.startX;
+        const dy = ev.clientY - next.startY;
+        if (!next.moved && Math.hypot(dx, dy) < DOCK_DRAG_PX) return;
+        if (!next.moved) {
+          next.moved = true;
+          dockMovedRef.current = true;
+          setDockDragging(true);
+          try {
+            barEl.setPointerCapture(pointerId);
+          } catch {
+            /* already released */
+          }
+        }
+        ev.preventDefault();
+        setDockPos(
+          clampDockPos(
+            next.originX + dx,
+            next.originY + dy,
+            barWRef.current,
+            window.innerWidth,
+            window.innerHeight,
           ),
         );
-      }
-    };
-
-    window.addEventListener("pointermove", onMove, { capture: true });
-    window.addEventListener("pointerup", onUp, { capture: true });
-    window.addEventListener("pointercancel", onUp, { capture: true });
+      },
+      onEnd(ev) {
+        if (barEl.hasPointerCapture(pointerId)) {
+          barEl.releasePointerCapture(pointerId);
+        }
+        const next = dockDragRef.current;
+        dockDragRef.current = null;
+        setDockDragging(false);
+        if (!next?.moved) return;
+        setDockSnap(true);
+        const bw = barWRef.current;
+        persistDock(
+          nearestDockCorner(
+            ev.clientX - bw / 2,
+            ev.clientY - DOCK_BAR_H / 2,
+            bw,
+          ),
+        );
+      },
+    });
   };
 
-  const restPos = dockPosForCorner(dockCorner, viewportW, viewportH);
+  const restPos = dockPosForCorner(dockCorner, barW, viewportW, viewportH);
   const shownPos = dockDragging ? dockPos : restPos;
   const layoutCorner = dockDragging
-    ? nearestDockCorner(shownPos.x, shownPos.y, viewportW, viewportH)
+    ? nearestDockCorner(shownPos.x, shownPos.y, barW, viewportW, viewportH)
     : dockCorner;
   const dockRight = layoutCorner.endsWith("right");
   const dockBottom = layoutCorner.startsWith("bottom");
+  const dockCenter = layoutCorner.endsWith("center");
   const maxPanelH =
     panelFloat != null
       ? Math.max(PANEL_HEIGHT_MIN, viewportH - panelFloat.y - DOCK_INSET)
@@ -460,10 +463,18 @@ export function usePanelWindow({
   const frameW = clampPanelWidth(panelWidth, viewportW);
   const frameH =
     panelHeight == null ? null : clampPanelHeight(panelHeight, maxPanelH);
+  const dockedX = dockedPanelX(
+    layoutCorner,
+    shownPos.x,
+    barW,
+    frameW,
+    viewportW,
+  );
 
   return {
     panelFloat,
     dockDragging,
+    dockSnap,
     dockMovedRef,
     panelResizing,
     panelMoving,
@@ -471,7 +482,9 @@ export function usePanelWindow({
     layoutCorner,
     dockRight,
     dockBottom,
+    dockCenter,
     shownPos,
+    dockedX,
     maxPanelH,
     frameW,
     frameH,

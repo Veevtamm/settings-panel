@@ -1,8 +1,9 @@
 import { L, type Copy, type LocaleText } from "./locale";
-import { resolvePlaces, visitSectionKeys } from "./model";
+import { playerKeySet, resolvePlaces, visitSectionKeys } from "./model";
 import type { ParamEntry } from "./params";
 import type {
   EasingTarget,
+  PlayerSetting,
   SettingsGroup,
   SettingsLayer,
   SettingsPlace,
@@ -51,12 +52,15 @@ export type SchemaLintIssue = {
     | "row-without-default"
     | "empty-place"
     | "unknown-place"
-    | "row-without-control";
+    | "row-without-control"
+    | "player-key-row";
   message: string;
 };
 
 export type SchemaLintInput<TSettings> = {
   groups: readonly SettingsGroup<TSettings>[];
+  /** Dock players: number rows on their keys are hidden (phases live on the timeline). */
+  players?: readonly PlayerSetting<TSettings>[];
   defaultSettings?: TSettings;
   defaultOpenSections?: readonly string[];
   places?: readonly SettingsPlace<TSettings>[];
@@ -235,6 +239,21 @@ export function lintSettingsSchema<TSettings>(
           );
         });
       });
+    }
+  }
+
+  if (input.players && input.players.length > 0) {
+    const owned = playerKeySet(input.players);
+    for (const group of input.groups) {
+      for (const section of group.sections) {
+        for (const row of section.settings ?? []) {
+          if (!owned.has(row.key)) continue;
+          push(
+            "player-key-row",
+            `row "${String(row.key)}" in group "${group.id}" duplicates a timeline clip — the panel hides it; drop the row and keep the phase on the dock`,
+          );
+        }
+      }
     }
   }
 

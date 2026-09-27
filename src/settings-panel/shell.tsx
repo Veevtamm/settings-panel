@@ -41,16 +41,17 @@ import { cn } from "../lib/utils";
 import {
   CHEVRON_MS,
   CURVE_SIZE,
-  DOCK_BTN,
+  DOCK_BAR_H,
+  DOCK_BAR_PAD,
   EASE_OUT,
   FIELD,
-  GAP_IN,
   GLASS,
   ICON,
   MUTED,
   PANEL_DOCK_GAP,
   PANEL_ENTER_MS,
   PANEL_EXIT_MS,
+  DOCK_SEARCH_W,
   PANEL_HEIGHT_MIN,
   PANEL_MOVE_EDGE,
   PANEL_RESIZE_HIT,
@@ -58,12 +59,15 @@ import {
   SECTION_MS,
   SNAPSHOT_SLOTS,
   SUBSECTION_DRAG_PX,
+  dockBarButtonClass,
   SUBSECTION_HEADER_PX,
   fieldChrome,
+  fieldValueSans,
   pickActive,
   pickEase,
   pickIdle,
   pickerChrome,
+  pointerHeld,
 } from "./chrome";
 import {
   applyLiftTransform,
@@ -71,7 +75,9 @@ import {
   clampLiftY,
   collectGroupKeys,
   collectPlayerKeys,
+  filterEasingTargetsBySearch,
   filterGroupsByPlace,
+  filterGroupsBySearch,
   formatAgentDefaultsCopy,
   formatSettingCopyValue,
   insertIndexFromClientY,
@@ -80,6 +86,7 @@ import {
   moveTitleToIndex,
   PANEL_SECTION_ID,
   PLACE_SECTION_ID,
+  PRESETS_SECTION_ID,
   DEFAULT_PINNED_SECTIONS,
   playListFlip,
   readEasings,
@@ -91,17 +98,22 @@ import {
   visitSectionKeys,
   withoutRetiredSectionIds,
   closeOpenPlayers,
+  omitPlayerKeyRows,
+  omitSectionPlayers,
   resolvePlaces,
+  playerKeySet,
   type LiftSize,
   type LiftXy,
 } from "./model";
 import { lintSettingsSchema, reportSettingsSchemaLint } from "./schema-lint";
 import { BezierCoordsRow } from "./bezier-coords";
+import { TimelineToggleButton } from "./timeline";
 import { FieldButton, SettingToggle } from "./fields";
 import { useCopyFlash } from "./use-copy-flash";
 import { EasingPlayheadGate } from "./easing-playhead";
 import { copyKey, PANEL_COPY, tx, type PanelLocale } from "./locale";
-import { SettingPlayer, patchPlayerClips } from "./player";
+import { SettingPlayer } from "./setting-player";
+import { patchPlayerClips, playerSegments } from "./player";
 import {
   PlaceClearButton,
   PlaceHoverLayer,
@@ -109,7 +121,8 @@ import {
   placeParamCount,
   usePlacesPicker,
 } from "./places";
-import { usePanelWindow } from "./use-panel-window";
+import { usePanelWindow, readLastDockBarW, writeLastDockBarW } from "./use-panel-window";
+import { useChromeVisible } from "./use-chrome-visible";
 import { RowLabel, SectionCollapse, useDeferredMount } from "./row";
 import { SectionIconPicker } from "./icon-picker";
 import {
@@ -655,23 +668,12 @@ export function DockCountBadge({ count }: { count: number }) {
   );
 }
 
-export function ToolbarButton({
-  className,
-  children,
-  ...props
-}: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function DockBarDivider() {
   return (
-    <button
-      type="button"
-      className={cn(
-        "inline-flex h-[28px] items-center justify-center gap-1 rounded-md border border-[color:var(--sp-line)] px-2 text-[12px] font-sans backdrop-blur-[8px] outline-none transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:border-[color:var(--sp-line-hover)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] focus-visible:border-[color:var(--sp-line-focus)] focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-mid)] active:scale-[0.97]",
-        className,
-      )}
-      style={{ background: GLASS, color: MUTED }}
-      {...props}
-    >
-      {children}
-    </button>
+    <span
+      aria-hidden
+      className="mx-0.5 h-5 w-px shrink-0 bg-[color:var(--sp-section-line)]"
+    />
   );
 }
 
@@ -692,15 +694,7 @@ export function DockFoldButton({
         locale,
       )}
       onClick={onToggle}
-      className={cn(
-        "inline-flex size-[34px] shrink-0 items-center justify-center rounded-md border px-0",
-        "font-sans backdrop-blur-[8px] outline-none",
-        "transition-[border-color,background-color,color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
-        "border-[color:var(--sp-line)] hover:border-[color:var(--sp-line-hover)] hover:bg-[color:var(--sp-fill-hover)]",
-        "focus-visible:border-[color:var(--sp-line-focus)] focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-mid)]",
-        "active:scale-[0.97]",
-      )}
-      style={{ background: GLASS, color: MUTED }}
+      className={dockBarButtonClass()}
     >
       <SfSymbol
         name={
@@ -710,6 +704,91 @@ export function DockFoldButton({
         }
       />
     </button>
+  );
+}
+
+function DockSearchField({
+  open,
+  query,
+  locale,
+  onOpen,
+  onQuery,
+  onClose,
+}: {
+  open: boolean;
+  query: string;
+  locale: PanelLocale;
+  onOpen: () => void;
+  onQuery: (value: string) => void;
+  onClose: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (open) inputRef.current?.focus();
+  }, [open]);
+  if (!open) {
+    return (
+      <button
+        type="button"
+        aria-expanded={false}
+        aria-label={tx(PANEL_COPY.openSearch, locale)}
+        className={dockBarButtonClass()}
+        onClick={onOpen}
+      >
+        <SfSymbol name="search" className="size-5" />
+      </button>
+    );
+  }
+  return (
+    <div
+      data-dock-search=""
+      className={cn(
+        "relative flex h-[34px] shrink-0 items-center overflow-hidden rounded",
+        fieldChrome,
+      )}
+      style={{ width: DOCK_SEARCH_W, background: FIELD }}
+    >
+      {query ? null : (
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute left-2.5 truncate",
+            fieldValueSans,
+          )}
+          style={{ color: "var(--sp-fg)", opacity: 0.4 }}
+        >
+          {tx(PANEL_COPY.searchPlaceholder, locale)}
+        </span>
+      )}
+      <input
+        ref={inputRef}
+        type="search"
+        value={query}
+        aria-label={tx(PANEL_COPY.searchField, locale)}
+        autoComplete="off"
+        className={cn(
+          "h-full w-full bg-transparent pr-8 pl-2.5 text-[color:var(--sp-fg)] outline-none",
+          "[&::-webkit-search-cancel-button]:hidden",
+          fieldValueSans,
+        )}
+        onChange={(event) => onQuery(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key !== "Escape") return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (query) onQuery("");
+          else onClose();
+        }}
+      />
+      <button
+        type="button"
+        aria-label={tx(PANEL_COPY.closeSearch, locale)}
+        className="absolute right-0.5 inline-flex size-7 items-center justify-center rounded text-[color:var(--sp-muted)] fine-hover:hover:text-[color:var(--sp-fg)]"
+        onClick={onClose}
+      >
+        <SfSymbol name="x" className="size-5" />
+      </button>
+    </div>
   );
 }
 
@@ -782,7 +861,7 @@ export function SettingsPanel<TSettings>(props: SettingsPanelProps<TSettings>) {
 }
 
 export function SettingsPanelImpl<TSettings>({
-  defaultOpenSections = ["bezier", "timings"],
+  defaultOpenSections = ["timings"],
   easingTargets = [],
   easingPresetExtras = [],
   curveSection,
@@ -795,6 +874,7 @@ export function SettingsPanelImpl<TSettings>({
   defaultSettings,
   dockExtra,
   defaultDockCorner,
+  layoutPanelId,
   places = NO_PLACES as readonly SettingsPlace<TSettings>[],
   onSettingsChange,
   panelId,
@@ -802,14 +882,18 @@ export function SettingsPanelImpl<TSettings>({
   settings,
   groups,
   storageLabel,
-  shortcut = true,
+  shortcut = false,
+  hideShortcut = true,
   players = [],
+  enabled = true,
+  hideBelow,
 }: SettingsPanelProps<TSettings>) {
   useEffect(() => {
     reportSettingsSchemaLint(
       panelId,
       lintSettingsSchema({
         groups,
+        players,
         defaultSettings,
         defaultOpenSections,
         places,
@@ -819,13 +903,18 @@ export function SettingsPanelImpl<TSettings>({
   }, [
     panelId,
     groups,
+    players,
     defaultSettings,
     defaultOpenSections,
     places,
     easingTargets,
   ]);
 
+  const chromeVisible = useChromeVisible(enabled, hideBelow);
+
   const [panelOpen, setPanelOpen] = useState(false);
+  /** One window, two views: scene sections or Panel Settings (gear in the Dock Bar). */
+  const [panelView, setPanelView] = useState<"scene" | "settings">("scene");
   const [panelInstant, setPanelInstant] = useState(false);
   const [windowHost, setWindowHost] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
@@ -948,22 +1037,37 @@ export function SettingsPanelImpl<TSettings>({
   // With defaults known, Reset/Copy only make sense when something changed.
   const dockActionsVisible =
     panelOpen && (defaultSettings == null || changedCount > 0);
-  const extraDockCount =
-    (panelOpen ? 1 + (resolvedPlaces.length > 0 ? 1 : 0) : 0) + (dockExtra ? 1 : 0);
-  const extraShift =
-    dockActionsVisible && onReset
-      ? (DOCK_BTN + GAP_IN) * (defaultSettings != null ? 2 : 1)
-      : 0;
+  const layoutStoreId = layoutPanelId ?? panelId;
+  const barRef = useRef<HTMLDivElement>(null);
+  const [barW, setBarW] = useState(
+    () => readLastDockBarW(layoutStoreId) ?? DOCK_BAR_H,
+  );
+  useLayoutEffect(() => {
+    const bar = barRef.current;
+    if (!bar) return;
+    const measure = () => {
+      const width = bar.offsetWidth;
+      writeLastDockBarW(layoutStoreId, width);
+      setBarW(width);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, [chromeVisible, layoutStoreId]);
   const {
     panelFloat,
     dockDragging,
+    dockSnap,
     dockMovedRef,
     panelResizing,
     panelMoving,
     layoutCorner,
     dockRight,
     dockBottom,
+    dockCenter,
     shownPos,
+    dockedX,
     viewportH,
     maxPanelH,
     frameW,
@@ -973,9 +1077,10 @@ export function SettingsPanelImpl<TSettings>({
     onDockPointerDown,
   } = usePanelWindow({
     panelId,
+    layoutPanelId,
     legacyPanelIds,
     defaultDockCorner,
-    dockStackH: DOCK_BTN + extraShift + extraDockCount * (DOCK_BTN + GAP_IN),
+    barW,
   });
 
   const copyChangedSettings = async () => {
@@ -1228,6 +1333,11 @@ export function SettingsPanelImpl<TSettings>({
     );
   };
 
+  const saveCurrentToPreset = () => {
+    const empty = snapshots.findIndex((slot) => slot == null);
+    saveSnapshot(empty >= 0 ? empty : (activeSnapshot ?? 0));
+  };
+
   const applySnapshot = (index: number) => {
     const snap = snapshots[index];
     if (snap == null) return;
@@ -1267,12 +1377,24 @@ export function SettingsPanelImpl<TSettings>({
     }
     return next;
   });
+  const [curveRequested, setCurveRequested] = useState(() => {
+    const group = readPanelSettings(panelId, legacyPanelIds).lastEdited?.group;
+    return group === "bezier" || group === "curves";
+  });
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const closeSearch = () => {
+    setSearchOpen(false);
+    setSearchQuery("");
+  };
   const { pickPlace, setPickPlace, placeId, selectedPlace, applyPlace } =
     usePlacesPicker({
       places: resolvedPlaces,
       groups,
       onSelectPlace: () => {
+        closeSearch();
         setPanelInstant(true);
+        setPanelView("scene");
         setPanelOpen(true);
         setOpenSections((prev) => new Set(prev).add(PLACE_SECTION_ID));
       },
@@ -1302,7 +1424,7 @@ export function SettingsPanelImpl<TSettings>({
   }, [panelOpen, setPickPlace]);
   const [panelTheme, setPanelTheme] = useState<"dark" | "light">("dark");
   const [locale, setLocale] = useState<PanelLocale>("ru");
-  const [reorderSections, setReorderSections] = useState(false);
+  const [reorderSections] = useState(false);
   const [sectionOrder, setSectionOrder] = useState<string[]>([]);
   const sectionOrderRef = useRef(sectionOrder);
   const [pinnedSections, setPinnedSections] = useState<string[]>([
@@ -1373,19 +1495,32 @@ export function SettingsPanelImpl<TSettings>({
     skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
 
+  const groupsForPanel = useMemo(
+    () =>
+      players.length > 0
+        ? omitPlayerKeyRows(omitSectionPlayers(groups), players)
+        : groups,
+    [groups, players],
+  );
+  const searchQueryActive = searchOpen && searchQuery.trim().length > 0;
   const filteredGroups =
     selectedPlace != null
       ? filterGroupsByPlace(
-          groups,
+          groupsForPanel,
           new Set(selectedPlace.keys ?? []),
           selectedPlace.id,
         )
-      : groups;
+      : searchQueryActive
+        ? filterGroupsBySearch(groupsForPanel, searchQuery)
+        : groupsForPanel;
   const rowIndex = indexRowsByKey(groups);
   const placeEasingIds = selectedPlace?.easingIds ?? [];
+  const searchedEasing = searchQueryActive
+    ? filterEasingTargetsBySearch(easingTargets, searchQuery)
+    : null;
   const visibleEasingTargets =
     selectedPlace == null
-      ? easingTargets
+      ? (searchedEasing ?? easingTargets)
       : easingTargets.filter((target) => placeEasingIds.includes(target.id));
   useEffect(() => {
     const allowed =
@@ -1405,17 +1540,21 @@ export function SettingsPanelImpl<TSettings>({
     ({ x1: 0.22, y1: 1, x2: 0.36, y2: 1 } satisfies CubicBezier);
   const easingPreset = matchEasingPreset(activeEasing, easingPresetExtras);
   const presetOptions = easingPresetOptions(easingPresetExtras);
-  const showEasingEditor = easingTargets.length > 0;
+  const showEasingEditor = easingTargets.length > 0 && curveRequested;
   const showPlotSection = Boolean(curveSection);
   const renderPlotSection =
-    showPlotSection && (selectedPlace == null || Boolean(selectedPlace.includeCurve));
-  const renderEasingEditor = visibleEasingTargets.length > 0;
+    showPlotSection &&
+    (selectedPlace == null || Boolean(selectedPlace.includeCurve)) &&
+    (searchedEasing == null || searchedEasing.length > 0);
+  const renderEasingEditor =
+    visibleEasingTargets.length > 0 &&
+    (curveRequested || (searchedEasing != null && searchedEasing.length > 0));
 
   const easingSectionId = showPlotSection ? "curves" : "bezier";
   const allSectionIds = [
     ...(showPlotSection ? ["bezier"] : []),
     ...(showEasingEditor ? [easingSectionId] : []),
-    ...groups.map((group) => group.id),
+    ...groupsForPanel.map((group) => group.id),
     PANEL_SECTION_ID,
   ];
   const orderedSectionIds = mergeChromeSectionOrder(
@@ -1570,11 +1709,15 @@ export function SettingsPanelImpl<TSettings>({
       legacyPanelKey ? legacyPanelKey.split("\0") : [],
     );
     const parsed = parsePanelSettingsObject(raw);
-    if (parsed.theme) setPanelTheme(parsed.theme);
-    if (parsed.locale) setLocale(parsed.locale);
-    if (parsed.reorderSections != null) {
-      setReorderSections(parsed.reorderSections);
-    }
+    const chrome = layoutPanelId
+      ? parsePanelSettingsObject(
+          readMigratedPanelUi(layoutPanelId, ":panel-settings", []),
+        )
+      : parsed;
+    const theme = chrome.theme ?? parsed.theme;
+    const nextLocale = chrome.locale ?? parsed.locale;
+    if (theme) setPanelTheme(theme);
+    if (nextLocale) setLocale(nextLocale);
     if (parsed.sectionOrder) {
       setSectionOrder(withoutRetiredSectionIds(parsed.sectionOrder));
     }
@@ -1607,12 +1750,12 @@ export function SettingsPanelImpl<TSettings>({
 
   const persistPanelTheme = (value: "dark" | "light") => {
     setPanelTheme(value);
-    writePanelTheme(panelId, value);
+    writePanelTheme(layoutStoreId, value);
   };
 
   const persistLocale = (value: PanelLocale) => {
     setLocale(value);
-    writePanelLocale(panelId, value);
+    writePanelLocale(layoutStoreId, value);
   };
 
   const persistSectionIcon = (
@@ -1684,22 +1827,6 @@ export function SettingsPanelImpl<TSettings>({
   const curveTitle = tx(curveSectionTitle ?? PANEL_COPY.bezierCurve, locale);
   const easingTitle = tx(easingSectionTitle ?? PANEL_COPY.easingCurves, locale);
 
-  const persistReorderSections = (value: boolean) => {
-    setReorderSections(value);
-    if (value) {
-      setOpenSections((prev) => {
-        const next = new Set(prev);
-        for (const id of allSectionIds) {
-          if (id !== PANEL_SECTION_ID) next.delete(id);
-        }
-        next.add(PANEL_SECTION_ID);
-        if (placeId) next.add(PLACE_SECTION_ID);
-        return next;
-      });
-    }
-    writePanelSettings(panelId, { reorderSections: value });
-  };
-
   useEffect(() => {
     if (!draggingSection && !draggingSubsection) return;
     const root = document.documentElement;
@@ -1715,6 +1842,10 @@ export function SettingsPanelImpl<TSettings>({
 
     const onMove = (event: PointerEvent) => {
       if (event.pointerId !== drag.pointerId) return;
+      if (!pointerHeld(event)) {
+        onUp(event);
+        return;
+      }
       const dx = event.clientX - drag.startX;
       const dy = event.clientY - drag.startY;
       if (
@@ -1866,12 +1997,16 @@ export function SettingsPanelImpl<TSettings>({
     const canonicalIds = () => [
       ...(showPlotSection ? ["bezier"] : []),
       ...(showEasingEditor ? [easingSectionId] : []),
-      ...groups.map((group) => group.id),
+      ...groupsForPanel.map((group) => group.id),
       PANEL_SECTION_ID,
     ];
 
     const onMove = (event: PointerEvent) => {
       if (event.pointerId !== drag.pointerId) return;
+      if (!pointerHeld(event)) {
+        onUp(event);
+        return;
+      }
       const dx = event.clientX - drag.startX;
       const dy = event.clientY - drag.startY;
       if (!drag.moved && Math.hypot(dx, dy) < SUBSECTION_DRAG_PX) return;
@@ -1960,7 +2095,7 @@ export function SettingsPanelImpl<TSettings>({
   }, [
     draggingSection,
     easingSectionId,
-    groups,
+    groupsForPanel,
     openSections,
     panelId,
     showEasingEditor,
@@ -1986,15 +2121,53 @@ export function SettingsPanelImpl<TSettings>({
     if (first) setActiveEasingId(first);
   }, [activeEasingId, placeId, easingTargets]);
 
+  const groupsRef = useRef(groups);
+  groupsRef.current = groups;
+  const playersRef = useRef(players);
+  playersRef.current = players;
+  const dockPlayerKey = players
+    .map((item) => item.controller.id)
+    .join("\0");
+  const [timelineOpen, setTimelineOpen] = useState(false);
+  /** ⌘S: the whole dock is out of the way (not persisted — a reload brings it back). */
+  const [dockHidden, setDockHidden] = useState(false);
+  const dockHiddenRef = useRef(false);
+
+  const closeDockPlayers = () => {
+    for (const item of playersRef.current) {
+      if (item.controller.getState().open) item.controller.setOpen(false);
+    }
+  };
+
+  const openDockTimeline = () => {
+    const list = playersRef.current;
+    const first = list[0];
+    if (!first) return;
+    for (const item of list) {
+      if (
+        item.controller !== first.controller &&
+        item.controller.getState().open
+      ) {
+        item.controller.setOpen(false);
+      }
+    }
+    first.controller.setOpen(true);
+  };
+
   useEffect(() => {
     const onFocus = (event: Event) => {
       if (!(event instanceof CustomEvent)) return;
       const detail = event.detail as PanelFocusDetail | undefined;
       if (detail?.panelId !== panelId) return;
+      closeDockPlayers();
       setPanelInstant(true);
+      setPanelView("scene");
       setPanelOpen(true);
       const group =
         detail.group ?? (detail.easingId ? easingSectionId : undefined);
+      if (detail.easingId || group === "bezier" || group === "curves") {
+        setCurveRequested(true);
+      }
       if (group) {
         setOpenSections((prev) => new Set(prev).add(group));
       }
@@ -2022,7 +2195,9 @@ export function SettingsPanelImpl<TSettings>({
       }
 
       event.preventDefault();
+      closeDockPlayers();
       setPanelInstant(true);
+      setPanelView("scene");
       setPanelOpen((open) => !open);
     };
 
@@ -2030,15 +2205,58 @@ export function SettingsPanelImpl<TSettings>({
     return () => window.removeEventListener("keydown", onKey);
   }, [shortcut]);
 
-  const groupsRef = useRef(groups);
-  groupsRef.current = groups;
+  useEffect(() => {
+    if (!hideShortcut || !chromeVisible) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey && event.code === "KeyS")) return;
+      if (event.altKey || event.ctrlKey || event.shiftKey) return;
+      const target = event.target;
+      if (
+        target instanceof HTMLElement &&
+        target.closest("input, textarea, select, [contenteditable=true]")
+      ) {
+        return;
+      }
+      event.preventDefault();
+      const hide = !dockHiddenRef.current;
+      dockHiddenRef.current = hide;
+      if (hide) {
+        closeDockPlayers();
+        setPanelOpen(false);
+      }
+      setDockHidden(hide);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [hideShortcut, chromeVisible]);
+
   useEffect(() => {
     if (panelOpen) return;
-    closeOpenPlayers(groupsRef.current);
+    closeOpenPlayers(
+      groupsRef.current,
+      new Set(playersRef.current.map((item) => item.controller)),
+    );
   }, [panelOpen]);
 
+  useEffect(() => {
+    const list = playersRef.current;
+    const sync = () =>
+      setTimelineOpen(
+        list.some((item) => item.controller.getState().open),
+      );
+    sync();
+    if (list.length === 0) return;
+    const unsubs = list.map((item) =>
+      item.controller.subscribe((state) => {
+        sync();
+        if (state.open) setPanelOpen(false);
+      }),
+    );
+    return () => unsubs.forEach((unsub) => unsub());
+  }, [dockPlayerKey]);
+
   const sectionVisible = (sectionId: string) => {
-    if (sectionId === PANEL_SECTION_ID) return true;
+    if (sectionId === PANEL_SECTION_ID) return false;
     if (selectedPlace != null) return false;
     if (sectionId === "bezier") {
       return showPlotSection ? renderPlotSection : renderEasingEditor;
@@ -2046,8 +2264,25 @@ export function SettingsPanelImpl<TSettings>({
     if (sectionId === "curves") return renderEasingEditor;
     return filteredGroups.some((group) => group.id === sectionId);
   };
+  const sceneOpen = panelOpen && panelView === "scene";
+  const togglePanelView = (view: "scene" | "settings") => {
+    setPanelInstant(false);
+    if (panelOpen && panelView === view) {
+      setPanelOpen(false);
+      return;
+    }
+    if (!panelOpen) closeDockPlayers();
+    if (view === "settings") {
+      setPickPlace(false);
+      closeSearch();
+    }
+    setPanelView(view);
+    setPanelOpen(true);
+  };
   const panelScroll =
     "overflow-y-auto overscroll-y-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+
+  if (!chromeVisible) return null;
 
   return (
     <div
@@ -2059,174 +2294,175 @@ export function SettingsPanelImpl<TSettings>({
         "pointer-events-auto fixed z-[100] font-sans text-left",
         dockDragging && "select-none",
       )}
+      aria-hidden={dockHidden || undefined}
       style={{
         top: shownPos.y,
         left: shownPos.x,
+        opacity: dockHidden ? 0 : 1,
+        visibility: dockHidden ? "hidden" : "visible",
         ...(dockDragging || skipPanelMotion
           ? {}
           : {
-              transitionProperty: "top, left",
+              transitionProperty: dockSnap
+                ? "top, left"
+                : "opacity, visibility",
               transitionDuration: `${PANEL_ENTER_MS}ms`,
               transitionTimingFunction: EASE_OUT,
             }),
       }}
     >
       <div className="relative flex flex-col items-start">
-        <div className="relative z-10">
-          <div className="relative">
-            <ToolbarButton
-              id={`${panelId}-trigger`}
-              aria-expanded={panelOpen}
-              aria-controls={panelId}
-              aria-keyshortcuts={shortcut ? "Meta+M" : undefined}
-              aria-label={
-                panelOpen
-                  ? tx(PANEL_COPY.closePanel, locale)
-                  : changedCount > 0
-                    ? tx(PANEL_COPY.openPanelChanged(changedCount), locale)
-                    : tx(PANEL_COPY.openPanel, locale)
-              }
-              className={cn(
-                "size-[34px] shrink-0 touch-none px-0",
-                dockDragging && "cursor-grabbing active:scale-100",
-              )}
-              onPointerDown={onDockPointerDown}
-              onClick={() => {
-                if (dockMovedRef.current) return;
-                setPanelInstant(false);
-                setPanelOpen((open) => !open);
-              }}
-            >
-              <SfSymbol
-                name={panelOpen ? "x" : "settings"}
-                className="size-5"
-              />
-            </ToolbarButton>
+        <div
+          ref={barRef}
+          data-dock-bar=""
+          className="relative z-10 flex items-center gap-1 rounded-lg border border-[color:var(--sp-line)] backdrop-blur-[8px] touch-none"
+          style={{ background: GLASS, padding: DOCK_BAR_PAD }}
+          onPointerDown={onDockPointerDown}
+        >
+          <button
+            type="button"
+            aria-expanded={panelOpen && panelView === "settings"}
+            aria-controls={panelId}
+            aria-label={tx(
+              panelOpen && panelView === "settings"
+                ? PANEL_COPY.closePanelSettings
+                : PANEL_COPY.openPanelSettings,
+              locale,
+            )}
+            className={cn(
+              dockBarButtonClass(panelOpen && panelView === "settings"),
+              dockDragging && "cursor-grabbing active:scale-100",
+            )}
+            onClick={() => {
+              if (dockMovedRef.current) return;
+              togglePanelView("settings");
+            }}
+          >
+            <SfSymbol name="settings" className="size-5" />
+          </button>
+          <DockBarDivider />
+          <button
+            type="button"
+            id={`${panelId}-trigger`}
+            aria-expanded={panelOpen && panelView === "scene"}
+            aria-controls={panelId}
+            aria-keyshortcuts={shortcut ? "Meta+M" : undefined}
+            aria-label={
+              panelOpen && panelView === "scene"
+                ? tx(PANEL_COPY.closePanel, locale)
+                : changedCount > 0
+                  ? tx(PANEL_COPY.openPanelChanged(changedCount), locale)
+                  : tx(PANEL_COPY.openPanel, locale)
+            }
+            className={cn(
+              dockBarButtonClass(panelOpen && panelView === "scene"),
+              dockDragging && "cursor-grabbing active:scale-100",
+            )}
+            onClick={() => {
+              if (dockMovedRef.current) return;
+              togglePanelView("scene");
+            }}
+          >
+            <SfSymbol name="sliders-horizontal" className="size-5" />
             <DockCountBadge count={panelOpen ? 0 : changedCount} />
-          </div>
-
-          {extraDockCount > 0 ? (
-            <div
-              className={cn(
-                "absolute left-0 flex",
-                dockBottom ? "flex-col-reverse" : "flex-col",
-                !skipPanelMotion && "transition-transform will-change-transform",
-              )}
-              style={{
-                gap: GAP_IN,
-                ...(dockBottom
-                  ? {
-                      bottom: `calc(100% + ${GAP_IN}px)`,
-                      top: "auto",
-                      transform: `translateY(${-extraShift}px)`,
-                    }
-                  : {
-                      top: `calc(100% + ${GAP_IN}px)`,
-                      transform: `translateY(${extraShift}px)`,
-                    }),
-                ...(skipPanelMotion
-                  ? {}
-                  : {
-                      transitionDuration: panelOpen
-                        ? `${PANEL_ENTER_MS}ms`
-                        : `${PANEL_EXIT_MS}ms`,
-                      transitionTimingFunction: EASE_OUT,
-                    }),
+          </button>
+          {players.length > 0 ? (
+            <TimelineToggleButton
+              open={timelineOpen}
+              locale={locale}
+              onToggle={() => {
+                if (timelineOpen) {
+                  closeDockPlayers();
+                  return;
+                }
+                setPanelInstant(false);
+                setPanelOpen(false);
+                openDockTimeline();
               }}
-            >
-              {panelOpen ? (
-                <DockFoldButton
-                  collapse={canCollapseAll}
-                  locale={locale}
-                  onToggle={toggleFoldAll}
-                />
-              ) : null}
-              {panelOpen && resolvedPlaces.length > 0 ? (
-                <PlacePointerButton
-                  active={pickPlace}
-                  locale={locale}
-                  onToggle={() => setPickPlace((on) => !on)}
-                />
-              ) : null}
+            />
+          ) : null}
+          {sceneOpen && resolvedPlaces.length > 0 ? (
+            <PlacePointerButton
+              active={pickPlace}
+              locale={locale}
+              onToggle={() => {
+                closeSearch();
+                setPickPlace((on) => !on);
+              }}
+            />
+          ) : null}
+          {dockExtra ? (
+            <div data-dock-extra="" className="contents">
               {dockExtra}
             </div>
           ) : null}
-
-          {onReset ? (
-            <div
-              className={cn(
-                "absolute left-0 z-[1]",
-                dockBottom ? "bottom-full mb-2" : "top-full mt-2",
-                skipPanelMotion
-                  ? dockActionsVisible
-                    ? "opacity-100"
-                    : "pointer-events-none opacity-0"
-                  : cn(
-                      "transition-[opacity,transform] will-change-[opacity,transform]",
-                      dockActionsVisible
-                        ? "translate-y-0 scale-100 opacity-100"
-                        : dockBottom
-                          ? "pointer-events-none translate-y-1 scale-[0.98] opacity-0"
-                          : "pointer-events-none -translate-y-1 scale-[0.98] opacity-0",
-                    ),
-              )}
-              style={
-                skipPanelMotion
-                  ? undefined
-                  : {
-                      transitionDuration: dockActionsVisible
-                        ? `${PANEL_ENTER_MS}ms`
-                        : `${PANEL_EXIT_MS}ms`,
-                      transitionTimingFunction: EASE_OUT,
-                    }
-              }
-              inert={dockActionsVisible ? undefined : true}
-            >
-              <div
-                className={cn(
-                  "flex gap-2",
-                  dockBottom ? "flex-col-reverse" : "flex-col",
-                )}
-              >
-                <ToolbarButton
-                  aria-label={
-                    changedCount > 0
-                      ? tx(PANEL_COPY.resetSettings(changedCount), locale)
-                      : tx(PANEL_COPY.resetSettings(0), locale)
+          <DockBarDivider />
+          {dockActionsVisible && onReset ? (
+            <>
+              <button
+                type="button"
+                aria-label={tx(PANEL_COPY.resetSettings(changedCount), locale)}
+                className={dockBarButtonClass()}
+                onClick={() => {
+                  if (Object.keys(sectionIcons).length > 0) {
+                    setSectionIcons({});
+                    writePanelSettings(panelId, { sectionIcons: {} });
                   }
-                  className="size-[34px] shrink-0 px-0"
-                  onClick={() => {
-                    if (Object.keys(sectionIcons).length > 0) {
-                      setSectionIcons({});
-                      writePanelSettings(panelId, { sectionIcons: {} });
-                    }
-                    onReset();
-                  }}
+                  onReset();
+                }}
+              >
+                <SfSymbol name="eraser" className="size-5" />
+              </button>
+              {defaultSettings != null ? (
+                <button
+                  type="button"
+                  aria-label={
+                    copiedChanges
+                      ? tx(PANEL_COPY.copyDefaultsDone, locale)
+                      : tx(PANEL_COPY.copyDefaults(changedCount), locale)
+                  }
+                  className={dockBarButtonClass()}
+                  onClick={copyChangedSettings}
                 >
-                  <SfSymbol name="eraser" className="size-5" />
-                </ToolbarButton>
-                {defaultSettings != null ? (
-                  <div className="relative">
-                    <ToolbarButton
-                      aria-label={
-                        copiedChanges
-                          ? tx(PANEL_COPY.copyDefaultsDone, locale)
-                          : tx(PANEL_COPY.copyDefaults(changedCount), locale)
-                      }
-                      className="size-[34px] shrink-0 px-0"
-                      onClick={copyChangedSettings}
-                    >
-                      <SfSymbol
-                        name={copiedChanges ? "check" : "file"}
-                        className="size-5"
-                      />
-                    </ToolbarButton>
-                    <DockCountBadge count={changedCount} />
-                  </div>
-                ) : null}
-              </div>
-            </div>
+                  <SfSymbol
+                    name={copiedChanges ? "check" : "file"}
+                    className="size-5"
+                  />
+                  <DockCountBadge count={changedCount} />
+                </button>
+              ) : null}
+            </>
           ) : null}
+          {sceneOpen ? (
+            <DockFoldButton
+              collapse={canCollapseAll}
+              locale={locale}
+              onToggle={toggleFoldAll}
+            />
+          ) : null}
+          <DockSearchField
+            open={searchOpen}
+            query={searchQuery}
+            locale={locale}
+            onOpen={() => {
+              applyPlace(null);
+              setPickPlace(false);
+              setSearchOpen(true);
+              if (panelOpen && panelView === "settings") {
+                setPanelView("scene");
+              }
+            }}
+            onQuery={(value) => {
+              setSearchQuery(value);
+              if (!value.trim()) return;
+              applyPlace(null);
+              setPickPlace(false);
+              closeDockPlayers();
+              setPanelView("scene");
+              setPanelOpen(true);
+            }}
+            onClose={closeSearch}
+          />
         </div>
 
         {(() => {
@@ -2247,12 +2483,16 @@ export function SettingsPanelImpl<TSettings>({
             "fixed",
             panelFloat == null
               ? dockBottom
-                ? dockRight
-                  ? "origin-bottom-right"
-                  : "origin-bottom-left"
-                : dockRight
-                  ? "origin-top-right"
-                  : "origin-top-left"
+                ? dockCenter
+                  ? "origin-bottom"
+                  : dockRight
+                    ? "origin-bottom-right"
+                    : "origin-bottom-left"
+                : dockCenter
+                  ? "origin-top"
+                  : dockRight
+                    ? "origin-top-right"
+                    : "origin-top-left"
               : "origin-center",
             skipPanelMotion
               ? panelOpen
@@ -2261,10 +2501,10 @@ export function SettingsPanelImpl<TSettings>({
               : cn(
                   "transition-[opacity,transform] will-change-[opacity,transform]",
                   panelOpen
-                    ? "translate-x-0 scale-100 opacity-100"
-                    : dockRight
-                      ? "pointer-events-none translate-x-1.5 scale-[0.98] opacity-0"
-                      : "pointer-events-none -translate-x-1.5 scale-[0.98] opacity-0",
+                    ? "translate-y-0 scale-100 opacity-100"
+                    : dockBottom
+                      ? "pointer-events-none translate-y-1.5 scale-[0.98] opacity-0"
+                      : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0",
                 ),
             (panelResizing || panelMoving) && "select-none",
             panelMoving && "cursor-grabbing",
@@ -2284,13 +2524,13 @@ export function SettingsPanelImpl<TSettings>({
                   margin: 0,
                 }
               : {
-                  left: dockRight
-                    ? shownPos.x - PANEL_DOCK_GAP - frameW
-                    : shownPos.x + DOCK_BTN + PANEL_DOCK_GAP,
-                  top: dockBottom ? "auto" : shownPos.y,
+                  left: dockedX,
+                  top: dockBottom
+                    ? "auto"
+                    : shownPos.y + DOCK_BAR_H + PANEL_DOCK_GAP,
                   right: "auto",
                   bottom: dockBottom
-                    ? viewportH - shownPos.y - DOCK_BTN
+                    ? viewportH - shownPos.y + PANEL_DOCK_GAP
                     : "auto",
                   margin: 0,
                 }),
@@ -2319,16 +2559,8 @@ export function SettingsPanelImpl<TSettings>({
                 label={tx(player.label, locale)}
                 locale={locale}
                 total={Number(settings[player.totalKey])}
-                segments={player.phases.map((phase) => ({
-                  caption: tx(phase.caption, locale),
-                  kind: phase.kind,
-                  max: phase.max,
-                  value: Number(settings[phase.key]),
-                  start:
-                    phase.startKey != null
-                      ? Number(settings[phase.startKey])
-                      : undefined,
-                }))}
+                totalAuto={player.totalAuto}
+                segments={playerSegments(player, settings, locale)}
                 min={player.min}
                 step={player.step}
                 unit={player.unit}
@@ -2342,14 +2574,7 @@ export function SettingsPanelImpl<TSettings>({
                   );
                 }}
                 {...rowDotForKeys(
-                  [
-                    player.totalKey,
-                    ...player.phases.flatMap((phase) =>
-                      phase.startKey != null
-                        ? [phase.key, phase.startKey]
-                        : [phase.key],
-                    ),
-                  ],
+                  [...playerKeySet([player])],
                   player.info == null ? undefined : tx(player.info, locale),
                   player.icon,
                 )}
@@ -2399,7 +2624,7 @@ export function SettingsPanelImpl<TSettings>({
                 orderKey={orderKey}
                 locale={locale}
                 plain={false}
-                open={!closedSubsections.has(subsectionId)}
+                open={searchQueryActive || !closedSubsections.has(subsectionId)}
                 onToggle={() => {
                   if (skipSubsectionToggleRef.current) {
                     skipSubsectionToggleRef.current = false;
@@ -2598,99 +2823,119 @@ export function SettingsPanelImpl<TSettings>({
                 </ReorderShell>
               </Fragment>
             );
-            if (sectionId === PANEL_SECTION_ID) {
+            if (sectionId === PRESETS_SECTION_ID) {
               return shell(
-          <SectionBlock
-            {...sectionIconProps(PANEL_SECTION_ID, "sliders-horizontal")}
-            title={tx(PANEL_COPY.panelSettings, locale)}
-            open={openSections.has("panel")}
-            onToggle={() => toggleSection("panel")}
-            reduceMotion={reduceMotion}
-            locale={locale}
-            {...sectionReorderProps(PANEL_SECTION_ID)}
-          >
-            <div className="flex flex-col gap-2">
-              <div
-                className="flex h-[28px] min-w-0 items-center justify-between gap-4"
-                data-setting-row=""
-              >
-                <RowLabel
-                  label={tx(PANEL_COPY.presets, locale)}
-                  info={tx(PANEL_COPY.presetsInfo, locale)}
-                  {...withPanelIcon("row:presets", "save")}
-                />
-              <div
-                role="group"
-                aria-label={tx(PANEL_COPY.presetsAria, locale)}
+          <section className="flex w-full shrink-0 p-2">
+            <div
+              className="flex h-[28px] min-w-0 w-full items-center justify-between gap-4"
+              data-setting-row=""
+            >
+              <span className="flex min-w-0 items-center gap-1">
+              <button
+                type="button"
+                aria-label={tx(PANEL_COPY.savePreset, locale)}
+                onClick={saveCurrentToPreset}
                 className={cn(
-                  "grid h-[28px] w-[144px] shrink-0 grid-cols-[28px_1px_28px_1px_28px_1px_28px_1px_28px]",
-                  pickerChrome,
+                  "inline-flex size-5 shrink-0 items-center justify-center outline-none",
+                  "text-[color:var(--sp-fg)]",
+                  "fine-hover:hover:text-[color:var(--sp-muted)]",
+                  "focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)]",
                 )}
               >
-                {Array.from({ length: SNAPSHOT_SLOTS }, (_, index) => {
-                  const filled = snapshots[index] != null;
-                  const active = filled && activeSnapshot === index;
-                  const drifted = active && snapshotDrifted(index);
-                  const cell = (
-                    <div key={index} className="group/slot relative">
+                <SfSymbol name="save" className="size-5" />
+              </button>
+              <RowLabel
+                label={tx(PANEL_COPY.presets, locale)}
+                info={tx(PANEL_COPY.presetsInfo, locale)}
+              />
+              </span>
+            <div
+              role="group"
+              aria-label={tx(PANEL_COPY.presetsAria, locale)}
+              className={cn(
+                "grid h-[28px] w-[144px] shrink-0 grid-cols-[28px_1px_28px_1px_28px_1px_28px_1px_28px]",
+                pickerChrome,
+              )}
+            >
+              {Array.from({ length: SNAPSHOT_SLOTS }, (_, index) => {
+                const filled = snapshots[index] != null;
+                const active = filled && activeSnapshot === index;
+                const drifted = active && snapshotDrifted(index);
+                const cell = (
+                  <div key={index} className="group/slot relative">
+                    <button
+                      type="button"
+                      aria-label={tx(
+                        PANEL_COPY.presetSlot(
+                          index + 1,
+                          filled
+                            ? active
+                              ? "active"
+                              : "apply"
+                            : "empty",
+                        ),
+                        locale,
+                      )}
+                      onClick={(event) => {
+                        if (!filled || event.altKey) saveSnapshot(index);
+                        else applySnapshot(index);
+                      }}
+                      className={cn(
+                        "flex size-[28px] items-center justify-center font-mono text-[12px] leading-none tabular-nums outline-none",
+                        pickEase,
+                        active ? pickActive : pickIdle,
+                      )}
+                    >
+                      {index + 1}
+                    </button>
+                    {drifted ? (
+                      <span
+                        aria-hidden
+                        className="pointer-events-none absolute top-[3px] right-[3px] size-[5px] rounded-full bg-[color:var(--sp-fg)] group-hover/slot:opacity-0"
+                      />
+                    ) : null}
+                    {filled ? (
                       <button
                         type="button"
                         aria-label={tx(
-                          PANEL_COPY.presetSlot(
-                            index + 1,
-                            filled
-                              ? active
-                                ? "active"
-                                : "apply"
-                              : "empty",
-                          ),
+                          PANEL_COPY.clearPreset(index + 1),
                           locale,
                         )}
-                        onClick={(event) => {
-                          if (!filled || event.altKey) saveSnapshot(index);
-                          else applySnapshot(index);
-                        }}
-                        className={cn(
-                          "flex size-[28px] items-center justify-center font-mono text-[12px] leading-none tabular-nums outline-none",
-                          pickEase,
-                          active ? pickActive : pickIdle,
-                        )}
+                        onClick={() => clearSnapshot(index)}
+                        className="absolute top-0 right-0 z-[1] hidden size-[11px] items-center justify-center rounded-bl bg-[color:var(--sp-knob)] text-[10px] leading-none text-[color:var(--sp-field)] outline-none fine-hover:group-hover/slot:flex"
                       >
-                        {index + 1}
+                        ×
                       </button>
-                      {drifted ? (
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute top-[3px] right-[3px] size-[5px] rounded-full bg-[color:var(--sp-fg)] group-hover/slot:opacity-0"
-                        />
-                      ) : null}
-                      {filled ? (
-                        <button
-                          type="button"
-                          aria-label={tx(
-                            PANEL_COPY.clearPreset(index + 1),
-                            locale,
-                          )}
-                          onClick={() => clearSnapshot(index)}
-                          className="absolute top-0 right-0 z-[1] hidden size-[11px] items-center justify-center rounded-bl bg-[color:var(--sp-knob)] text-[10px] leading-none text-[color:var(--sp-field)] outline-none fine-hover:group-hover/slot:flex"
-                        >
-                          ×
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                  if (index === SNAPSHOT_SLOTS - 1) return [cell];
-                  return [
-                    cell,
-                    <div
-                      key={`rule-${index}`}
-                      aria-hidden
-                      className="bg-[color:var(--sp-fill-strong)]"
-                    />,
-                  ];
-                })}
-              </div>
-              </div>
+                    ) : null}
+                  </div>
+                );
+                if (index === SNAPSHOT_SLOTS - 1) return [cell];
+                return [
+                  cell,
+                  <div
+                    key={`rule-${index}`}
+                    aria-hidden
+                    className="bg-[color:var(--sp-fill-strong)]"
+                  />,
+                ];
+              })}
+            </div>
+            </div>
+          </section>
+              );
+            }
+            if (sectionId === PANEL_SECTION_ID) {
+              return shell(
+          <section className="flex w-full shrink-0 flex-col gap-4 p-2">
+            <div className="flex h-5 items-center">
+              <span
+                className="truncate text-[15px] font-sans leading-[20px] select-none"
+                style={{ color: MUTED }}
+              >
+                {tx(PANEL_COPY.panelSettings, locale)}
+              </span>
+            </div>
+            <div className="flex flex-col gap-2">
               <SettingToggle
                 label={tx(PANEL_COPY.language, locale)}
                 control="segment"
@@ -2711,14 +2956,8 @@ export function SettingsPanelImpl<TSettings>({
                 }
                 value={panelTheme === "dark"}
               />
-              <SettingToggle
-                info={tx(PANEL_COPY.sectionOrderInfo, locale)}
-                label={tx(PANEL_COPY.sectionOrder, locale)}
-                onChange={persistReorderSections}
-                value={reorderSections}
-              />
             </div>
-          </SectionBlock>
+          </section>
               );
             }
             if (sectionId === PLACE_SECTION_ID && selectedPlace) {
@@ -2833,7 +3072,7 @@ export function SettingsPanelImpl<TSettings>({
           <SectionBlock
             {...sectionIconProps("bezier", curveSectionIcon, curveDot)}
             title={curveTitle}
-            open={openSections.has("bezier")}
+            open={searchQueryActive || openSections.has("bezier")}
             onToggle={() => toggleSection("bezier")}
             reduceMotion={reduceMotion}
             locale={locale}
@@ -2848,7 +3087,7 @@ export function SettingsPanelImpl<TSettings>({
           <SectionBlock
             {...sectionIconProps(easingSectionId, "spline", easingDot)}
             title={showPlotSection ? easingTitle : curveTitle}
-            open={openSections.has(easingSectionId)}
+            open={searchQueryActive || openSections.has(easingSectionId)}
             onToggle={() => toggleSection(easingSectionId)}
             reduceMotion={reduceMotion}
             locale={locale}
@@ -2864,7 +3103,7 @@ export function SettingsPanelImpl<TSettings>({
             <SectionBlock
               {...sectionIconProps(group.id, group.icon)}
               title={tx(group.title, locale)}
-              open={openSections.has(group.id)}
+              open={searchQueryActive || openSections.has(group.id)}
               onToggle={() => toggleSection(group.id)}
               reduceMotion={reduceMotion}
               locale={locale}
@@ -2907,18 +3146,22 @@ export function SettingsPanelImpl<TSettings>({
             </SectionBlock>
             );
           };
-          const visibleTop = (() => {
-            const top = sectionRails.top.filter(sectionVisible);
-            if (!selectedPlace) return top;
-            const next: string[] = top.filter((id) => id === PANEL_SECTION_ID);
-            const at = next.indexOf(PANEL_SECTION_ID);
-            if (at >= 0) next.splice(at + 1, 0, PLACE_SECTION_ID);
-            else next.unshift(PLACE_SECTION_ID);
-            return next;
-          })();
-          const visibleMid = selectedPlace
-            ? []
-            : sectionRails.mid.filter(sectionVisible);
+          const settingsView = panelView === "settings";
+          const visibleTop = settingsView
+            ? [PANEL_SECTION_ID]
+            : selectedPlace
+              ? [PLACE_SECTION_ID]
+              : searchQueryActive
+                ? sectionRails.top.filter(sectionVisible)
+                : [PRESETS_SECTION_ID, ...sectionRails.top.filter(sectionVisible)];
+          const visibleMid =
+            settingsView || selectedPlace
+              ? []
+              : sectionRails.mid.filter(sectionVisible);
+          const searchMiss =
+            searchQueryActive &&
+            visibleTop.length === 0 &&
+            visibleMid.length === 0;
           return (
           <div
             className="grid min-h-0 w-full grid-rows-[auto_minmax(0,auto)] overflow-hidden"
@@ -2933,6 +3176,14 @@ export function SettingsPanelImpl<TSettings>({
               ) : null}
             </div>
             <div className={cn("min-h-0", panelScroll)}>
+              {searchMiss ? (
+                <p
+                  className="px-2 py-2 text-[13px] leading-[18px]"
+                  style={{ color: MUTED }}
+                >
+                  {tx(PANEL_COPY.searchEmpty, locale)}
+                </p>
+              ) : null}
               {visibleMid.map((id, i) =>
                 renderOrderedSection(id, i > 0),
               )}

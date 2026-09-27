@@ -72,6 +72,24 @@
   cursor: pointer;
 }
 
+/* Scene buttons in `dockExtra` bring their own glass; inside the Dock Bar they read like bar buttons. */
+[data-dock-extra] > button {
+  border-color: transparent !important;
+  border-radius: 4px !important;
+  background: transparent !important;
+  backdrop-filter: none !important;
+}
+
+[data-dock-extra] > button:hover {
+  background: var(--sp-fill-hover) !important;
+}
+
+[data-dock-extra] > button[aria-pressed="true"],
+[data-dock-extra] > button[aria-expanded="true"] {
+  background: var(--sp-fill) !important;
+  color: var(--sp-fg) !important;
+}
+
 [data-settings-panel] button:disabled,
 [data-panel-theme] button:disabled {
   cursor: default;

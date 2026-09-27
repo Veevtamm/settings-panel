@@ -1,9 +1,11 @@
 ---
-description: Settings panel (⌘M) — control map, schema, wiring. Canonical guide is AGENTS.md in this package.
+description: Settings panel — control map, schema, wiring. Canonical guide is AGENTS.md in this package.
 alwaysApply: true
 ---
 
-# Settings panel (⌘M)
+# Settings panel
+
+Панель сцены открывает кнопка `sliders-horizontal` в Dock Bar, не шестерёнка. Шестерёнка (`settings`) — язык и тема самой панели. ⌘M выключен (`shortcut={true}` включает). ⌘S по умолчанию прячет весь бар (`hideShortcut={false}` отдаёт ⌘S сцене / браузеру).
 
 Перед тем как добавить параметр сцены, подключить панель или менять `@veevtamm/settings-panel`, прочитай **целиком** `AGENTS.md` пакета (карта контролов, схема, подключение, ловушки):
 

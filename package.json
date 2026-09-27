@@ -2,7 +2,7 @@
   "name": "@veevtamm/settings-panel",
   "version": "0.1.0",
   "private": true,
-  "description": "Scene settings panel (⌘M) for Next.js + Tailwind 4 sites",
+  "description": "Scene settings panel for Next.js + Tailwind 4 sites",
   "license": "MIT",
   "homepage": "https://github.com/Veevtamm/settings-panel",
   "bugs": {
@@ -39,6 +39,8 @@
     "./panel-theme": "./src/lib/panel-theme.ts",
     "./copy-text": "./src/lib/copy-text.ts",
     "./transition-player": "./src/lib/transition-player.ts",
+    "./scroll-player": "./src/lib/scroll-player.ts",
+    "./playhead": "./src/lib/playhead.ts",
     "./player-clips": "./src/lib/player-clips.ts",
     "./sf-symbol": "./src/sf-symbol.tsx",
     "./easing-curve-editor": "./src/easing-curve-editor.tsx"

@@ -245,6 +245,21 @@ export type PlayerPhase<TSettings> = {
   caption: Copy;
   kind: "phase" | "pause";
   max: number;
+  /**
+   * E1: the phase is `count` staggered lines. `key` = one line's duration,
+   * `stepKey` = offset between lines; the clip spans
+   * `key + (count − 1) × step`. Dock shows the lines as child lanes.
+   */
+  stagger?: PhaseStagger<TSettings>;
+};
+
+export type PhaseStagger<TSettings> = {
+  count: number;
+  stepKey: keyof TSettings;
+  /** Step ceiling. Omit = `max` of the phase. */
+  stepMax?: number;
+  /** Child lane label; «строка» → «строка 1», «строка 2»… */
+  caption?: Copy;
 };
 
 /** Loop one phase; other tagged tracks freeze at `from`. */
@@ -297,14 +312,40 @@ export type PlayerSetting<TSettings> = {
   label: Copy;
   info?: Copy;
   icon?: SfSymbolName;
-  /** Timeline length in ms — its own value; phases live inside it (min … total). */
+  /** Timeline length in `unit` — its own value; phases live inside it (min … total). */
   totalKey: keyof TSettings;
+  /** Row label for `totalKey`. Omit = «Время анимации»; scroll pins say «Длина пина». */
+  totalLabel?: Copy;
+  /**
+   * A4: stored `totalKey` ≤ 0 (`TOTAL_AUTO`) means the length is max(clip end),
+   * not a ceiling. Field 86 shows «Auto»; click unlatches to the current span.
+   * Reset to 0 latches back. Omit = always the stored number (current scenes).
+   */
+  totalAuto?: boolean;
   phases: readonly PlayerPhase<TSettings>[];
+  /** `ms` (default) for WAAPI transitions, `vh` for scroll pins (`ScrollPinPlayer`). Ruler and HUD follow. */
   unit?: string;
   min?: number;
   step?: number;
   controller: PlayerController;
 } & ParamPlacement;
+
+/**
+ * One animation on the shared dock: the player plus the store it writes.
+ * Default `any` is the mixed-store list (`targets` from several scenes);
+ * a typed scene still writes `TimelineTarget<TSettings>`.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type TimelineTarget<TSettings = any> = {
+  player: PlayerSetting<TSettings>;
+  settings: TSettings;
+  defaultSettings?: TSettings;
+  onSettingsChange: (patch: Partial<TSettings>) => void;
+  /** Phase index → `EasingTarget.id`; curve 28 opens that Bezier in the panel. */
+  easingIds?: readonly (string | undefined)[];
+  /** Custom curve handler; wins over `easingIds`. */
+  onEditCurve?: (phase: number) => void;
+};
 
 /** Scene widget inside a subsection — not a new core row type. */
 export type CustomSettingRender<TSettings> = (ctx: {
@@ -439,17 +480,24 @@ export type SettingsPanelProps<TSettings> = {
    * when this list is non-empty. Click a place → panel keeps only its keys.
    */
   places?: readonly SettingsPlace<TSettings>[];
-  /** Extra 28×28 control stacked under the trigger (shifts below Reset when open). */
+  /** Scene buttons (34) in the Dock Bar group after Fold / pointer; their own glass is stripped inside the bar. */
   dockExtra?: ReactNode;
   /**
-   * Gear dock corner when `${panelId}:panel-settings` has no `dockCorner`.
-   * Omit = top-left. Drag still persists; scene Reset does not clear.
+   * Dock Bar slot when `${panelId}:panel-settings` has no `dockSlot`.
+   * Omit = top-center. Drag still persists; scene Reset does not clear.
    */
   defaultDockCorner?:
     | "top-left"
+    | "top-center"
     | "top-right"
     | "bottom-left"
+    | "bottom-center"
     | "bottom-right";
+  /**
+   * Persist dock corner, float, and window size to `${id}:panel-settings`
+   * instead of `panelId` — one chrome layout for every scene on a site.
+   */
+  layoutPanelId?: string;
   onSettingsChange: (next: Partial<TSettings>) => void;
   panelId: string;
   /** Previous panelId values; used to migrate `${id}:subsection-order` and `${id}:panel-settings`. */
@@ -458,10 +506,26 @@ export type SettingsPanelProps<TSettings> = {
   groups: SettingsGroup<TSettings>[];
   storageLabel: string;
   /**
-   * ⌘M toggles the panel. Pass `false` on a public site (dilusa) — gear still works.
-   * Omit = on.
+   * Opt-in ⌘M to toggle the **scene** panel (`sliders-horizontal`). Omit /
+   * `false` = dock buttons only (default). Gear still opens Panel Settings.
    */
   shortcut?: boolean;
+  /**
+   * ⌘S hides / shows the whole dock (gear column, panel, timeline). Hiding
+   * closes the panel and the dock players. Default `true`; `false` leaves ⌘S
+   * to the browser / scene.
+   */
+  hideShortcut?: boolean;
+  /**
+   * B5: unmount the gear / window. vozdvizhenka used `NODE_ENV==='production'`
+   * around the mount — pass `enabled={process.env.NODE_ENV !== "production"}`.
+   */
+  enabled?: boolean;
+  /**
+   * B5: hide when viewport is narrower than this (px). dilusa used
+   * `[data-settings-panel]{display:none}` ≤480 — pass `hideBelow={480}`.
+   */
+  hideBelow?: number;
   /**
    * Timeline players that are **not** in `groups` (canonical dock). Their
    * `totalKey` / phase / start keys join Reset, Copy, and the dock badge.

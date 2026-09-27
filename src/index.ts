@@ -5,9 +5,12 @@ export {
   GLASS,
   ICON,
   MUTED,
+  dockBarButtonClass,
   fieldChrome,
+  momentHudTop,
   pickerChrome,
 } from "./settings-panel/chrome";
+export type { DockCorner } from "./settings-panel/chrome";
 export { L, PANEL_COPY, tx } from "./settings-panel/locale";
 export type { Copy, LocaleText, PanelLocale } from "./settings-panel/locale";
 export type { ResetDotProps } from "./settings-panel/types";
@@ -50,6 +53,7 @@ export type {
   SettingsSection,
   TextAlignSetting,
   TextSetting,
+  TimelineTarget,
   ToggleSetting,
   XAnchorSetting,
 } from "./settings-panel/types";
@@ -84,17 +88,21 @@ export {
   momentUrl,
   patchPlayerClips,
   readMoment,
+  resolvePlayerTotal,
+  usePlayerOpen,
   usePlayerState,
 } from "./settings-panel/player";
 export type {
   PlayerClipsChange,
   PlayerSegment,
 } from "./settings-panel/player";
-export {
-  SettingsTimeline,
-  SettingsTimelineDockButton,
-  timelinePropsFromPlayer,
+export { SettingsTimeline, SettingsTimelineDockButton, timelinePropsFromPlayer } from "./settings-panel/timeline";
+export type {
+  SettingsTimelineProps,
+  SettingsTimelineSingleProps,
+  SettingsTimelineTargetsProps,
 } from "./settings-panel/timeline";
+export { SettingsMomentHud } from "./settings-panel/moment-hud";
 export { SettingsPanel } from "./settings-panel/shell";
 export { FieldButton, SettingToggle } from "./settings-panel/fields";
 export { pointInSelector, pointInSettingsPlace } from "./settings-panel/places";
@@ -125,10 +133,14 @@ export {
   focusPanel,
   panelThemeStorageKey,
   parsePanelSettingsObject,
+  pickPanelLayout,
+  panelLayoutHasChrome,
+  readPanelLayout,
   readPanelLocale,
   readPanelSettings,
   readPanelTheme,
   subscribePanelTheme,
+  useDockSlot,
   usePanelLocale,
   usePanelTheme,
   writePanelLocale,
@@ -142,14 +154,24 @@ export type {
 } from "./lib/panel-theme";
 export { isOverSettingsPanel } from "./lib/is-over-settings-panel";
 export { usePrefersReducedMotion } from "./lib/prefers-reduced-motion";
-export { TransitionPlayer, PIN_EPSILON } from "./lib/transition-player";
+export { TransitionPlayer } from "./lib/transition-player";
 export type { TransitionTracks } from "./lib/transition-player";
+export { PlayheadClock, PIN_EPSILON, pinNear } from "./lib/playhead";
+export { ScrollPinPlayer } from "./lib/scroll-player";
+export type {
+  ScrollPinPlayerOptions,
+  ScrollPinRange,
+} from "./lib/scroll-player";
 export {
   captionsAtQ,
   clipsTotal,
   fitClipsToTotal,
   layoutClips,
   momentMs,
+  resolveTotal,
+  autoTotal,
+  isTotalAuto,
+  TOTAL_AUTO,
   waapiSpan,
 } from "./lib/player-clips";
 export type { ClipInput, LaidClip } from "./lib/player-clips";

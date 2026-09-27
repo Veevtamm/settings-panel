@@ -212,6 +212,62 @@ export function NumberField({
   );
 }
 
+/** Field 86, not editable: «Auto» for Width Stretch, a derived value, a staggered span. */
+export function ReadOnlyField({
+  label,
+  unit,
+  ariaLabel,
+}: {
+  label: string;
+  unit?: string;
+  ariaLabel?: string;
+}) {
+  return (
+    <div
+      aria-label={ariaLabel}
+      className={cn(
+        "flex h-[28px] w-[86px] shrink-0 cursor-default items-center justify-between gap-1 px-1.5 text-[14px] leading-[18px]",
+        fieldChrome,
+      )}
+      style={{ background: FIELD, color: MUTED }}
+    >
+      <span>{label}</span>
+      {unit ? (
+        <span className="pointer-events-none shrink-0 font-sans opacity-50" aria-hidden>
+          {unit}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+/** Field 86 «Auto» (A4 / Width Stretch): click unlatches to a typed length. */
+export function AutoNumberField({
+  ariaLabel,
+  label,
+  onUnlock,
+}: {
+  ariaLabel: string;
+  label: string;
+  onUnlock: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={ariaLabel}
+      onClick={onUnlock}
+      className={cn(
+        "flex h-[28px] w-[86px] shrink-0 items-center px-1.5 text-left text-[14px] leading-[18px] outline-none",
+        fieldChrome,
+        fieldValueSans,
+      )}
+      style={{ background: FIELD, color: MUTED }}
+    >
+      {label}
+    </button>
+  );
+}
+
 /**
  * Field hover stepper («зоны»): on fine pointers the right 21px of a number
  * field splits into ▴/▾ zones and covers the unit (same as opacity %).

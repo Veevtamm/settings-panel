@@ -8,7 +8,7 @@ import {
 } from "react";
 import { SfSymbol } from "../sf-symbol";
 import { clampNumber, cn } from "../lib/utils";
-import { FIELD, MUTED, fieldChrome } from "./chrome";
+import { FIELD, MUTED, fieldChrome, pointerHeld } from "./chrome";
 import { SettingRow } from "./row";
 import type { ResetDotProps } from "./types";
 
@@ -97,6 +97,13 @@ export function SettingChips({
   const onChipPointerMove = (event: ReactPointerEvent<HTMLButtonElement>) => {
     const drag = dragRef.current;
     if (!drag) return;
+    if (!pointerHeld(event)) {
+      endChipDrag();
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+      return;
+    }
     if (!drag.moved && Math.abs(event.clientX - drag.startX) < CHIP_DRAG_PX)
       return;
     drag.moved = true;
@@ -144,6 +151,7 @@ export function SettingChips({
               onPointerMove={onChipPointerMove}
               onPointerUp={endChipDrag}
               onPointerCancel={endChipDrag}
+              onLostPointerCapture={endChipDrag}
               onKeyDown={(event) => {
                 if (event.key === "ArrowUp" || event.key === "ArrowDown") {
                   event.preventDefault();

@@ -11,6 +11,7 @@ import {
 import type { CubicBezier } from "./lib/cubic-bezier";
 import { clamp01, sampleCubicBezier } from "./lib/cubic-bezier";
 import { cn } from "./lib/utils";
+import { pointerHeld } from "./settings-panel/chrome";
 
 const DEFAULT_SIZE = 168;
 const PAD_RATIO = 18 / 168;
@@ -86,6 +87,10 @@ export function EasingCurveEditor({
 
   const onPointerMove = (e: ReactPointerEvent) => {
     if (!dragging) return;
+    if (!pointerHeld(e)) {
+      onPointerUp(e);
+      return;
+    }
     const pt = pickFromEvent(e.clientX, e.clientY);
     if (!pt) return;
 
@@ -211,6 +216,7 @@ export function EasingCurveEditor({
         onPointerDown={onPointerDown("p1")}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onLostPointerCapture={onPointerUp}
         r={handleR}
         stroke={accent}
         strokeWidth={1.5}
@@ -225,6 +231,7 @@ export function EasingCurveEditor({
         onPointerDown={onPointerDown("p2")}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
+        onLostPointerCapture={onPointerUp}
         r={handleR}
         stroke={accent}
         strokeWidth={1.5}

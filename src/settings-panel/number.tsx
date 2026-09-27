@@ -26,10 +26,11 @@ import {
   pickEase,
   pickIdle,
   pickerChrome,
+  pointerHeld,
 } from "./chrome";
 import { copyKey } from "./locale";
 import type { PairFieldIcon, PairSetting, ResetDotProps } from "./types";
-import { FieldButton, NumberField, NumberInput } from "./fields";
+import { FieldButton, NumberField, NumberInput, ReadOnlyField } from "./fields";
 import { RowLabel, SettingRow } from "./row";
 
 export function scrubRatio(value: number, min: number, max: number) {
@@ -184,6 +185,10 @@ export function TickSlider({
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!draggingRef.current) return;
+    if (!pointerHeld(event)) {
+      onPointerUp(event);
+      return;
+    }
     onChange(valueFromClientX(event.clientX));
   }
 
@@ -243,6 +248,7 @@ export function TickSlider({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onLostPointerCapture={onPointerUp}
       className={cn(
         "group/scrub-track relative h-[28px] w-full cursor-ew-resize overflow-hidden rounded",
         "focus-visible:outline-none",
@@ -385,6 +391,10 @@ export function RangeSlider({
 
   function onPointerMove(event: ReactPointerEvent<HTMLDivElement>) {
     if (!handleRef.current) return;
+    if (!pointerHeld(event)) {
+      onPointerUp(event);
+      return;
+    }
     applyClientX(event.clientX, handleRef.current);
   }
 
@@ -412,6 +422,7 @@ export function RangeSlider({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
+      onLostPointerCapture={onPointerUp}
       className="group/scrub-track relative h-[28px] w-full cursor-ew-resize rounded focus-visible:outline-none"
       style={{ background: FIELD, color: MUTED, touchAction: "none" }}
     >
@@ -611,20 +622,7 @@ export function SettingNumber({
         onIconChange={onIconChange}
         locale={locale}
       >
-        <div
-          className={cn(
-            "flex h-[28px] w-[86px] shrink-0 cursor-default items-center justify-between gap-1 px-1.5 text-[14px] leading-[18px]",
-            fieldChrome,
-          )}
-          style={{ background: FIELD, color: MUTED }}
-        >
-          <span>{readOnlyLabel ?? "Auto"}</span>
-          {unit ? (
-            <span className="pointer-events-none shrink-0 font-sans opacity-50" aria-hidden>
-              {unit}
-            </span>
-          ) : null}
-        </div>
+        <ReadOnlyField label={readOnlyLabel ?? "Auto"} unit={unit} />
       </SettingRow>
     );
   }

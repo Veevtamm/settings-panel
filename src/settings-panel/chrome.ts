@@ -1,5 +1,7 @@
 "use client";
 
+import { cn } from "../lib/utils";
+
 export const GLASS = "var(--sp-glass)";
 export const FIELD = "var(--sp-field)";
 export const MUTED = "var(--sp-muted)";
@@ -30,8 +32,8 @@ export function panelMaxHeightPx(
   vh: number,
 ) {
   const max = dockBottom
-    ? dockY + DOCK_BTN - DOCK_INSET
-    : vh - dockY - DOCK_INSET;
+    ? dockY - PANEL_DOCK_GAP - DOCK_INSET
+    : vh - dockY - DOCK_BAR_H - PANEL_DOCK_GAP - DOCK_INSET;
   return Math.max(PANEL_HEIGHT_MIN, max);
 }
 
@@ -46,31 +48,39 @@ export function clampPanelHeight(height: number, maxHeight: number) {
   return Math.min(cap, Math.max(PANEL_HEIGHT_MIN, height));
 }
 
-/** Gap between gear column and docked panel (`ml-1.5` / `mr-1.5`). */
-export const PANEL_DOCK_GAP = 6;
-/** Snap back onto the dock column when the panel is this close. */
+/** Gap between the dock bar and the docked panel. */
+export const PANEL_DOCK_GAP = 8;
+/** Snap back onto the dock bar when the panel is this close. */
 export const PANEL_MAGNET_PX = 28;
+
+/** Docked panel x: under the bar's center for `*-center`, flush with the bar's outer edge in corners. */
+export function dockedPanelX(
+  corner: DockCorner,
+  barX: number,
+  barW: number,
+  panelW: number,
+  vw: number,
+) {
+  const x = corner.endsWith("right")
+    ? barX + barW - panelW
+    : corner.endsWith("center")
+      ? Math.round(barX + barW / 2 - panelW / 2)
+      : barX;
+  const maxX = Math.max(DOCK_INSET, vw - panelW - DOCK_INSET);
+  return Math.min(maxX, Math.max(DOCK_INSET, x));
+}
 
 export function dockedPanelPos(
   corner: DockCorner,
-  gear: { x: number; y: number },
+  bar: { x: number; y: number; w: number },
   panelW: number,
   panelH: number,
+  vw: number,
 ) {
-  const gap = PANEL_DOCK_GAP;
-  switch (corner) {
-    case "top-right":
-      return { x: gear.x - gap - panelW, y: gear.y };
-    case "bottom-left":
-      return {
-        x: gear.x + DOCK_BTN + gap,
-        y: gear.y + DOCK_BTN - panelH,
-      };
-    case "bottom-right":
-      return { x: gear.x - gap - panelW, y: gear.y + DOCK_BTN - panelH };
-    default:
-      return { x: gear.x + DOCK_BTN + gap, y: gear.y };
-  }
+  const x = dockedPanelX(corner, bar.x, bar.w, panelW, vw);
+  return corner.startsWith("bottom")
+    ? { x, y: bar.y - PANEL_DOCK_GAP - panelH }
+    : { x, y: bar.y + DOCK_BAR_H + PANEL_DOCK_GAP };
 }
 
 export function clampPanelPos(
@@ -126,16 +136,99 @@ export const CURVE_SIZE = 328;
 /** Vertical rhythm: glue 4 / in-section & dock 8 / between subsections 16 */
 export const GAP_IN = 8;
 export const DOCK_BTN = 34;
+/** Expanded dock search field — wider than dropdown 176. */
+export const DOCK_SEARCH_W = 240;
+/** Dock Bar: 1px border + 4px pad around 34px buttons. */
+export const DOCK_BAR_PAD = 4;
+export const DOCK_BAR_H = DOCK_BTN + DOCK_BAR_PAD * 2 + 2;
 /** Default dock inset — same as `top-3` / `left-3`. */
 export const DOCK_INSET = 12;
 /** Gear drag starts after this travel (px); below = click. */
 export const DOCK_DRAG_PX = 4;
 
+/** Primary button still down. Touch may report `buttons === 0` while held. */
+export function pointerHeld(
+  event: Pick<PointerEvent, "pointerType" | "buttons">,
+) {
+  return event.pointerType === "touch" || (event.buttons & 1) !== 0;
+}
+
+/**
+ * Window pointer drag that cannot outlive the press: up / cancel / lost
+ * capture, or a mouse/pen move with no buttons, all end it. Capture-phase so
+ * a child `stopPropagation` cannot leave a ghost follow.
+ */
+export function bindPointerDrag(
+  pointerId: number,
+  handlers: {
+    onMove: (event: PointerEvent) => void;
+    onEnd: (event: PointerEvent) => void;
+  },
+) {
+  let done = false;
+  const finish = (event: PointerEvent) => {
+    if (done) return;
+    if (event.pointerId !== pointerId) return;
+    done = true;
+    window.removeEventListener("pointermove", onMove, true);
+    window.removeEventListener("pointerup", finish, true);
+    window.removeEventListener("pointercancel", finish, true);
+    window.removeEventListener("lostpointercapture", finish, true);
+    handlers.onEnd(event);
+  };
+  const onMove = (event: PointerEvent) => {
+    if (done || event.pointerId !== pointerId) return;
+    if (!pointerHeld(event)) {
+      finish(event);
+      return;
+    }
+    handlers.onMove(event);
+  };
+  window.addEventListener("pointermove", onMove, true);
+  window.addEventListener("pointerup", finish, true);
+  window.addEventListener("pointercancel", finish, true);
+  window.addEventListener("lostpointercapture", finish, true);
+  return () =>
+    finish(new PointerEvent("pointercancel", { pointerId }));
+}
+
 export type DockCorner =
   | "top-left"
+  | "top-center"
   | "top-right"
   | "bottom-left"
+  | "bottom-center"
   | "bottom-right";
+
+export const DOCK_CORNERS: readonly DockCorner[] = [
+  "top-left",
+  "top-center",
+  "top-right",
+  "bottom-left",
+  "bottom-center",
+  "bottom-right",
+];
+
+export const DEFAULT_DOCK_CORNER: DockCorner = "top-center";
+
+/** Moment HUD top: under the bar when the bar holds top-center. */
+export function momentHudTop(slot: DockCorner) {
+  return slot === "top-center"
+    ? DOCK_INSET + DOCK_BAR_H + GAP_IN
+    : DOCK_INSET;
+}
+
+/** Button inside the Dock Bar: no own glass or border; active = fill. */
+export function dockBarButtonClass(active = false) {
+  return cn(
+    "relative inline-flex size-[34px] shrink-0 items-center justify-center rounded px-0 font-sans outline-none",
+    "transition-[background-color,color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
+    "focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)] active:scale-[0.97]",
+    active
+      ? "bg-[color:var(--sp-fill)] text-[color:var(--sp-fg)] fine-hover:hover:bg-[color:var(--sp-fill-strong)]"
+      : "text-[color:var(--sp-muted)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",
+  );
+}
 
 function viewportSize(vw?: number, vh?: number) {
   return {
@@ -147,12 +240,13 @@ function viewportSize(vw?: number, vh?: number) {
 export function clampDockPos(
   x: number,
   y: number,
+  barW: number,
   vw?: number,
   vh?: number,
 ) {
   const size = viewportSize(vw, vh);
-  const maxX = Math.max(DOCK_INSET, size.vw - DOCK_BTN - DOCK_INSET);
-  const maxY = Math.max(DOCK_INSET, size.vh - DOCK_BTN - DOCK_INSET);
+  const maxX = Math.max(DOCK_INSET, size.vw - barW - DOCK_INSET);
+  const maxY = Math.max(DOCK_INSET, size.vh - DOCK_BAR_H - DOCK_INSET);
   return {
     x: Math.min(maxX, Math.max(DOCK_INSET, x)),
     y: Math.min(maxY, Math.max(DOCK_INSET, y)),
@@ -161,37 +255,49 @@ export function clampDockPos(
 
 export function dockPosForCorner(
   corner: DockCorner,
+  barW: number,
   vw?: number,
   vh?: number,
 ) {
   const size = viewportSize(vw, vh);
-  const right = Math.max(DOCK_INSET, size.vw - DOCK_BTN - DOCK_INSET);
-  const bottom = Math.max(DOCK_INSET, size.vh - DOCK_BTN - DOCK_INSET);
-  switch (corner) {
-    case "top-right":
-      return { x: right, y: DOCK_INSET };
-    case "bottom-left":
-      return { x: DOCK_INSET, y: bottom };
-    case "bottom-right":
-      return { x: right, y: bottom };
-    default:
-      return { x: DOCK_INSET, y: DOCK_INSET };
-  }
+  const right = Math.max(DOCK_INSET, size.vw - barW - DOCK_INSET);
+  const center = Math.max(DOCK_INSET, Math.round((size.vw - barW) / 2));
+  const bottom = Math.max(DOCK_INSET, size.vh - DOCK_BAR_H - DOCK_INSET);
+  const x = corner.endsWith("right")
+    ? right
+    : corner.endsWith("center")
+      ? center
+      : DOCK_INSET;
+  return { x, y: corner.startsWith("bottom") ? bottom : DOCK_INSET };
 }
 
-/** Nearest of the four corners — same rule as Next.js Dev Tools. */
+/**
+ * Nearest of six slots. `x`/`y` is the bar's top-left — drop uses the pointer
+ * as the bar center so a short drag toward an edge still leaves the middle.
+ */
 export function nearestDockCorner(
   x: number,
   y: number,
+  barW: number,
   vw?: number,
   vh?: number,
 ): DockCorner {
   const size = viewportSize(vw, vh);
-  const cx = x + DOCK_BTN / 2;
-  const cy = y + DOCK_BTN / 2;
-  const top = cy < size.vh / 2;
-  const left = cx < size.vw / 2;
-  return `${top ? "top" : "bottom"}-${left ? "left" : "right"}`;
+  const cx = x + barW / 2;
+  const cy = y + DOCK_BAR_H / 2;
+  let best: DockCorner = DEFAULT_DOCK_CORNER;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const corner of DOCK_CORNERS) {
+    const slot = dockPosForCorner(corner, barW, size.vw, size.vh);
+    const dx = cx - (slot.x + barW / 2);
+    const dy = cy - (slot.y + DOCK_BAR_H / 2);
+    const dist = dx * dx + dy * dy;
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = corner;
+    }
+  }
+  return best;
 }
 
 /**
