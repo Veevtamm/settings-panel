@@ -43,7 +43,9 @@
     "./playhead": "./src/lib/playhead.ts",
     "./player-clips": "./src/lib/player-clips.ts",
     "./sf-symbol": "./src/sf-symbol.tsx",
-    "./easing-curve-editor": "./src/easing-curve-editor.tsx"
+    "./easing-curve-editor": "./src/easing-curve-editor.tsx",
+    "./axis-curve": "./src/lib/axis-curve.ts",
+    "./axis-curve-editor": "./src/axis-curve-editor.tsx"
   },
   "files": [
     "src",

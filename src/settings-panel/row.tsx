@@ -14,6 +14,7 @@ import {
   MUTED,
   SECTION_MS,
   rowLabelClass,
+  rowLabelMainClass,
 } from "./chrome";
 import { SectionIconPicker } from "./icon-picker";
 import type { PanelLocale } from "./locale";
@@ -225,6 +226,7 @@ export function InfoHint({ label, text }: { label: string; text: string }) {
 export function RowLabel({
   label,
   className,
+  tone = "label",
   modified,
   onResetValue,
   info,
@@ -234,6 +236,8 @@ export function RowLabel({
 }: {
   label: string;
   className?: string;
+  /** `main` = Figma `text/main`. Default `label` = `text-2`. */
+  tone?: "label" | "main";
 } & ResetDotProps) {
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
@@ -265,7 +269,9 @@ export function RowLabel({
           />
         </button>
       ) : null}
-      <span className={rowLabelClass}>{label}</span>
+      <span className={tone === "main" ? rowLabelMainClass : rowLabelClass}>
+        {label}
+      </span>
       {info ? <InfoHint label={label} text={info} /> : null}
     </span>
   );

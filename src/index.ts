@@ -126,6 +126,36 @@ export {
   type SfSymbolName,
 } from "./sf-symbol";
 export { EasingCurveEditor } from "./easing-curve-editor";
+export { AxisCurveEditor } from "./axis-curve-editor";
+export type {
+  AxisCurveEditorProps,
+  AxisGhost,
+} from "./axis-curve-editor";
+export {
+  AXIS_POINTS_MAX,
+  AXIS_POINTS_MIN,
+  AXIS_X0,
+  AXIS_X1,
+  CORNER_HANDLE,
+  autoHandle,
+  cloneAxisHandles,
+  cloneAxisPoints,
+  ensureAxisHandles,
+  insertAxisMid,
+  isCornerHandle,
+  moveAxisPoint,
+  removeAxisBest,
+  sampleAxisPath,
+  sampleAxisX,
+  segmentControls,
+  setAxisPointCorner,
+} from "./lib/axis-curve";
+export type { AxisHandle, AxisPoint } from "./lib/axis-curve";
+export {
+  observePanelTheme,
+  readPlotTheme,
+} from "./lib/panel-plot-theme";
+export type { PlotTheme } from "./lib/panel-plot-theme";
 
 export {
   PANEL_FOCUS_EVENT,

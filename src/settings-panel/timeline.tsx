@@ -27,7 +27,7 @@ import {
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { SfSymbol } from "../sf-symbol";
-import { RowLabel } from "./row";
+import { RowLabel, useDeferredMount } from "./row";
 import {
   DEFAULT_DOCK_CORNER,
   DIM,
@@ -36,14 +36,15 @@ import {
   EASE_OUT,
   GAP_IN,
   GLASS,
-  ICON,
   MUTED,
+  PANEL_EXIT_MS,
   SUBSECTION_DRAG_PX,
   CHEVRON_MS,
   dockBarButtonClass,
   pointerHeld,
   type DockCorner,
 } from "./chrome";
+import { panelPopClassName, panelPopStyle } from "./motion-ui";
 import {
   AutoNumberField,
   FieldButton,
@@ -308,11 +309,13 @@ function TimelineDock(props: TimelineDockProps) {
   const locale = useDockLocale(chromeId, localeProp);
   const dockCorner = useDockSlot(panelId, layoutPanelId, dockCornerProp);
   const open = usePlayerOpen(controller);
-  const [mounted, setMounted] = useState(false);
+  const reduceMotion = usePrefersReducedMotion();
+  const [hydrated, setHydrated] = useState(false);
+  const surfaceMounted = useDeferredMount(open, reduceMotion, PANEL_EXIT_MS);
   useEffect(() => {
-    setMounted(true);
+    setHydrated(true);
   }, []);
-  if (!mounted) return null;
+  if (!hydrated) return null;
 
   const dockBottom = dockCorner.startsWith("bottom");
   const dockRight = dockCorner.endsWith("right");
@@ -336,9 +339,11 @@ function TimelineDock(props: TimelineDockProps) {
           <SettingsTimelineDockButton controller={controller} locale={locale} />
         </div>
       ) : null}
-      {open ? (
+      {surfaceMounted ? (
         <TimelineDockBody
           {...props}
+          open={open}
+          reduceMotion={reduceMotion}
           theme={theme}
           locale={locale}
           dockCorner={dockCorner}
@@ -368,12 +373,15 @@ function TimelineDockBody({
   defaults,
   theme,
   dockCorner,
+  open,
+  reduceMotion,
 }: TimelineDockProps & {
   theme: string;
   locale: PanelLocale;
   dockCorner: DockCorner;
+  open: boolean;
+  reduceMotion: boolean;
 }) {
-  const reduceMotion = usePrefersReducedMotion();
   const state = usePlayerState(controller);
   const layout = layoutClips(inputsOf(segments));
   const defaultLayout = defaults
@@ -712,7 +720,16 @@ function TimelineDockBody({
           data-panel-theme={theme}
           role="region"
           aria-label={tx(PANEL_COPY.openTimeline, locale)}
-          className="fixed z-[100] overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans backdrop-blur-[8px]"
+          className={cn(
+            "fixed z-[100] origin-bottom overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans backdrop-blur-[8px]",
+            panelPopClassName({
+              open,
+              fromBottom: true,
+              skip: reduceMotion,
+            }),
+          )}
+          aria-hidden={!open}
+          inert={open ? undefined : true}
           style={{
             background: GLASS,
             left: glassPad,
@@ -722,6 +739,7 @@ function TimelineDockBody({
             maxWidth: TIMELINE_WIDTH_MAX,
             maxHeight: viewportH - DOCK_INSET * 2,
             marginInline: "auto",
+            ...panelPopStyle({ open, skip: reduceMotion }),
           }}
         >
           <div className="flex flex-col gap-2 py-2 pl-3 pr-2">
@@ -750,6 +768,7 @@ function TimelineDockBody({
                 <RowLabel
                   label={totalTitle}
                   locale={locale}
+                  tone="main"
                   modified={totalModified}
                   onResetValue={totalModified ? resetTotal : undefined}
                 />
@@ -796,19 +815,16 @@ function TimelineDockBody({
                   aria-expanded={elementsOpen}
                   onClick={() => setElementsOpen((prev) => !prev)}
                 >
-                  <span className="inline-flex min-w-0 items-center gap-1">
-                    <SfSymbol name="sliders-horizontal" className="size-5" style={{ color: ICON }} />
-                    <span
-                      className="truncate text-[15px] leading-[20px]"
-                      style={{ color: MUTED }}
-                    >
-                      {phasesTitle}
-                    </span>
+                  <span
+                    className="truncate text-[15px] leading-[20px]"
+                    style={{ color: MUTED }}
+                  >
+                    {phasesTitle}
                   </span>
                   <SfSymbol
                     name="chevron-up"
                     className={cn("size-5", !elementsOpen && "rotate-180")}
-                    style={{ color: ICON }}
+                    style={{ color: MUTED }}
                   />
                 </button>
                 <div
@@ -929,7 +945,7 @@ function TimelineDockBody({
                                   <SfSymbol
                                     name="grip-vertical"
                                     className="size-5"
-                                    style={{ color: ICON }}
+                                    style={{ color: MUTED }}
                                   />
                                 </span>
                               ) : null}
@@ -949,7 +965,7 @@ function TimelineDockBody({
                                   <SfSymbol
                                     name="chevron-up"
                                     className={cn("size-5", !linesOpen && "rotate-180")}
-                                    style={{ color: ICON }}
+                                    style={{ color: MUTED }}
                                   />
                                 </button>
                               ) : null}
@@ -957,6 +973,7 @@ function TimelineDockBody({
                                 className="min-w-0"
                                 label={segment.caption}
                                 locale={locale}
+                                tone="main"
                                 modified={phaseModified}
                                 onResetValue={
                                   phaseModified
@@ -1001,6 +1018,7 @@ function TimelineDockBody({
                                   className="min-w-0 flex-1"
                                   label={tx(PANEL_COPY.staggerStep, locale)}
                                   locale={locale}
+                                  tone="main"
                                 />
                                 <NumberField
                                   ariaLabel={`${segment.caption}: ${tx(PANEL_COPY.staggerStep, locale)} (${unit})`}

@@ -159,3 +159,13 @@ html[data-panel-reorder] [data-settings-panel-window] * {
 body.settings-place-pick {
   cursor: crosshair;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-panel-view-body] {
+    opacity: 1;
+    transition: opacity 160ms cubic-bezier(0.23, 1, 0.32, 1);
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}

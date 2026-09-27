@@ -9,7 +9,7 @@ import {
 } from "../lib/player-clips";
 import { SfSymbol } from "../sf-symbol";
 import { clampNumber, cn } from "../lib/utils";
-import { CHEVRON_MS, EASE_OUT, ICON, MUTED, SECTION_MS } from "./chrome";
+import { CHEVRON_MS, EASE_OUT, MUTED, SECTION_MS } from "./chrome";
 import { AutoNumberField, FieldButton, NumberField, SettingToggle } from "./fields";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { snapStep } from "./number";
@@ -283,9 +283,9 @@ function SettingPlayerOpen({
               )}
               style={
                 reduceMotion
-                  ? { color: ICON }
+                  ? { color: MUTED }
                   : {
-                      color: ICON,
+                      color: MUTED,
                       transitionDuration: `${CHEVRON_MS}ms`,
                       transitionTimingFunction: EASE_OUT,
                     }

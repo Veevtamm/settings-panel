@@ -11,6 +11,9 @@ export const DIM = "var(--sp-fg-dim)";
 export const ICON = "var(--sp-fg)";
 export const rowLabelClass =
     "block h-[20px] min-h-0 cursor-default select-none truncate text-[15px] font-sans leading-[20px] text-[color:var(--sp-label)]";
+/** Figma `text/main` — timeline inspector (Panel / Label). */
+export const rowLabelMainClass =
+    "block h-[20px] min-h-0 cursor-default select-none truncate text-[15px] font-sans leading-[20px] text-[color:var(--sp-muted)]";
 /** Value in Field / Hex / Coords: 14/18. Numbers — Mono, prose — Sans. */
 export const fieldValueMono = "text-[14px] font-mono leading-[18px] tabular-nums";
 export const fieldValueSans = "text-[14px] font-sans leading-[18px]";

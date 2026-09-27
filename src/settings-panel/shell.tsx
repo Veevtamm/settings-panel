@@ -107,6 +107,7 @@ import {
 } from "./model";
 import { lintSettingsSchema, reportSettingsSchemaLint } from "./schema-lint";
 import { BezierCoordsRow } from "./bezier-coords";
+import { DockBarSlot, PanelViewSwitch, panelPopClassName, panelPopStyle } from "./motion-ui";
 import { TimelineToggleButton } from "./timeline";
 import { FieldButton, SettingToggle } from "./fields";
 import { useCopyFlash } from "./use-copy-flash";
@@ -723,32 +724,47 @@ function DockSearchField({
   onClose: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const reduceMotion = usePrefersReducedMotion();
   useEffect(() => {
     if (open) inputRef.current?.focus();
   }, [open]);
-  if (!open) {
-    return (
-      <button
-        type="button"
-        aria-expanded={false}
-        aria-label={tx(PANEL_COPY.openSearch, locale)}
-        className={dockBarButtonClass()}
-        onClick={onOpen}
-      >
-        <SfSymbol name="search" className="size-5" />
-      </button>
-    );
-  }
+  const motion = reduceMotion
+    ? undefined
+    : {
+        transitionDuration: `${SECTION_MS}ms`,
+        transitionTimingFunction: EASE_OUT,
+      };
   return (
     <div
       data-dock-search=""
       className={cn(
         "relative flex h-[34px] shrink-0 items-center overflow-hidden rounded",
-        fieldChrome,
+        open ? fieldChrome : "border border-transparent",
+        !reduceMotion && "transition-[width,border-color,background-color]",
       )}
-      style={{ width: DOCK_SEARCH_W, background: FIELD }}
+      style={{
+        width: open ? DOCK_SEARCH_W : 34,
+        background: open ? FIELD : "transparent",
+        ...motion,
+      }}
     >
-      {query ? null : (
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-label={tx(PANEL_COPY.openSearch, locale)}
+        tabIndex={open ? -1 : 0}
+        className={cn(
+          dockBarButtonClass(),
+          "absolute inset-y-0 left-0",
+          open && "pointer-events-none opacity-0",
+          !reduceMotion && "transition-opacity",
+        )}
+        style={motion}
+        onClick={onOpen}
+      >
+        <SfSymbol name="search" className="size-5" />
+      </button>
+      {open && !query ? (
         <span
           aria-hidden
           className={cn(
@@ -759,18 +775,23 @@ function DockSearchField({
         >
           {tx(PANEL_COPY.searchPlaceholder, locale)}
         </span>
-      )}
+      ) : null}
       <input
         ref={inputRef}
         type="search"
         value={query}
+        aria-hidden={!open}
+        tabIndex={open ? 0 : -1}
         aria-label={tx(PANEL_COPY.searchField, locale)}
         autoComplete="off"
         className={cn(
           "h-full w-full bg-transparent pr-8 pl-2.5 text-[color:var(--sp-fg)] outline-none",
           "[&::-webkit-search-cancel-button]:hidden",
           fieldValueSans,
+          !open && "pointer-events-none opacity-0",
+          !reduceMotion && "transition-opacity",
         )}
+        style={motion}
         onChange={(event) => onQuery(event.target.value)}
         onKeyDown={(event) => {
           if (event.key !== "Escape") return;
@@ -783,7 +804,14 @@ function DockSearchField({
       <button
         type="button"
         aria-label={tx(PANEL_COPY.closeSearch, locale)}
-        className="absolute right-0.5 inline-flex size-7 items-center justify-center rounded text-[color:var(--sp-muted)] fine-hover:hover:text-[color:var(--sp-fg)]"
+        aria-hidden={!open}
+        tabIndex={open ? 0 : -1}
+        className={cn(
+          "absolute right-0.5 inline-flex size-7 items-center justify-center rounded text-[color:var(--sp-muted)] fine-hover:hover:text-[color:var(--sp-fg)]",
+          !open && "pointer-events-none opacity-0",
+          !reduceMotion && "transition-opacity",
+        )}
+        style={motion}
         onClick={onClose}
       >
         <SfSymbol name="x" className="size-5" />
@@ -1058,7 +1086,6 @@ export function SettingsPanelImpl<TSettings>({
   const {
     panelFloat,
     dockDragging,
-    dockSnap,
     dockMovedRef,
     panelResizing,
     panelMoving,
@@ -2303,9 +2330,7 @@ export function SettingsPanelImpl<TSettings>({
         ...(dockDragging || skipPanelMotion
           ? {}
           : {
-              transitionProperty: dockSnap
-                ? "top, left"
-                : "opacity, visibility",
+              transitionProperty: "top, left, opacity, visibility",
               transitionDuration: `${PANEL_ENTER_MS}ms`,
               transitionTimingFunction: EASE_OUT,
             }),
@@ -2381,15 +2406,20 @@ export function SettingsPanelImpl<TSettings>({
               }}
             />
           ) : null}
-          {sceneOpen && resolvedPlaces.length > 0 ? (
-            <PlacePointerButton
-              active={pickPlace}
-              locale={locale}
-              onToggle={() => {
-                closeSearch();
-                setPickPlace((on) => !on);
-              }}
-            />
+          {resolvedPlaces.length > 0 ? (
+            <DockBarSlot
+              open={sceneOpen}
+              reduceMotion={reduceMotion}
+            >
+              <PlacePointerButton
+                active={pickPlace}
+                locale={locale}
+                onToggle={() => {
+                  closeSearch();
+                  setPickPlace((on) => !on);
+                }}
+              />
+            </DockBarSlot>
           ) : null}
           {dockExtra ? (
             <div data-dock-extra="" className="contents">
@@ -2397,8 +2427,11 @@ export function SettingsPanelImpl<TSettings>({
             </div>
           ) : null}
           <DockBarDivider />
-          {dockActionsVisible && onReset ? (
-            <>
+          {onReset ? (
+            <DockBarSlot
+              open={Boolean(dockActionsVisible)}
+              reduceMotion={reduceMotion}
+            >
               <button
                 type="button"
                 aria-label={tx(PANEL_COPY.resetSettings(changedCount), locale)}
@@ -2431,15 +2464,15 @@ export function SettingsPanelImpl<TSettings>({
                   <DockCountBadge count={changedCount} />
                 </button>
               ) : null}
-            </>
+            </DockBarSlot>
           ) : null}
-          {sceneOpen ? (
+          <DockBarSlot open={sceneOpen} reduceMotion={reduceMotion}>
             <DockFoldButton
               collapse={canCollapseAll}
               locale={locale}
               onToggle={toggleFoldAll}
             />
-          ) : null}
+          </DockBarSlot>
           <DockSearchField
             open={searchOpen}
             query={searchQuery}
@@ -2494,18 +2527,11 @@ export function SettingsPanelImpl<TSettings>({
                     ? "origin-top-right"
                     : "origin-top-left"
               : "origin-center",
-            skipPanelMotion
-              ? panelOpen
-                ? "opacity-100"
-                : "pointer-events-none opacity-0"
-              : cn(
-                  "transition-[opacity,transform] will-change-[opacity,transform]",
-                  panelOpen
-                    ? "translate-y-0 scale-100 opacity-100"
-                    : dockBottom
-                      ? "pointer-events-none translate-y-1.5 scale-[0.98] opacity-0"
-                      : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0",
-                ),
+            panelPopClassName({
+              open: panelOpen,
+              fromBottom: dockBottom,
+              skip: skipPanelMotion,
+            }),
             (panelResizing || panelMoving) && "select-none",
             panelMoving && "cursor-grabbing",
           )}
@@ -2534,14 +2560,10 @@ export function SettingsPanelImpl<TSettings>({
                     : "auto",
                   margin: 0,
                 }),
-            ...(skipPanelMotion || panelMoving || panelResizing
-              ? {}
-              : {
-                  transitionDuration: panelOpen
-                    ? `${PANEL_ENTER_MS}ms`
-                    : `${PANEL_EXIT_MS}ms`,
-                  transitionTimingFunction: EASE_OUT,
-                }),
+            ...panelPopStyle({
+              open: panelOpen,
+              skip: skipPanelMotion || panelMoving || panelResizing,
+            }),
           }}
         >
           {panelMounted ? (() => {
@@ -3163,6 +3185,10 @@ export function SettingsPanelImpl<TSettings>({
             visibleTop.length === 0 &&
             visibleMid.length === 0;
           return (
+          <PanelViewSwitch
+            viewKey={settingsView ? "settings" : "scene"}
+            reduceMotion={reduceMotion}
+          >
           <div
             className="grid min-h-0 w-full grid-rows-[auto_minmax(0,auto)] overflow-hidden"
             data-section-list=""
@@ -3189,6 +3215,7 @@ export function SettingsPanelImpl<TSettings>({
               )}
             </div>
           </div>
+          </PanelViewSwitch>
           );
           })() : null}
           {panelOpen ? (
