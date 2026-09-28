@@ -74,7 +74,6 @@ import {
 import { EasingPlayheadGate } from "./easing-playhead";
 import { PANEL_VERSION } from "../version";
 import { SettingToggle } from "./fields";
-import { SettingNumber } from "./number";
 import { copyKey, PANEL_COPY, tx, type PanelLocale } from "./locale";
 import {
   applyLiftTransform,
@@ -2139,18 +2138,22 @@ export function SettingsPanelImpl<TSettings>({
                 onChange={() => resetChromeLayout()}
                 value={false}
               />
-              <SettingNumber
-                label={tx(PANEL_COPY.version, locale)}
-                info={tx(PANEL_COPY.versionInfo, locale)}
-                locale={locale}
-                value={0}
-                min={0}
-                max={0}
-                onChange={() => {}}
-                reduceMotion={reduceMotion}
-                readOnly
-                readOnlyLabel={PANEL_VERSION}
-              />
+              <div
+                data-setting-row
+                className="flex h-[28px] items-center justify-between gap-4"
+              >
+                <RowLabel
+                  label={tx(PANEL_COPY.version, locale)}
+                  info={tx(PANEL_COPY.versionInfo, locale)}
+                  locale={locale}
+                />
+                <span
+                  className="shrink-0 font-mono text-[14px] leading-[18px] select-text"
+                  style={{ color: MUTED }}
+                >
+                  {PANEL_VERSION}
+                </span>
+              </div>
             </div>
           </section>
               );
