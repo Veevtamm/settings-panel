@@ -1,6 +1,6 @@
 {
   "name": "@veevtamm/settings-panel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Scene settings panel for Next.js + Tailwind 4 sites",
   "license": "MIT",
@@ -20,9 +20,20 @@
     "panel"
   ],
   "type": "module",
+  "portless": {
+    "name": "settings-panel",
+    "script": "playground:app"
+  },
   "sideEffects": [
     "**/*.css"
   ],
+  "scripts": {
+    "check": "tsc --noEmit -p . && vitest run",
+    "playground": "portless",
+    "playground:app": "vite playground",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles.css",
@@ -32,6 +43,7 @@
     "./hex": "./src/lib/hex.ts",
     "./prefers-reduced-motion": "./src/lib/prefers-reduced-motion.ts",
     "./use-local-settings-store": "./src/lib/use-local-settings-store.ts",
+    "./param-store": "./src/lib/param-store.ts",
     "./is-over-settings-panel": "./src/lib/is-over-settings-panel.ts",
     "./frame-orient": "./src/lib/frame-orient.ts",
     "./skip-cells": "./src/lib/skip-cells.ts",
@@ -50,6 +62,7 @@
   "files": [
     "src",
     "AGENTS.md",
+    "CHANGELOG.md",
     ".cursor/rules/settings-panel.mdc"
   ],
   "peerDependencies": {
@@ -59,8 +72,17 @@
     "tailwind-merge": "^3"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "@vitejs/plugin-react": "^5.2.0",
+    "clsx": "^2.1.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwind-merge": "^3.7.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5",
+    "vite": "^7.3.6",
+    "vitest": "^3.2.7"
   }
 }

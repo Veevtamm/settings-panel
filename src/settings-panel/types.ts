@@ -13,9 +13,8 @@ export type SettingsLayer =
   | "motion"
   | "grid";
 
-/** Ignored by rendering. `where` = pointer place ids; omit = page-wide. */
+/** Ignored by rendering: which law of the scene the row belongs to. */
 export type ParamPlacement = {
-  where?: readonly string[];
   layer?: SettingsLayer;
 };
 
@@ -386,7 +385,6 @@ export type DerivedSetting<TSettings> = {
   /** Format the computed value for the field; default: numbers → up to 2 decimals trimmed, strings as-is. */
   format?: (value: number | string) => string;
   after?: keyof TSettings;
-  where?: readonly string[];
   layer?: SettingsLayer;
 };
 
@@ -428,37 +426,19 @@ export type SettingsGroup<TSettings> = {
 export type EasingTarget = {
   id: string;
   label: Copy;
-  /** Place ids this curve acts on; omit = page-wide (still listed if `place.easingIds` names it). */
-  where?: readonly string[];
 };
 
-/**
- * A pickable *place* on the scene (kreator-panel указка): not one DOM node’s
- * private settings, but the laws that apply to every instance of that place.
- * Hover outlines all matches; click filters the panel to `keys` / `easingIds`.
- */
-export type SettingsPlace<TSettings> = {
+/** Spring window target: values live in `settings.springs[id]`. */
+export type SpringTarget = {
   id: string;
   label: Copy;
-  /** Extra keys beyond rows whose `where` includes this id. The panel unions them in `resolvePlaces`. */
-  keys?: readonly (keyof TSettings)[];
-  /** Extra bezier target ids beyond `EasingTarget.where`. */
-  easingIds?: readonly string[];
-  /** Keep `curveSection` visible while this place is selected. */
-  includeCurve?: boolean;
-  /** CSS selectors; first matching place in the list wins. */
-  where?: readonly string[];
-  /**
-   * Hit-test when the place has no pointer target (overlay with
-   * `pointer-events: none`, canvas). If set, `where` is only for outlines.
-   */
-  hit?: (x: number, y: number) => boolean;
-  layer?: SettingsLayer;
 };
 
 export type SettingsPanelProps<TSettings> = {
   defaultOpenSections?: string[];
   easingTargets?: readonly EasingTarget[];
+  /** Spring window (`activity` in the Dock Bar); needs `springs` in `TSettings`. */
+  springTargets?: readonly SpringTarget[];
   /**
    * Scene-only Bezier presets appended to the built-in list.
    * Omit = package list only. Do not put these curves in `EASING_PRESETS`.
@@ -479,11 +459,6 @@ export type SettingsPanelProps<TSettings> = {
   onReset?: () => void;
   /** Per-row reset dots: rows whose value differs from these defaults get a dot. */
   defaultSettings?: TSettings;
-  /**
-   * Scene places the pointer can pick. Dock 34 (`mouse-pointer-click`) appears
-   * when this list is non-empty. Click a place → panel keeps only its keys.
-   */
-  places?: readonly SettingsPlace<TSettings>[];
   /** Scene buttons (34) in the Dock Bar group after Fold / pointer; their own glass is stripped inside the bar. */
   dockExtra?: ReactNode;
   /**
@@ -522,6 +497,12 @@ export type SettingsPanelProps<TSettings> = {
    * to the browser / scene.
    */
   hideShortcut?: boolean;
+  /**
+   * G3: ⌘Z / ⇧⌘Z undo / redo panel edits of this session (rows, reset dots,
+   * Reset, presets) outside text fields. Default `true`; `false` leaves ⌘Z to
+   * the scene. Timeline clip drags are not in the history.
+   */
+  undoShortcut?: boolean;
   /**
    * B5: unmount the gear / window. vozdvizhenka used `NODE_ENV==='production'`
    * around the mount — pass `enabled={process.env.NODE_ENV !== "production"}`.

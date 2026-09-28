@@ -5,12 +5,17 @@ import type {
   EnumSetting,
   FrameOrientSetting,
   NumberSetting,
+  PairField,
+  PairSetting,
+  PhaseStagger,
+  PlayerPhase,
+  PlayerSetting,
+  RangeSetting,
   SettingAnchor,
   SettingFrameOrient,
   SettingTextAlign,
   SettingXAnchor,
   SettingsLayer,
-  SettingsPlace,
   TextAlignSetting,
   TextSetting,
   ToggleSetting,
@@ -46,9 +51,57 @@ export type ValueParam<V> = {
   kind: "value";
   default: V;
   label?: Copy;
-  where?: readonly string[];
   layer?: SettingsLayer;
 };
+
+/** One settings key inside a multi-key param (range ends, pair fields, clips). */
+export type KeyDefault<K extends string = string> = { key: K; default: number };
+
+/** Entries that own several settings keys; `defaults` is the source of their values. */
+type Multi<Kind extends string, K extends string> = {
+  kind: Kind;
+  layer?: SettingsLayer;
+  defaults: Record<K, number>;
+};
+
+export type RangeParam<K extends string = string> = Omit<
+  RangeSetting<Bag>,
+  "fromKey" | "toKey"
+> &
+  Multi<"range", K> & { fromKey: K; toKey: K };
+
+export type PairParamField<K extends string = string> = Omit<
+  PairField<Bag>,
+  "key"
+> &
+  KeyDefault<K>;
+
+export type PairParam<K extends string = string> = Omit<
+  PairSetting<Bag>,
+  "fields"
+> &
+  Multi<"pair", K> & {
+    fields: readonly [PairField<Bag> & { key: K }, PairField<Bag> & { key: K }];
+  };
+
+export type PlayerParamPhase<K extends string = string> = Omit<
+  PlayerPhase<Bag>,
+  "key" | "startKey" | "stagger"
+> &
+  KeyDefault<K> & {
+    start?: KeyDefault<K>;
+    stagger?: Omit<PhaseStagger<Bag>, "stepKey"> & { step: KeyDefault<K> };
+  };
+
+/** `PlayerSetting` without `controller` — the scene adds it: `{ ...P.reel, controller }`. */
+export type PlayerParam<K extends string = string> = Omit<
+  PlayerSetting<Bag>,
+  "totalKey" | "phases" | "controller"
+> &
+  Multi<"player", K> & {
+    totalKey: K;
+    phases: readonly (PlayerPhase<Bag> & { key: K })[];
+  };
 
 export type ParamEntry =
   | NumberParam
@@ -60,10 +113,33 @@ export type ParamEntry =
   | XAnchorParam
   | TextAlignParam
   | OrientParam
-  | ValueParam<unknown>;
+  | ValueParam<unknown>
+  | RangeParam
+  | PairParam
+  | PlayerParam;
 
-export type SettingsOf<D extends Record<PropertyKey, { default: unknown }>> = {
-  [K in keyof D]: D[K]["default"];
+type UnionToIntersection<U> = (
+  U extends unknown ? (arg: U) => void : never
+) extends (arg: infer I) => void
+  ? I
+  : never;
+
+type SingleSettings<D> = {
+  [K in keyof D as D[K] extends { defaults: object } ? never : K]: D[K] extends {
+    default: infer V;
+  }
+    ? V
+    : never;
+};
+type MultiSettings<D> = UnionToIntersection<
+  {
+    [K in keyof D]: D[K] extends { defaults: infer R } ? R : never;
+  }[keyof D]
+>;
+
+export type SettingsOf<D extends Record<PropertyKey, unknown>> = {
+  [K in keyof (SingleSettings<D> & MultiSettings<D>)]: (SingleSettings<D> &
+    MultiSettings<D>)[K];
 };
 
 /** Constructor bag ∩ real row, so `P.x` is assignable to `NumberSetting<SettingsOf<D>>`. */
@@ -87,7 +163,13 @@ type AsRow<D extends Record<string, ParamEntry>, K extends keyof D> = D[K] & {
                   ? TextAlignSetting<SettingsOf<D>>
                   : D[K] extends { kind: "orient" }
                     ? FrameOrientSetting<SettingsOf<D>>
-                    : {});
+                    : D[K] extends { kind: "range" }
+                      ? RangeSetting<SettingsOf<D>>
+                      : D[K] extends { kind: "pair" }
+                        ? PairSetting<SettingsOf<D>>
+                        : D[K] extends { kind: "player" }
+                          ? Omit<PlayerSetting<SettingsOf<D>>, "controller">
+                          : {});
 
 export type Params<D extends Record<string, ParamEntry>> = {
   [K in keyof D]: AsRow<D, K>;
@@ -112,6 +194,74 @@ export function value<V>(def: Omit<ValueParam<V>, "kind">): ValueParam<V> {
   return tagged("value", def);
 }
 
+/** Dual range: two keys, one row. `from` / `to` carry their defaults. */
+export function range<K extends string>({
+  from,
+  to,
+  ...rest
+}: Omit<RangeParam, "kind" | "defaults" | "fromKey" | "toKey"> & {
+  from: KeyDefault<K>;
+  to: KeyDefault<K>;
+}): RangeParam<NoInfer<K>> {
+  return {
+    ...rest,
+    kind: "range",
+    fromKey: from.key,
+    toKey: to.key,
+    defaults: { [from.key]: from.default, [to.key]: to.default } as Record<
+      K,
+      number
+    >,
+  };
+}
+
+/** Two linked numbers in one row (gap X/Y, pad X/Y). */
+export function pair<K extends string>({
+  fields,
+  ...rest
+}: Omit<PairParam, "kind" | "defaults" | "fields"> & {
+  fields: readonly [PairParamField<K>, PairParamField<K>];
+}): PairParam<NoInfer<K>> {
+  const [a, b] = fields.map(({ default: _default, ...field }) => field) as [
+    PairField<Bag> & { key: K },
+    PairField<Bag> & { key: K },
+  ];
+  return {
+    ...rest,
+    kind: "pair",
+    fields: [a, b],
+    defaults: {
+      [fields[0].key]: fields[0].default,
+      [fields[1].key]: fields[1].default,
+    } as Record<K, number>,
+  };
+}
+
+/** Timeline player: total, clips, starts and stagger steps as one entry. */
+export function player<K extends string>({
+  total,
+  phases,
+  ...rest
+}: Omit<PlayerParam, "kind" | "defaults" | "totalKey" | "phases"> & {
+  total: KeyDefault<K>;
+  phases: readonly PlayerParamPhase<K>[];
+}): PlayerParam<NoInfer<K>> {
+  const defaults = { [total.key]: total.default } as Record<K, number>;
+  const rows = phases.map(({ key, default: value, start, stagger, ...phase }) => {
+    defaults[key] = value;
+    if (start) defaults[start.key] = start.default;
+    if (stagger) defaults[stagger.step.key] = stagger.step.default;
+    const { step, ...staggerRest } = stagger ?? {};
+    return {
+      ...phase,
+      key,
+      ...(start ? { startKey: start.key } : {}),
+      ...(stagger && step ? { stagger: { ...staggerRest, stepKey: step.key } } : {}),
+    } as PlayerPhase<Bag> & { key: K };
+  });
+  return { ...rest, kind: "player", totalKey: total.key, phases: rows, defaults };
+}
+
 export const param = {
   number,
   toggle,
@@ -123,6 +273,9 @@ export const param = {
   textAlign,
   orient,
   value,
+  range,
+  pair,
+  player,
 };
 
 export function defineParams<const D extends Record<string, ParamEntry>>(
@@ -138,59 +291,28 @@ export function defineParams<const D extends Record<string, ParamEntry>>(
 export function defaultsOf<D extends Record<string, ParamEntry>>(
   params: Params<D>,
 ): SettingsOf<D> {
-  const out = {} as SettingsOf<D>;
+  const out = {} as Record<PropertyKey, unknown>;
   for (const name of Object.keys(params) as (keyof D)[]) {
-    (out as Record<PropertyKey, unknown>)[name] = params[name].default;
+    const entry = params[name] as ParamEntry;
+    if ("defaults" in entry) Object.assign(out, entry.defaults);
+    else out[name] = entry.default;
   }
-  return out;
+  return out as SettingsOf<D>;
 }
 
-export type PlaceDef = Omit<SettingsPlace<Bag>, "keys"> & {
-  keys?: readonly string[];
-};
-
-function warn(message: string) {
-  if (typeof console !== "undefined") console.warn(message);
-}
-
-/**
- * Schema-time convenience: fills `keys` from `param.*.where` plus explicit extras.
- * The panel resolves `where` itself via `resolvePlaces` — `placesOf` is optional.
- */
-export function placesOf<D extends Record<string, ParamEntry>>(
-  params: Params<D>,
-  places: readonly PlaceDef[],
-): SettingsPlace<SettingsOf<D>>[] {
-  const placeIds = new Set(places.map((place) => place.id));
-  const unknown = new Set<string>();
-  for (const name of Object.keys(params)) {
-    for (const id of params[name as keyof D].where ?? []) {
-      if (!placeIds.has(id)) unknown.add(id);
-    }
-  }
-  for (const id of unknown) {
-    warn(`settings-panel: param where names unknown place "${id}"`);
-  }
-
-  type Key = keyof SettingsOf<D>;
-  return places.map((place) => {
-    const keys: Key[] = [];
-    const seen = new Set<string>();
-    const add = (key: string) => {
-      if (seen.has(key)) return;
-      seen.add(key);
-      keys.push(key as Key);
-    };
-    for (const name of Object.keys(params)) {
-      if (params[name as keyof D].where?.includes(place.id)) add(name);
-    }
-    for (const key of place.keys ?? []) add(key);
-    if (keys.length === 0 && !place.easingIds?.length) {
-      warn(`settings-panel: place "${place.id}" has no keys and no easingIds`);
-    }
-    return { ...place, keys };
-  });
-}
+type RowEntry<S> =
+  | ({ kind: "number" } & NumberSetting<S>)
+  | ({ kind: "toggle" } & ToggleSetting<S>)
+  | ({ kind: "color" } & ColorSetting<S>)
+  | ({ kind: "enum" } & EnumSetting<S>)
+  | ({ kind: "text" } & TextSetting<S>)
+  | ({ kind: "anchor" } & AnchorSetting<S>)
+  | ({ kind: "xAnchor" } & XAnchorSetting<S>)
+  | ({ kind: "textAlign" } & TextAlignSetting<S>)
+  | ({ kind: "orient" } & FrameOrientSetting<S>)
+  | ({ kind: "range" } & RangeSetting<S>)
+  | ({ kind: "pair" } & PairSetting<S>)
+  | { kind: "value" | "player" };
 
 export function rowsOf<D extends Record<string, ParamEntry>>(
   params: Params<D>,
@@ -206,8 +328,10 @@ export function rowsOf<D extends Record<string, ParamEntry>>(
   const xAnchors: XAnchorSetting<S>[] = [];
   const textAligns: TextAlignSetting<S>[] = [];
   const orients: FrameOrientSetting<S>[] = [];
+  const ranges: RangeSetting<S>[] = [];
+  const pairs: PairSetting<S>[] = [];
   for (const key of keys) {
-    const entry = params[key];
+    const entry = params[key] as unknown as RowEntry<S>;
     switch (entry.kind) {
       case "number":
         settings.push(entry);
@@ -236,6 +360,12 @@ export function rowsOf<D extends Record<string, ParamEntry>>(
       case "orient":
         orients.push(entry);
         break;
+      case "range":
+        ranges.push(entry);
+        break;
+      case "pair":
+        pairs.push(entry);
+        break;
       default:
         break;
     }
@@ -250,5 +380,7 @@ export function rowsOf<D extends Record<string, ParamEntry>>(
     ...(xAnchors.length ? { xAnchors } : {}),
     ...(textAligns.length ? { textAligns } : {}),
     ...(orients.length ? { orients } : {}),
+    ...(ranges.length ? { ranges } : {}),
+    ...(pairs.length ? { pairs } : {}),
   };
 }

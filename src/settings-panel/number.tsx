@@ -22,7 +22,6 @@ import {
   SCRUB_TICK_H,
   SCRUB_TICK_PAD_X,
   SCRUB_TICK_W,
-  fieldChrome,
   pickEase,
   pickIdle,
   pickerChrome,

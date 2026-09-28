@@ -1,0 +1,17 @@
+@import "tailwindcss";
+@import "../src/styles.css";
+
+@source "../src";
+@source "./";
+
+@custom-variant fine-hover (@media (hover: hover) and (pointer: fine));
+
+@theme {
+  --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, monospace;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+}

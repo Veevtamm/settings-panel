@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import {
@@ -11,13 +11,11 @@ import {
   HINT_POP_MS,
   HINT_SESSION_MS,
   ICON,
-  MUTED,
   SECTION_MS,
   rowLabelClass,
   rowLabelMainClass,
 } from "./chrome";
 import { SectionIconPicker } from "./icon-picker";
-import type { PanelLocale } from "./locale";
 import type { ResetDotProps } from "./types";
 
 let hintSessionUntil = 0;

@@ -8,13 +8,16 @@ Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens s
 
 ## Features
 
-- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, Bezier, axis, search by parameter name, fold all, pointer, Reset, Copy), top center by default; drag it to any corner or to bottom center
+- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, spring, Bezier, axis, search by parameter name, fold all, Reset, Copy), top center by default; drag it to any corner or to bottom center
 - Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
+- Spring window (`springTargets`): stiffness, damping and mass with a response graph and the settle time; `springLinearEasing` turns a spring into a CSS `linear()` curve
+- Click the changes badge to see only changed rows; ⌘Z / ⇧⌘Z undo and redo panel edits
+- Share settings as a link (`?settings=`) or save / open them as a `.json` file with presets
 - Bottom animation timeline (`SettingsTimeline`): stays open together with the panel window; several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
 - Shared custom widgets: chips, skip cells, shuffle replay, stroke join, axis curve editor (`AxisCurveEditor`)
 - Russian and English UI
 - Dark and light themes
-- Presets, pointer mode, per-row reset, and copy-as-defaults
+- Presets, per-row reset, and copy-as-defaults
 - Lucide icons from Tools **Panel / Icon** (16×16 in a 20×20 slot)
 - Per-scene `localStorage`
 
@@ -25,6 +28,8 @@ The package lives on GitHub, not npm.
 ```bash
 npm install github:Veevtamm/settings-panel
 ```
+
+To pin a version, add a tag: `github:Veevtamm/settings-panel#v0.2.0`. What changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
 
 Peer dependencies: `react` 19, `react-dom` 19, `clsx`, `tailwind-merge`. Load Geist in the app layout. The panel uses `font-sans` and `font-mono`.
 
@@ -124,13 +129,21 @@ After install, copy `.cursor/rules/settings-panel.mdc` from this package into yo
 
 ## Persist
 
-Use `useLocalSettingsStore` when values should survive a reload. Storage key: `<project>-<scene>-settings`.
+Use `useLocalSettingsStore` when values should survive a reload. Storage key: `<project>-<scene>-settings`. With a `defineParams` registry, `createParamStore` builds the load / save side for you and checks every stored value against its control:
 
 ```tsx
-import { useLocalSettingsStore } from "@veevtamm/settings-panel";
+import {
+  createParamStore,
+  useLocalSettingsStore,
+} from "@veevtamm/settings-panel";
+
+const store = createParamStore(P, { storageKey: "my-site-hero-settings" });
+const [settings, setSettings] = useLocalSettingsStore(store);
 ```
 
 ## Local development
+
+`npm run playground` opens `https://settings-panel.localhost` (via Portless): one page with every control, the timeline, spring, Bezier and axis windows. `npm run check` runs types and tests.
 
 While you edit this repo next to an app:
 

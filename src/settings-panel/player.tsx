@@ -25,7 +25,6 @@ import type {
   PlayerController,
   PlayerSetting,
   PlayerState,
-  ResetDotProps,
 } from "./types";
 
 /** ×1 → ×3 → ×5 → ×10 → ×1: slow-down steps, click cycles. */

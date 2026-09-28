@@ -7,7 +7,6 @@ import type {
   EasingTarget,
   SettingsGroup,
   PlayerSetting,
-  SettingsPlace,
   SettingsSection,
 } from "./types";
 import { SECTION_MS, EASE_OUT } from "./chrome";
@@ -38,7 +37,6 @@ export function mergeSectionOrder(current: string[], saved: string[] | undefined
 
 export const PRESETS_SECTION_ID = "presets";
 export const PANEL_SECTION_ID = "panel";
-export const PLACE_SECTION_ID = "place";
 export const BEZIER_VIEW_ID = "bezier-view";
 export const AXIS_VIEW_ID = "axis-view";
 export const DEFAULT_PINNED_SECTIONS: readonly string[] = [];
@@ -294,78 +292,6 @@ export function omitPlayerKeyRows<TSettings>(
   return out;
 }
 
-/** Keep only rows whose keys sit in the picked place. Empty section → null. */
-export function filterSectionByPlace<TSettings>(
-  section: SettingsSection<TSettings>,
-  keys: ReadonlySet<keyof TSettings>,
-  placeId?: string,
-): SettingsSection<TSettings> | null {
-  const keep = (key: keyof TSettings) => keys.has(key);
-  const next: SettingsSection<TSettings> = {
-    ...section,
-    visibilityKey:
-      section.visibilityKey != null && keep(section.visibilityKey)
-        ? section.visibilityKey
-        : undefined,
-    settings: nonempty(section.settings?.filter((row) => keep(row.key))),
-    pairs: nonempty(
-      section.pairs?.filter((row) => row.fields.some((field) => keep(field.key))),
-    ),
-    ranges: nonempty(
-      section.ranges?.filter((row) => keep(row.fromKey) || keep(row.toKey)),
-    ),
-    colors: nonempty(
-      section.colors?.filter(
-        (row) => keep(row.key) || (row.opacityKey != null && keep(row.opacityKey)),
-      ),
-    ),
-    toggles: nonempty(section.toggles?.filter((row) => keep(row.key))),
-    anchors: nonempty(section.anchors?.filter((row) => keep(row.key))),
-    xAnchors: nonempty(section.xAnchors?.filter((row) => keep(row.key))),
-    textAligns: nonempty(section.textAligns?.filter((row) => keep(row.key))),
-    orients: nonempty(section.orients?.filter((row) => keep(row.key))),
-    enums: nonempty(section.enums?.filter((row) => keep(row.key))),
-    texts: nonempty(section.texts?.filter((row) => keep(row.key))),
-    custom: nonempty(
-      section.custom?.filter((row) =>
-        (row.keys ?? []).some((item) => keep(item.key)),
-      ),
-    ),
-    refs: nonempty(section.refs?.filter((row) => keep(row.ref))),
-    derived: nonempty(
-      section.derived?.filter(
-        (row) =>
-          (placeId != null && row.where?.includes(placeId)) ||
-          (row.after != null && keep(row.after)),
-      ),
-    ),
-  };
-  return sectionHasRows(next) ? next : null;
-}
-
-export function filterGroupsByPlace<TSettings>(
-  groups: SettingsGroup<TSettings>[],
-  keys: ReadonlySet<keyof TSettings>,
-  placeId?: string,
-): SettingsGroup<TSettings>[] {
-  const out: SettingsGroup<TSettings>[] = [];
-  for (const group of groups) {
-    const sections = group.sections
-      .map((section) => filterSectionByPlace(section, keys, placeId))
-      .filter((section): section is SettingsSection<TSettings> => section != null);
-    if (sections.length === 0) continue;
-    out.push({
-      ...group,
-      sections,
-      visibilityKey:
-        group.visibilityKey != null && keys.has(group.visibilityKey)
-          ? group.visibilityKey
-          : undefined,
-    });
-  }
-  return out;
-}
-
 function searchTexts(
   part: Copy | string | number | undefined | null,
 ): string[] {
@@ -606,101 +532,56 @@ export function filterGroupsBySearch<TSettings>(
   return out;
 }
 
-function inPlace(
-  where: readonly string[] | undefined,
-  placeId: string,
-) {
-  return where?.includes(placeId) === true;
-}
-
 /**
- * Effective `keys` / `easingIds` for pointer mode: rows (and easing targets)
- * whose `where` includes the place id, union explicit extras on the place.
- * Order follows group → section → default row bags (player first).
+ * G1 «only changed»: rows that write one of `keys`. A section / group whose
+ * eye (`visibilityKey`) changed stays, even with no rows left.
  */
-export function resolvePlaces<TSettings>(
+export function filterGroupsByKeys<TSettings>(
   groups: readonly SettingsGroup<TSettings>[],
-  places: readonly SettingsPlace<TSettings>[],
-  easingTargets?: readonly EasingTarget[],
-): SettingsPlace<TSettings>[] {
-  return places.map((place) => {
-    const keys: (keyof TSettings)[] = [];
-    const seen = new Set<PropertyKey>();
-    const add = (key: keyof TSettings | undefined) => {
-      if (key == null || seen.has(key)) return;
-      seen.add(key);
-      keys.push(key);
-    };
-
-    for (const group of groups) {
-      if (inPlace(group.where, place.id)) add(group.visibilityKey);
-      for (const section of group.sections) {
-        if (inPlace(section.where, place.id)) add(section.visibilityKey);
-        for (const row of section.colors ?? []) {
-          if (!inPlace(row.where, place.id)) continue;
-          add(row.key);
-          add(row.opacityKey);
-        }
-        for (const row of section.orients ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.toggles ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.texts ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.custom ?? []) {
-          if (!inPlace(row.where, place.id)) continue;
-          for (const item of row.keys ?? []) add(item.key);
-        }
-        for (const row of section.settings ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.pairs ?? []) {
-          if (!inPlace(row.where, place.id)) continue;
-          add(row.fields[0].key);
-          add(row.fields[1].key);
-        }
-        for (const row of section.ranges ?? []) {
-          if (!inPlace(row.where, place.id)) continue;
-          add(row.fromKey);
-          add(row.toKey);
-        }
-        for (const row of section.enums ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.anchors ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.xAnchors ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.textAligns ?? []) {
-          if (inPlace(row.where, place.id)) add(row.key);
-        }
-        for (const row of section.refs ?? []) {
-          if (inPlace(row.where, place.id)) add(row.ref);
-        }
+  keys: ReadonlySet<keyof TSettings>,
+): SettingsGroup<TSettings>[] {
+  const has = (key: keyof TSettings | undefined) => key != null && keys.has(key);
+  const out: SettingsGroup<TSettings>[] = [];
+  for (const group of groups) {
+    const sections: SettingsSection<TSettings>[] = [];
+    for (const section of group.sections) {
+      const next = untetherOrphanAfter<TSettings>({
+        ...section,
+        settings: nonempty(section.settings?.filter((row) => has(row.key))),
+        pairs: nonempty(
+          section.pairs?.filter((row) =>
+            row.fields.some((field) => has(field.key)),
+          ),
+        ),
+        ranges: nonempty(
+          section.ranges?.filter((row) => has(row.fromKey) || has(row.toKey)),
+        ),
+        colors: nonempty(
+          section.colors?.filter((row) => has(row.key) || has(row.opacityKey)),
+        ),
+        toggles: nonempty(section.toggles?.filter((row) => has(row.key))),
+        anchors: nonempty(section.anchors?.filter((row) => has(row.key))),
+        xAnchors: nonempty(section.xAnchors?.filter((row) => has(row.key))),
+        textAligns: nonempty(section.textAligns?.filter((row) => has(row.key))),
+        orients: nonempty(section.orients?.filter((row) => has(row.key))),
+        enums: nonempty(section.enums?.filter((row) => has(row.key))),
+        texts: nonempty(section.texts?.filter((row) => has(row.key))),
+        custom: nonempty(
+          section.custom?.filter((row) =>
+            (row.keys ?? []).some((item) => has(item.key)),
+          ),
+        ),
+        refs: undefined,
+        derived: undefined,
+      });
+      if (sectionHasRows(next) || has(section.visibilityKey)) {
+        sections.push(next);
       }
     }
-
-    for (const key of place.keys ?? []) add(key);
-
-    const easingIds: string[] = [];
-    const seenEasing = new Set<string>();
-    const addEasing = (id: string) => {
-      if (seenEasing.has(id)) return;
-      seenEasing.add(id);
-      easingIds.push(id);
-    };
-    for (const target of easingTargets ?? []) {
-      if (inPlace(target.where, place.id)) addEasing(target.id);
-    }
-    for (const id of place.easingIds ?? []) addEasing(id);
-
-    return { ...place, keys, easingIds };
-  });
+    if (sections.length === 0 && !has(group.visibilityKey)) continue;
+    out.push({ ...group, sections });
+  }
+  return out;
 }
 
 export function collectGroupKeys<TSettings>(

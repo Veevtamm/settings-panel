@@ -56,6 +56,11 @@ export const PANEL_COPY = {
     "Puts the Dock Bar back in its starting slot and docks the window to the bar. Width, theme, and language stay as they are.",
   ),
   resetChromeLayout: L("Сбросить", "Reset"),
+  version: L("Версия", "Version"),
+  versionInfo: L(
+    "Версия пакета @veevtamm/settings-panel. Что изменилось — CHANGELOG.md в репозитории.",
+    "@veevtamm/settings-panel package version. What changed is in CHANGELOG.md in the repo.",
+  ),
   resizePanelWidth: L("Изменить ширину панели", "Resize panel width"),
   resizePanelHeight: L("Изменить высоту панели", "Resize panel height"),
   resizePanelCorner: L("Изменить размер панели", "Resize panel"),
@@ -96,6 +101,9 @@ export const PANEL_COPY = {
   closePanelSettings: L("Закрыть настройки панели", "Close Panel Settings"),
   openBezier: L("Открыть кривую Безье", "Open Bezier curve"),
   closeBezier: L("Закрыть кривую Безье", "Close Bezier curve"),
+  spring: L("Пружина", "Spring"),
+  openSpring: L("Открыть пружину", "Open spring"),
+  closeSpring: L("Закрыть пружину", "Close spring"),
   openAxis: L("Открыть ось", "Open axis"),
   closeAxis: L("Закрыть ось", "Close axis"),
   resetSettings: (count: number) =>
@@ -156,14 +164,20 @@ export const PANEL_COPY = {
   searchField: L("Поиск параметра", "Search parameters"),
   searchPlaceholder: L("Поиск", "Search"),
   searchEmpty: L("Ничего не нашлось", "No matching parameters"),
-  pickPlace: L("Выбрать место на сцене", "Pick a place on the scene"),
-  cancelPickPlace: L("Выключить указку", "Turn off the pointer"),
-  showAllSettings: L("Показать все параметры", "Show all settings"),
-  placeGone: L("Место исчезло, показаны все параметры", "Place gone — showing all settings"),
-  placeEmpty: L(
-    "Для текущего вида сцены у этого места нет параметров",
-    "This place has no parameters in the current scene",
-  ),
+  changedFilter: (count: number) =>
+    L(`Изменено · ${count}`, `Changed · ${count}`),
+  showChangedOnly: (count: number) =>
+    L(
+      `Показать только изменённые (${count})`,
+      `Show only changed (${count})`,
+    ),
+  showAllRows: L("Показать все параметры", "Show all parameters"),
+  undone: L("Отменено", "Undone"),
+  redone: L("Возвращено", "Redone"),
+  redoHint: L("⇧⌘Z вернуть", "⇧⌘Z redo"),
+  undoHint: L("⌘Z отменить", "⌘Z undo"),
+  resetStep: L("Сброс", "Reset"),
+  presetStep: (slot: number) => L(`Пресет ${slot}`, `Preset ${slot}`),
   parameters: (n: number) => {
     if (n === 1) return L("1 параметр", "1 parameter");
     const mod10 = n % 10;
@@ -171,9 +185,21 @@ export const PANEL_COPY = {
     const ru =
       mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)
         ? `${n} параметра`
-        : `${n} параметров`;
+        : mod10 === 1 && mod100 !== 11
+          ? `${n} параметр`
+          : `${n} параметров`;
     return L(ru, `${n} parameters`);
   },
+  transferSettings: L("Перенос настроек", "Transfer settings"),
+  copySettingsLink: L("Ссылка с настройками", "Link with settings"),
+  saveSettingsFile: L("Сохранить в файл", "Save to file"),
+  openSettingsFile: L("Открыть файл", "Open file"),
+  linkCopied: L("Ссылка скопирована", "Link copied"),
+  linkApplied: L("Из ссылки", "From link"),
+  fileSaved: L("Файл сохранён", "File saved"),
+  fileApplied: L("Из файла", "From file"),
+  fileRejected: L("Файл не подошёл", "File not recognized"),
+  noChanges: L("Всё по умолчанию", "All at defaults"),
 } as const;
 
 export const ANCHOR_COPY: Record<string, LocaleText> = {

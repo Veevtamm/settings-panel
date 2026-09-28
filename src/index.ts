@@ -27,6 +27,7 @@ export type {
   CustomSettingRender,
   DerivedSetting,
   EasingTarget,
+  SpringTarget,
   EnumMark,
   EnumOption,
   EnumSetting,
@@ -49,7 +50,6 @@ export type {
   SettingXAnchor,
   SettingsGroup,
   SettingsLayer,
-  SettingsPlace,
   SettingsSection,
   TextAlignSetting,
   TextSetting,
@@ -57,7 +57,6 @@ export type {
   ToggleSetting,
   XAnchorSetting,
 } from "./settings-panel/types";
-export { resolvePlaces } from "./settings-panel/model";
 export {
   lintSettingsSchema,
   reportSettingsSchemaLint,
@@ -71,14 +70,16 @@ export type {
 export {
   defineParams,
   defaultsOf,
-  placesOf,
   rowsOf,
   param,
 } from "./settings-panel/params";
 export type {
+  KeyDefault,
+  PairParam,
   Params,
   ParamsOf,
-  PlaceDef,
+  PlayerParam,
+  RangeParam,
   SettingsOf,
 } from "./settings-panel/params";
 export { RowLabel, SettingRow } from "./settings-panel/row";
@@ -105,7 +106,6 @@ export type {
 export { SettingsMomentHud } from "./settings-panel/moment-hud";
 export { SettingsPanel } from "./settings-panel/shell";
 export { FieldButton, SettingToggle } from "./settings-panel/fields";
-export { pointInSelector, pointInSettingsPlace } from "./settings-panel/places";
 export { PickRadioGroup } from "./settings-panel/pick";
 export { SettingChips } from "./settings-panel/chips";
 export { SettingCells, SettingSkipReplay } from "./settings-panel/cells";
@@ -218,6 +218,17 @@ export {
   clamp01,
   type CubicBezier,
 } from "./lib/cubic-bezier";
+export {
+  springLinearEasing,
+  springSettleMs,
+  springValue,
+  type SpringConfig,
+} from "./lib/spring";
+export { SETTINGS_LINK_PARAM } from "./lib/settings-transfer";
+export {
+  createParamStore,
+  type ParamStoreOptions,
+} from "./lib/param-store";
 export { normalizeHex, parseRgb } from "./lib/hex";
 export { FRAME_ORIENTS, type FrameOrient } from "./lib/frame-orient";
 export {
@@ -237,3 +248,5 @@ export {
   type EasingPresetId,
   type ExtraEasingPreset,
 } from "./lib/easing-presets";
+
+export { PANEL_VERSION } from "./version";

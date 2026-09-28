@@ -23,7 +23,6 @@ import {
   SCRUB_DRAG_W,
   SCRUB_PAD_X,
   fieldValueMono,
-  pickEase,
   pointerHeld,
 } from "./chrome";
 import type { ResetDotProps } from "./types";

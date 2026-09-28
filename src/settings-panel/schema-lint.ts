@@ -1,12 +1,12 @@
 import { L, type Copy, type LocaleText } from "./locale";
-import { playerKeySet, resolvePlaces, visitSectionKeys } from "./model";
+import { playerKeySet, visitSectionKeys } from "./model";
 import type { ParamEntry } from "./params";
 import type {
   EasingTarget,
+  SpringTarget,
   PlayerSetting,
   SettingsGroup,
   SettingsLayer,
-  SettingsPlace,
   SettingsSection,
 } from "./types";
 
@@ -27,7 +27,6 @@ export const SERVICE_OPEN_IDS = [
   "panel",
   "bezier",
   "curves",
-  "place",
 ] as const;
 
 export const LAYER_GROUP_TITLES: Record<SettingsLayer, LocaleText> = {
@@ -50,8 +49,6 @@ export type SchemaLintIssue = {
     | "missing-ref"
     | "duplicate-row"
     | "row-without-default"
-    | "empty-place"
-    | "unknown-place"
     | "row-without-control"
     | "player-key-row"
     | "unknown-easing-id";
@@ -64,8 +61,8 @@ export type SchemaLintInput<TSettings> = {
   players?: readonly PlayerSetting<TSettings>[];
   defaultSettings?: TSettings;
   defaultOpenSections?: readonly string[];
-  places?: readonly SettingsPlace<TSettings>[];
   easingTargets?: readonly EasingTarget[];
+  springTargets?: readonly SpringTarget[];
   /** When passed, every non-`value` param must appear as a row (or custom/player/pair/range). */
   params?: Record<string, ParamEntry & { key?: PropertyKey }>;
 };
@@ -256,14 +253,14 @@ export function lintSettingsSchema<TSettings>(
         `easing target "${target.id}" label is a bare string — use L()`,
       );
     });
-    for (const id of target.where ?? []) {
-      if (input.places && !input.places.some((place) => place.id === id)) {
-        push(
-          "unknown-place",
-          `easing "${target.id}" where names unknown place "${id}"`,
-        );
-      }
-    }
+  }
+  for (const target of input.springTargets ?? []) {
+    walkCopy(target.label, () => {
+      push(
+        "bare-copy",
+        `spring target "${target.id}" label is a bare string — use L()`,
+      );
+    });
   }
   const easingIds = new Set(
     (input.easingTargets ?? []).map((target) => target.id),
@@ -280,15 +277,6 @@ export function lintSettingsSchema<TSettings>(
       }
     }
   }
-  for (const place of input.places ?? []) {
-    walkCopy(place.label, () => {
-      push(
-        "bare-copy",
-        `place "${place.id}" label is a bare string — use L()`,
-      );
-    });
-  }
-
   const allowedOpen = new Set<string>([
     ...(LAYER_GROUP_IDS as readonly string[]),
     ...(EXTRA_GROUP_IDS as readonly string[]),
@@ -349,37 +337,28 @@ export function lintSettingsSchema<TSettings>(
   }
 
   if (input.params) {
+    const playerTotals = new Set(
+      (input.players ?? []).map((item) => String(item.totalKey)),
+    );
     for (const [name, entry] of Object.entries(input.params)) {
       if (entry.kind === "value") continue;
-      if (!rowKeySet.has(name)) {
+      if (entry.kind === "player") {
+        if (!playerTotals.has(entry.totalKey)) {
+          push(
+            "row-without-control",
+            `param "${name}" (player) is not in players`,
+          );
+        }
+        continue;
+      }
+      const placed =
+        entry.kind === "range" || entry.kind === "pair"
+          ? Object.keys(entry.defaults).some((key) => rowKeySet.has(key))
+          : rowKeySet.has(name);
+      if (!placed) {
         push(
           "row-without-control",
           `param "${name}" (${entry.kind}) has no row in groups`,
-        );
-      }
-      for (const id of entry.where ?? []) {
-        const known = input.places?.some((place) => place.id === id);
-        if (input.places && !known) {
-          push(
-            "unknown-place",
-            `param "${name}" where names unknown place "${id}"`,
-          );
-        }
-      }
-    }
-  }
-
-  if (input.places?.length) {
-    const resolved = resolvePlaces(
-      input.groups,
-      input.places,
-      input.easingTargets,
-    );
-    for (const place of resolved) {
-      if ((place.keys?.length ?? 0) === 0 && !place.easingIds?.length) {
-        push(
-          "empty-place",
-          `place "${place.id}" has no keys and no easingIds`,
         );
       }
     }
