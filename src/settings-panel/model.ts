@@ -39,6 +39,8 @@ export function mergeSectionOrder(current: string[], saved: string[] | undefined
 export const PRESETS_SECTION_ID = "presets";
 export const PANEL_SECTION_ID = "panel";
 export const PLACE_SECTION_ID = "place";
+export const BEZIER_VIEW_ID = "bezier-view";
+export const AXIS_VIEW_ID = "axis-view";
 export const DEFAULT_PINNED_SECTIONS: readonly string[] = [];
 
 export function withoutRetiredSectionIds(ids: readonly string[]) {

@@ -459,12 +459,12 @@ export type SettingsPanelProps<TSettings> = {
    * Omit = package list only. Do not put these curves in `EASING_PRESETS`.
    */
   easingPresetExtras?: readonly ExtraEasingPreset[];
-  /** Replace / prepend a plot section (e.g. zone or axis editor). */
+  /** Axis / plot editor — own dock view (`waypoints`), not a scene section. */
   curveSection?: ReactNode;
   curveSectionTitle?: Copy;
-  /** Section header glyph for `curveSection` (/2 Axis = `function-square`; /5 zone = `sliders-horizontal`). */
+  /** Header glyph in the Axis view (default `waypoints`). */
   curveSectionIcon?: SfSymbolName;
-  /** Title for the easing editor tab when it sits beside `curveSection`. */
+  /** Title for the Bezier view when a plot is also present. */
   easingSectionTitle?: Copy;
   /** Replay the animation tied to the active easing target id */
   onReplay?: (easingId: string) => void;

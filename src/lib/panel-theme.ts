@@ -13,14 +13,14 @@ export type PanelTheme = "dark" | "light";
 export type { PanelLocale };
 
 export const PANEL_THEME_EVENT = "experimental:panel-theme";
-/** Open the settings panel on a section (Bezier) and/or an easing target. */
+/** Open a settings-panel view (scene group, Bezier, or Axis). */
 export const PANEL_FOCUS_EVENT = "settings-panel:focus";
 
 export type PanelFocusDetail = {
   panelId: string;
-  /** Section id: `bezier` · `curves` · a layer group. */
+  /** Layer group, or `bezier` / `curves` / `axis` for the curve views. */
   group?: string;
-  /** `easingTargets[].id` — also opens the Bezier section. */
+  /** `easingTargets[].id` — opens the Bezier dock view on this target. */
   easingId?: string;
 };
 

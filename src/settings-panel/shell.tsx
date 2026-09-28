@@ -84,6 +84,8 @@ import {
   mergeChromeSectionOrder,
   mergeSectionOrder,
   moveTitleToIndex,
+  AXIS_VIEW_ID,
+  BEZIER_VIEW_ID,
   PANEL_SECTION_ID,
   PLACE_SECTION_ID,
   PRESETS_SECTION_ID,
@@ -351,6 +353,66 @@ export function SectionDivider() {
       role="separator"
       className="h-px shrink-0 bg-[color:var(--sp-section-line)]"
     />
+  );
+}
+
+function ChromeViewSection({
+  icon,
+  title,
+  locale,
+  modified,
+  onResetValue,
+  children,
+}: {
+  icon?: SfSymbolName;
+  title: string;
+  locale: PanelLocale;
+  modified?: boolean;
+  onResetValue?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="flex w-full shrink-0 flex-col gap-4 p-2">
+      <div className="flex h-5 items-center">
+        <span className="inline-flex min-w-0 items-center gap-1">
+          {icon ? (
+            <SfSymbol
+              name={icon}
+              className="size-5 shrink-0"
+              style={{ color: ICON }}
+            />
+          ) : null}
+          {modified && onResetValue ? (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`${title}: ${tx(PANEL_COPY.resetDefault, locale)}`}
+              title={tx(PANEL_COPY.resetDefault, locale)}
+              onClick={() => onResetValue()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onResetValue();
+                }
+              }}
+              className="group/reset-dot -mx-0.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-full outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)]"
+            >
+              <span
+                aria-hidden
+                className="size-[5px] rounded-full bg-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:group-hover/reset-dot:bg-[color:var(--sp-fg)]"
+              />
+            </span>
+          ) : null}
+          <span
+            className="truncate text-[15px] font-sans leading-[20px] select-none"
+            style={{ color: MUTED }}
+          >
+            {title}
+          </span>
+        </span>
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -889,7 +951,7 @@ export function SettingsPanelImpl<TSettings>({
   easingPresetExtras = [],
   curveSection,
   curveSectionTitle,
-  curveSectionIcon = "spline",
+  curveSectionIcon = "waypoints",
   easingSectionTitle,
   onReplay,
   getReplayDurationMs,
@@ -936,8 +998,10 @@ export function SettingsPanelImpl<TSettings>({
   const chromeVisible = useChromeVisible(enabled, hideBelow);
 
   const [panelOpen, setPanelOpen] = useState(false);
-  /** One window, two views: scene sections or Panel Settings (gear in the Dock Bar). */
-  const [panelView, setPanelView] = useState<"scene" | "settings">("scene");
+  /** One window, views: scene | settings | bezier | axis. Timeline closes it. */
+  const [panelView, setPanelView] = useState<
+    "scene" | "settings" | "bezier" | "axis"
+  >("scene");
   const [panelInstant, setPanelInstant] = useState(false);
   const [windowHost, setWindowHost] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
@@ -1145,8 +1209,8 @@ export function SettingsPanelImpl<TSettings>({
     ];
     const labelForIconId = (id: string): string => {
       if (id === PANEL_SECTION_ID) return tx(PANEL_COPY.panelSettings, locale);
-      if (id === "bezier") return curveTitle;
-      if (id === easingSectionId) return easingTitle;
+      if (id === "bezier" || id === AXIS_VIEW_ID) return curveTitle;
+      if (id === "curves" || id === BEZIER_VIEW_ID) return easingTitle;
       if (id === "row:presets") return tx(PANEL_COPY.presets, locale);
       if (id.startsWith("sub:")) {
         const rest = id.slice(4);
@@ -1399,10 +1463,6 @@ export function SettingsPanelImpl<TSettings>({
     }
     return next;
   });
-  const [curveRequested, setCurveRequested] = useState(() => {
-    const group = readPanelSettings(panelId, legacyPanelIds).lastEdited?.group;
-    return group === "bezier" || group === "curves";
-  });
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const closeSearch = () => {
@@ -1561,20 +1621,14 @@ export function SettingsPanelImpl<TSettings>({
     ({ x1: 0.22, y1: 1, x2: 0.36, y2: 1 } satisfies CubicBezier);
   const easingPreset = matchEasingPreset(activeEasing, easingPresetExtras);
   const presetOptions = easingPresetOptions(easingPresetExtras);
-  const showEasingEditor = easingTargets.length > 0 && curveRequested;
   const showPlotSection = Boolean(curveSection);
-  const renderPlotSection =
-    showPlotSection &&
-    (selectedPlace == null || Boolean(selectedPlace.includeCurve)) &&
-    (searchedEasing == null || searchedEasing.length > 0);
-  const renderEasingEditor =
-    visibleEasingTargets.length > 0 &&
-    (curveRequested || (searchedEasing != null && searchedEasing.length > 0));
+  const hasEasingTargets = easingTargets.length > 0;
+  const renderPlacePlot =
+    showPlotSection && Boolean(selectedPlace?.includeCurve);
+  const renderPlaceEasing =
+    selectedPlace != null && visibleEasingTargets.length > 0;
 
-  const easingSectionId = showPlotSection ? "curves" : "bezier";
   const allSectionIds = [
-    ...(showPlotSection ? ["bezier"] : []),
-    ...(showEasingEditor ? [easingSectionId] : []),
     ...groupsForPanel.map((group) => group.id),
     PANEL_SECTION_ID,
   ];
@@ -1845,7 +1899,7 @@ export function SettingsPanelImpl<TSettings>({
     };
   };
 
-  const curveTitle = tx(curveSectionTitle ?? PANEL_COPY.bezierCurve, locale);
+  const curveTitle = tx(curveSectionTitle ?? PANEL_COPY.axisCurve, locale);
   const easingTitle = tx(easingSectionTitle ?? PANEL_COPY.easingCurves, locale);
 
   useEffect(() => {
@@ -2016,8 +2070,6 @@ export function SettingsPanelImpl<TSettings>({
     if (!draggingSection || !drag) return;
 
     const canonicalIds = () => [
-      ...(showPlotSection ? ["bezier"] : []),
-      ...(showEasingEditor ? [easingSectionId] : []),
       ...groupsForPanel.map((group) => group.id),
       PANEL_SECTION_ID,
     ];
@@ -2115,12 +2167,9 @@ export function SettingsPanelImpl<TSettings>({
     };
   }, [
     draggingSection,
-    easingSectionId,
     groupsForPanel,
     openSections,
     panelId,
-    showEasingEditor,
-    showPlotSection,
   ]);
 
   useLayoutEffect(() => {
@@ -2182,13 +2231,34 @@ export function SettingsPanelImpl<TSettings>({
       if (detail?.panelId !== panelId) return;
       closeDockPlayers();
       setPanelInstant(true);
-      setPanelView("scene");
+      const openBezier =
+        Boolean(detail.easingId) ||
+        detail.group === "curves" ||
+        (detail.group === "bezier" && !curveSection);
+      const openAxis =
+        detail.group === "axis" ||
+        (detail.group === "bezier" && Boolean(curveSection) && !detail.easingId);
+      if (openBezier && easingTargets.length > 0) {
+        applyPlace(null);
+        setSearchOpen(false);
+        setSearchQuery("");
+        setPanelView("bezier");
+      } else if (openAxis && curveSection) {
+        applyPlace(null);
+        setSearchOpen(false);
+        setSearchQuery("");
+        setPanelView("axis");
+      } else {
+        setPanelView("scene");
+      }
       setPanelOpen(true);
       const group =
-        detail.group ?? (detail.easingId ? easingSectionId : undefined);
-      if (detail.easingId || group === "bezier" || group === "curves") {
-        setCurveRequested(true);
-      }
+        detail.group &&
+        detail.group !== "bezier" &&
+        detail.group !== "curves" &&
+        detail.group !== "axis"
+          ? detail.group
+          : undefined;
       if (group) {
         setOpenSections((prev) => new Set(prev).add(group));
       }
@@ -2196,7 +2266,7 @@ export function SettingsPanelImpl<TSettings>({
     };
     window.addEventListener(PANEL_FOCUS_EVENT, onFocus);
     return () => window.removeEventListener(PANEL_FOCUS_EVENT, onFocus);
-  }, [easingSectionId, panelId]);
+  }, [applyPlace, curveSection, easingTargets.length, panelId]);
 
   useEffect(() => {
     if (!shortcut) return;
@@ -2271,23 +2341,23 @@ export function SettingsPanelImpl<TSettings>({
   const sectionVisible = (sectionId: string) => {
     if (sectionId === PANEL_SECTION_ID) return false;
     if (selectedPlace != null) return false;
-    if (sectionId === "bezier") {
-      return showPlotSection ? renderPlotSection : renderEasingEditor;
-    }
-    if (sectionId === "curves") return renderEasingEditor;
     return filteredGroups.some((group) => group.id === sectionId);
   };
   const sceneOpen = panelOpen && panelView === "scene";
-  const togglePanelView = (view: "scene" | "settings") => {
+  type PanelView = "scene" | "settings" | "bezier" | "axis";
+  const togglePanelView = (view: PanelView) => {
     setPanelInstant(false);
     if (panelOpen && panelView === view) {
       setPanelOpen(false);
       return;
     }
     if (!panelOpen) closeDockPlayers();
-    if (view === "settings") {
+    if (view !== "scene") {
       setPickPlace(false);
       closeSearch();
+    }
+    if (view === "bezier" || view === "axis") {
+      applyPlace(null);
     }
     setPanelView(view);
     setPanelOpen(true);
@@ -2392,6 +2462,52 @@ export function SettingsPanelImpl<TSettings>({
               }}
             />
           ) : null}
+          {hasEasingTargets ? (
+            <button
+              type="button"
+              aria-expanded={panelOpen && panelView === "bezier"}
+              aria-controls={panelId}
+              aria-label={tx(
+                panelOpen && panelView === "bezier"
+                  ? PANEL_COPY.closeBezier
+                  : PANEL_COPY.openBezier,
+                locale,
+              )}
+              className={cn(
+                dockBarButtonClass(panelOpen && panelView === "bezier"),
+                dockDragging && "cursor-grabbing active:scale-100",
+              )}
+              onClick={() => {
+                if (dockMovedRef.current) return;
+                togglePanelView("bezier");
+              }}
+            >
+              <SfSymbol name="spline" className="size-5" />
+            </button>
+          ) : null}
+          {curveSection ? (
+            <button
+              type="button"
+              aria-expanded={panelOpen && panelView === "axis"}
+              aria-controls={panelId}
+              aria-label={tx(
+                panelOpen && panelView === "axis"
+                  ? PANEL_COPY.closeAxis
+                  : PANEL_COPY.openAxis,
+                locale,
+              )}
+              className={cn(
+                dockBarButtonClass(panelOpen && panelView === "axis"),
+                dockDragging && "cursor-grabbing active:scale-100",
+              )}
+              onClick={() => {
+                if (dockMovedRef.current) return;
+                togglePanelView("axis");
+              }}
+            >
+              <SfSymbol name="waypoints" className="size-5" />
+            </button>
+          ) : null}
           {resolvedPlaces.length > 0 ? (
             <DockBarSlot
               open={sceneOpen}
@@ -2467,7 +2583,7 @@ export function SettingsPanelImpl<TSettings>({
               applyPlace(null);
               setPickPlace(false);
               setSearchOpen(true);
-              if (panelOpen && panelView === "settings") {
+              if (panelOpen && panelView !== "scene") {
                 setPanelView("scene");
               }
             }}
@@ -2963,8 +3079,8 @@ export function SettingsPanelImpl<TSettings>({
               const untitled = chunks.filter((item) => item.section.untitled);
               const titled = chunks.filter((item) => !item.section.untitled);
               const extras: ("plot" | "easing")[] = [
-                ...(renderPlotSection ? (["plot"] as const) : []),
-                ...(renderEasingEditor ? (["easing"] as const) : []),
+                ...(renderPlacePlot ? (["plot"] as const) : []),
+                ...(renderPlaceEasing ? (["easing"] as const) : []),
               ];
               const titledMode = titled.length > 1 ? "subsection" : "plain";
               const extrasAsSub =
@@ -3043,35 +3159,30 @@ export function SettingsPanelImpl<TSettings>({
                 </SectionBlock>
               );
             }
-            if (sectionId === "bezier" && renderPlotSection) {
-
+            if (sectionId === BEZIER_VIEW_ID && hasEasingTargets) {
               return shell(
-          <SectionBlock
-            {...sectionIconProps("bezier", curveSectionIcon, curveDot)}
-            title={curveTitle}
-            open={searchQueryActive || openSections.has("bezier")}
-            onToggle={() => toggleSection("bezier")}
-            reduceMotion={reduceMotion}
-            locale={locale}
-            {...sectionReorderProps("bezier")}
-          >
-            {curveSection}
-          </SectionBlock>
+                <ChromeViewSection
+                  icon="spline"
+                  title={tx(easingSectionTitle ?? PANEL_COPY.bezierCurve, locale)}
+                  locale={locale}
+                  modified={easingDot?.modified}
+                  onResetValue={easingDot?.onResetValue}
+                >
+                  {easingEditorBody}
+                </ChromeViewSection>,
               );
             }
-            if (sectionId === easingSectionId && renderEasingEditor) {
+            if (sectionId === AXIS_VIEW_ID && curveSection) {
               return shell(
-          <SectionBlock
-            {...sectionIconProps(easingSectionId, "spline", easingDot)}
-            title={showPlotSection ? easingTitle : curveTitle}
-            open={searchQueryActive || openSections.has(easingSectionId)}
-            onToggle={() => toggleSection(easingSectionId)}
-            reduceMotion={reduceMotion}
-            locale={locale}
-            {...sectionReorderProps(easingSectionId)}
-          >
-            {easingEditorBody}
-          </SectionBlock>
+                <ChromeViewSection
+                  icon={curveSectionIcon}
+                  title={curveTitle}
+                  locale={locale}
+                  modified={curveDot?.modified}
+                  onResetValue={curveDot?.onResetValue}
+                >
+                  {curveSection}
+                </ChromeViewSection>,
               );
             }
             const group = filteredGroups.find((item) => item.id === sectionId);
@@ -3123,16 +3234,23 @@ export function SettingsPanelImpl<TSettings>({
             </SectionBlock>
             );
           };
-          const settingsView = panelView === "settings";
-          const visibleTop = settingsView
+          const chromeView =
+            panelView === "settings" ||
+            panelView === "bezier" ||
+            panelView === "axis";
+          const visibleTop = panelView === "settings"
             ? [PANEL_SECTION_ID]
+            : panelView === "bezier"
+              ? [BEZIER_VIEW_ID]
+              : panelView === "axis"
+                ? [AXIS_VIEW_ID]
             : selectedPlace
               ? [PLACE_SECTION_ID]
               : searchQueryActive
                 ? sectionRails.top.filter(sectionVisible)
                 : [PRESETS_SECTION_ID, ...sectionRails.top.filter(sectionVisible)];
           const visibleMid =
-            settingsView || selectedPlace
+            chromeView || selectedPlace
               ? []
               : sectionRails.mid.filter(sectionVisible);
           const searchMiss =
@@ -3141,7 +3259,7 @@ export function SettingsPanelImpl<TSettings>({
             visibleMid.length === 0;
           return (
           <PanelViewSwitch
-            viewKey={settingsView ? "settings" : "scene"}
+            viewKey={chromeView ? panelView : "scene"}
             reduceMotion={reduceMotion}
           >
           <div

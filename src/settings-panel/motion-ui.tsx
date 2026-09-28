@@ -30,9 +30,9 @@ export function panelPopClassName({
     return open ? "opacity-100" : "pointer-events-none opacity-0";
   }
   return cn(
-    "transition-[opacity,transform] will-change-[opacity,transform]",
+    "transition-[opacity,transform]",
     open
-      ? "translate-y-0 scale-100 opacity-100"
+      ? "opacity-100"
       : fromBottom
         ? "pointer-events-none translate-y-1.5 scale-[0.98] opacity-0"
         : "pointer-events-none -translate-y-1.5 scale-[0.98] opacity-0",

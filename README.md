@@ -2,13 +2,13 @@
 
 [Русский](README.ru.md)
 
-Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens scene timings, easing, colors, and layout. The **gear** opens the panel’s own language and theme. Pass `shortcut={true}` if you want ⌘M for the scene panel. ⌘S hides and shows the whole dock by default (`preventDefault` — the browser will not save the page); `hideShortcut={false}` leaves ⌘S to the scene.
+Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens scene timings, colors, and layout. **Spline** opens the Bezier editor, **waypoints** the axis plot — they are other views of the same window, not extra scene sections. The **gear** opens the panel’s own language and theme. Pass `shortcut={true}` if you want ⌘M for the scene panel. ⌘S hides and shows the whole dock by default (`preventDefault` — the browser will not save the page); `hideShortcut={false}` leaves ⌘S to the scene.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ## Features
 
-- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, search by parameter name, fold all, pointer, Reset, Copy), top center by default; drag it to any corner or to bottom center
+- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, Bezier, axis, search by parameter name, fold all, pointer, Reset, Copy), top center by default; drag it to any corner or to bottom center
 - Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
 - Bottom animation timeline (`SettingsTimeline`): several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
 - Shared custom widgets: chips, skip cells, shuffle replay, stroke join, axis curve editor (`AxisCurveEditor`)

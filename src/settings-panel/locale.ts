@@ -57,6 +57,7 @@ export const PANEL_COPY = {
   pinSection: L("Закрепить секцию", "Pin section"),
   unpinSection: L("Открепить секцию", "Unpin section"),
   bezierCurve: L("Кривая Безье", "Bezier curve"),
+  axisCurve: L("Ось", "Axis"),
   easingCurves: L("Кривые", "Curves"),
   bezierPreset: L("Пресет кривой", "Bezier preset"),
   copyBezier: L("Скопировать кривую", "Copy curve"),
@@ -87,6 +88,10 @@ export const PANEL_COPY = {
   closePanel: L("Закрыть настройки motion", "Close motion settings"),
   openPanelSettings: L("Открыть настройки панели", "Open Panel Settings"),
   closePanelSettings: L("Закрыть настройки панели", "Close Panel Settings"),
+  openBezier: L("Открыть кривую Безье", "Open Bezier curve"),
+  closeBezier: L("Закрыть кривую Безье", "Close Bezier curve"),
+  openAxis: L("Открыть ось", "Open axis"),
+  closeAxis: L("Закрыть ось", "Close axis"),
   resetSettings: (count: number) =>
     L(
       `Сбросить настройки motion (изменено: ${count})`,
