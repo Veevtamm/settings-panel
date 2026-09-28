@@ -56,7 +56,7 @@ export type PanelSettingsFile = {
   panelHeight?: number;
   /** Viewport top-left of a free-floating panel. Omit / null = docked to the gear. */
   panelFloat?: { x: number; y: number } | null;
-  /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Reset does not clear. */
+  /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Scene Reset does not clear; Panel Settings «Положение» does. */
   dockSlot?: DockCorner;
   /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
   sectionIcons?: Record<string, SfSymbolName>;

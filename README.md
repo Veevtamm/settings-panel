@@ -2,7 +2,7 @@
 
 [Русский](README.ru.md)
 
-Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens scene timings, colors, and layout. **Spline** opens the Bezier editor, **waypoints** the axis plot — they are other views of the same window, not extra scene sections. The **gear** opens the panel’s own language and theme. Pass `shortcut={true}` if you want ⌘M for the scene panel. ⌘S hides and shows the whole dock by default (`preventDefault` — the browser will not save the page); `hideShortcut={false}` leaves ⌘S to the scene.
+Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens scene timings, colors, and layout. **Spline** opens the Bezier editor, **waypoints** the axis plot — separate windows that can stay open with the scene panel. The **gear** opens the panel’s own language, theme, and a reset for dock position. Pass `shortcut={true}` if you want ⌘M for the scene panel. ⌘\ hides and shows the whole dock by default; `hideShortcut={false}` leaves ⌘\ to the scene.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -10,7 +10,7 @@ Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens s
 
 - Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, Bezier, axis, search by parameter name, fold all, pointer, Reset, Copy), top center by default; drag it to any corner or to bottom center
 - Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
-- Bottom animation timeline (`SettingsTimeline`): several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
+- Bottom animation timeline (`SettingsTimeline`): stays open together with the panel window; several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
 - Shared custom widgets: chips, skip cells, shuffle replay, stroke join, axis curve editor (`AxisCurveEditor`)
 - Russian and English UI
 - Dark and light themes
@@ -112,7 +112,7 @@ export function Scene() {
 }
 ```
 
-Open the scene and click the sliders button in the Dock Bar (the gear is language and theme). Keep page schemas (`settings.ts`) in the app. This package is the panel, not the scene.
+Open the scene and click the sliders button in the Dock Bar (the gear is language, theme, and dock position). Keep page schemas (`settings.ts`) in the app. This package is the panel, not the scene.
 
 Phases and a playhead: pass `players={[player]}` to `SettingsPanel`, then mount `SettingsTimeline` with `showDockButton={false}` and `targets={[…]}` plus `SettingsMomentHud`. Canonical wiring is in [`AGENTS.md`](AGENTS.md).
 

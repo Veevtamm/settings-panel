@@ -372,6 +372,24 @@ export function usePanelWindow({
     writePanelSettings(layoutStoreId, { dockSlot: corner });
   };
 
+  const resetChromeLayout = () => {
+    setPanelFloat(null);
+    setDockCorner(defaultDockCorner);
+    setDockSnap(true);
+    setDockPos(
+      dockPosForCorner(
+        defaultDockCorner,
+        barWRef.current,
+        window.innerWidth,
+        window.innerHeight,
+      ),
+    );
+    writePanelSettings(layoutStoreId, {
+      dockSlot: defaultDockCorner,
+      panelFloat: null,
+    });
+  };
+
   const onDockPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.button !== 0) return;
     const hit = event.target;
@@ -478,6 +496,7 @@ export function usePanelWindow({
     dockMovedRef,
     panelResizing,
     panelMoving,
+    viewportW,
     viewportH,
     layoutCorner,
     dockRight,
@@ -491,5 +510,6 @@ export function usePanelWindow({
     startPanelResize,
     startPanelMove,
     onDockPointerDown,
+    resetChromeLayout,
   };
 }

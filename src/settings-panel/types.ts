@@ -517,8 +517,8 @@ export type SettingsPanelProps<TSettings> = {
    */
   shortcut?: boolean;
   /**
-   * ⌘S hides / shows the whole dock (gear column, panel, timeline). Hiding
-   * closes the panel and the dock players. Default `true`; `false` leaves ⌘S
+   * ⌘\ hides / shows the whole dock (gear column, panel, timeline). Hiding
+   * closes the panel and the dock players. Default `true`; `false` leaves ⌘\
    * to the browser / scene.
    */
   hideShortcut?: boolean;
