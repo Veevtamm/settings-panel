@@ -161,8 +161,12 @@ export function PanelViewSwitch({
   }, [reduceMotion, viewKey]);
 
   return (
-    <div ref={rootRef} className="min-h-0 w-full">
-      <div key={viewKey} data-panel-view-body="">
+    <div ref={rootRef} className="flex min-h-0 w-full flex-col">
+      <div
+        key={viewKey}
+        data-panel-view-body=""
+        className="flex min-h-0 w-full flex-col"
+      >
         {children}
       </div>
     </div>

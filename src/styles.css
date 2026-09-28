@@ -73,7 +73,7 @@
 }
 
 /* Scene buttons in `dockExtra` bring their own glass; inside the Dock Bar they read like bar buttons. */
-[data-dock-extra] > button {
+[data-dock-extra] button {
   border-color: transparent !important;
   border-radius: 4px !important;
   background: transparent !important;

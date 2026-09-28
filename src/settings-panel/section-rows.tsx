@@ -193,6 +193,7 @@ export function SectionRows<TSettings>({
   dotForKeys,
   locale,
   rowIndex,
+  onEditEasing,
 }: {
   section: SettingsSection<TSettings>;
   settings: TSettings;
@@ -211,6 +212,7 @@ export function SectionRows<TSettings>({
     icon?: SfSymbolName,
   ) => ResetDotProps;
   rowIndex: Map<keyof TSettings, IndexedRow<TSettings>>;
+  onEditEasing?: (easingId: string) => void;
 }) {
   type Row = {
     after?: keyof TSettings;
@@ -372,6 +374,12 @@ export function SectionRows<TSettings>({
                 label: t(stop.label),
               }))}
               trailing={item.trailing}
+              onEditCurve={
+                item.easingId && onEditEasing
+                  ? () => onEditEasing(item.easingId!)
+                  : undefined
+              }
+              editCurveLabel={tx(PANEL_COPY.editCurve, locale)}
               readOnly={item.readOnly}
               readOnlyLabel={item.readOnlyLabel}
               unit={item.unit}

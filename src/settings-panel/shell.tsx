@@ -29,6 +29,7 @@ import {
 } from "../lib/easing-presets";
 import {
   PANEL_FOCUS_EVENT,
+  focusPanel,
   parsePanelSettingsObject,
   readPanelSettings,
   writePanelLocale,
@@ -942,7 +943,12 @@ export function PresetCurveIcon({
 export const PRESET_OPTIONS = easingPresetOptions();
 
 export function SettingsPanel<TSettings>(props: SettingsPanelProps<TSettings>) {
-  return <SettingsPanelImpl key={props.panelId} {...props} />;
+  return (
+    <SettingsPanelImpl
+      key={props.layoutPanelId ?? props.panelId}
+      {...props}
+    />
+  );
 }
 
 export function SettingsPanelImpl<TSettings>({
@@ -2322,6 +2328,14 @@ export function SettingsPanelImpl<TSettings>({
   }, [hideShortcut, chromeVisible]);
 
   useEffect(() => {
+    if (panelView === "bezier" && easingTargets.length === 0) {
+      setPanelView("scene");
+    } else if (panelView === "axis" && !curveSection) {
+      setPanelView("scene");
+    }
+  }, [curveSection, easingTargets.length, panelView]);
+
+  useEffect(() => {
     const list = playersRef.current;
     const sync = () =>
       setTimelineOpen(
@@ -2447,7 +2461,10 @@ export function SettingsPanelImpl<TSettings>({
             <SfSymbol name="sliders-horizontal" className="size-5" />
             <DockCountBadge count={panelOpen ? 0 : changedCount} />
           </button>
-          {players.length > 0 ? (
+          <DockBarSlot
+            open={players.length > 0}
+            reduceMotion={reduceMotion}
+          >
             <TimelineToggleButton
               open={timelineOpen}
               locale={locale}
@@ -2461,8 +2478,11 @@ export function SettingsPanelImpl<TSettings>({
                 openDockTimeline();
               }}
             />
-          ) : null}
-          {hasEasingTargets ? (
+          </DockBarSlot>
+          <DockBarSlot
+            open={hasEasingTargets}
+            reduceMotion={reduceMotion}
+          >
             <button
               type="button"
               aria-expanded={panelOpen && panelView === "bezier"}
@@ -2484,8 +2504,8 @@ export function SettingsPanelImpl<TSettings>({
             >
               <SfSymbol name="spline" className="size-5" />
             </button>
-          ) : null}
-          {curveSection ? (
+          </DockBarSlot>
+          <DockBarSlot open={Boolean(curveSection)} reduceMotion={reduceMotion}>
             <button
               type="button"
               aria-expanded={panelOpen && panelView === "axis"}
@@ -2507,7 +2527,7 @@ export function SettingsPanelImpl<TSettings>({
             >
               <SfSymbol name="waypoints" className="size-5" />
             </button>
-          ) : null}
+          </DockBarSlot>
           {resolvedPlaces.length > 0 ? (
             <DockBarSlot
               open={sceneOpen}
@@ -2523,11 +2543,11 @@ export function SettingsPanelImpl<TSettings>({
               />
             </DockBarSlot>
           ) : null}
-          {dockExtra ? (
+          <DockBarSlot open={Boolean(dockExtra)} reduceMotion={reduceMotion}>
             <div data-dock-extra="" className="contents">
               {dockExtra}
             </div>
-          ) : null}
+          </DockBarSlot>
           <DockBarDivider />
           {onReset ? (
             <DockBarSlot
@@ -2696,6 +2716,9 @@ export function SettingsPanelImpl<TSettings>({
                     dotFor={rowDotFor}
                     dotForKeys={rowDotForKeys}
                     rowIndex={rowIndex}
+                    onEditEasing={(easingId) =>
+                      focusPanel(panelId, { easingId })
+                    }
                   />
                 ) : null}
               </div>
@@ -3238,21 +3261,21 @@ export function SettingsPanelImpl<TSettings>({
             panelView === "settings" ||
             panelView === "bezier" ||
             panelView === "axis";
-          const visibleTop = panelView === "settings"
+          const visibleTop =
+            chromeView || selectedPlace
+              ? []
+              : searchQueryActive
+                ? sectionRails.top.filter(sectionVisible)
+                : [PRESETS_SECTION_ID, ...sectionRails.top.filter(sectionVisible)];
+          const visibleMid = panelView === "settings"
             ? [PANEL_SECTION_ID]
             : panelView === "bezier"
               ? [BEZIER_VIEW_ID]
               : panelView === "axis"
                 ? [AXIS_VIEW_ID]
-            : selectedPlace
-              ? [PLACE_SECTION_ID]
-              : searchQueryActive
-                ? sectionRails.top.filter(sectionVisible)
-                : [PRESETS_SECTION_ID, ...sectionRails.top.filter(sectionVisible)];
-          const visibleMid =
-            chromeView || selectedPlace
-              ? []
-              : sectionRails.mid.filter(sectionVisible);
+                : selectedPlace
+                  ? [PLACE_SECTION_ID]
+                  : sectionRails.mid.filter(sectionVisible);
           const searchMiss =
             searchQueryActive &&
             visibleTop.length === 0 &&

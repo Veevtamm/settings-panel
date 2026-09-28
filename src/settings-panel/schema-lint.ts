@@ -53,7 +53,8 @@ export type SchemaLintIssue = {
     | "empty-place"
     | "unknown-place"
     | "row-without-control"
-    | "player-key-row";
+    | "player-key-row"
+    | "unknown-easing-id";
   message: string;
 };
 
@@ -260,6 +261,21 @@ export function lintSettingsSchema<TSettings>(
         push(
           "unknown-place",
           `easing "${target.id}" where names unknown place "${id}"`,
+        );
+      }
+    }
+  }
+  const easingIds = new Set(
+    (input.easingTargets ?? []).map((target) => target.id),
+  );
+  for (const group of input.groups) {
+    for (const section of group.sections) {
+      for (const row of section.settings ?? []) {
+        if (row.easingId == null) continue;
+        if (easingIds.has(row.easingId)) continue;
+        push(
+          "unknown-easing-id",
+          `row "${String(row.key)}" easingId "${row.easingId}" is not in easingTargets`,
         );
       }
     }

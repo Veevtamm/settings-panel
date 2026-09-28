@@ -562,6 +562,26 @@ export function SettingPair<TSettings>({
   );
 }
 
+function withCurveButton(
+  control: ReactNode,
+  onEditCurve?: () => void,
+  editCurveLabel?: string,
+  trailing?: ReactNode,
+) {
+  if (!onEditCurve && !trailing) return control;
+  return (
+    <div className="flex shrink-0 items-center gap-1">
+      {onEditCurve ? (
+        <FieldButton label={editCurveLabel ?? ""} onClick={onEditCurve}>
+          <SfSymbol name="spline" className="size-5" />
+        </FieldButton>
+      ) : null}
+      {control}
+      {trailing}
+    </div>
+  );
+}
+
 export function SettingNumber({
   defaultValue,
   label,
@@ -575,6 +595,8 @@ export function SettingNumber({
   tickSnap = true,
   tickStops,
   trailing,
+  onEditCurve,
+  editCurveLabel,
   readOnly = false,
   readOnlyLabel,
   unit,
@@ -599,6 +621,9 @@ export function SettingNumber({
   tickSnap?: boolean;
   tickStops?: readonly { value: number; label: string }[];
   trailing?: ReactNode;
+  /** Timeline-style spline 28 left of the 86 field. */
+  onEditCurve?: () => void;
+  editCurveLabel?: string;
   readOnly?: boolean;
   readOnlyLabel?: string;
   unit?: string;
@@ -644,12 +669,13 @@ export function SettingNumber({
         onIconChange={onIconChange}
         locale={locale}
       >
-        <div
-          className={cn(
-            "grid h-[28px] w-[86px] shrink-0 grid-cols-[28px_1px_28px_1px_28px]",
-            pickerChrome,
-          )}
-        >
+        {withCurveButton(
+          <div
+            className={cn(
+              "grid h-[28px] w-[86px] shrink-0 grid-cols-[28px_1px_28px_1px_28px]",
+              pickerChrome,
+            )}
+          >
           <button
             type="button"
             aria-label={`Decrease ${label}`}
@@ -689,7 +715,10 @@ export function SettingNumber({
           >
             <StepperMark kind="plus" />
           </button>
-        </div>
+        </div>,
+          onEditCurve,
+          editCurveLabel,
+        )}
       </SettingRow>
     );
   }
@@ -705,13 +734,11 @@ export function SettingNumber({
       value={value}
     />
   );
-  const field = trailing ? (
-    <div className="flex shrink-0 items-center gap-1">
-      {numberField}
-      {trailing}
-    </div>
-  ) : (
-    numberField
+  const field = withCurveButton(
+    numberField,
+    onEditCurve,
+    editCurveLabel,
+    trailing,
   );
 
   if (!scrub) {

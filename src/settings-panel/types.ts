@@ -58,6 +58,11 @@ export type NumberSetting<TSettings> = {
   unit?: string;
   /** Extra 28×28 control flush right of the 86 field. */
   trailing?: ReactNode;
+  /**
+   * `easingTargets[].id` — spline 28 left of the field (timeline inspector).
+   * Opens the Bezier view on that target. Omit = no button.
+   */
+  easingId?: string;
   /** Locked field (Figma Width → Auto when Type is Stretch). */
   readOnly?: boolean;
   /** Shown instead of the number when `readOnly`. */
@@ -495,6 +500,8 @@ export type SettingsPanelProps<TSettings> = {
   /**
    * Persist dock corner, float, and window size to `${id}:panel-settings`
    * instead of `panelId` — one chrome layout for every scene on a site.
+   * Also the React key: one mounted `SettingsPanel` can swap `panelId`
+   * without remounting the Dock Bar.
    */
   layoutPanelId?: string;
   onSettingsChange: (next: Partial<TSettings>) => void;
