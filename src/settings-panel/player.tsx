@@ -513,7 +513,7 @@ export function TransportRow({
   return (
     <div className="grid h-[28px] grid-cols-[1fr_auto_1fr] items-center">
       <div className="flex items-center gap-1 justify-self-start">
-        <SfSymbol name="timer" className="size-5" style={{ color: MUTED }} />
+        <SfSymbol name="circle-gauge" className="size-5" style={{ color: MUTED }} />
         <FieldButton
           label={tx(PANEL_COPY.speed(state.speed), locale)}
           active={state.speed !== 1}

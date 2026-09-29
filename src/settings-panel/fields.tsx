@@ -125,14 +125,13 @@ export function FieldButton({
       className={cn(
         "group/field-btn flex size-[28px] shrink-0 items-center justify-center rounded outline-none",
         fieldChrome,
-        (active || expanded) && "border-[color:var(--sp-line-strong)]",
+        pickEase,
+        active || expanded
+          ? cn(pickActive, "border-[color:var(--sp-line-strong)]")
+          : "bg-[color:var(--sp-field)] text-[color:var(--sp-muted)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",
         className,
       )}
-      style={{
-        background: active ? "var(--sp-fill)" : FIELD,
-        color: active ? "var(--sp-fg)" : MUTED,
-        ...style,
-      }}
+      style={style}
     >
       {expanded == null ? (
         children

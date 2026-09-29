@@ -10,6 +10,9 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ### Changed
 
+- Timeline inspector header: the 328 column shows **Таймлайн** with the `timer` glyph (dropdown only when there is more than one player).
+- Timeline transport speed (×1 / ×3 / ×5 / ×10) uses Lucide `circle-gauge` (Tools `468:6042`), not `timer`.
+- Field 28 (`FieldButton`) On uses `--sp-dock-fill`, like a pick cell — Light `--sp-fill` (`line`) matches frosted glass. Hover is a CSS fill, not an inline background that blocked it.
 - Light segment / pick On uses `--sp-dock-fill` (`dim`), not `line` — `line` matches frosted glass on a dark page, so Ru|Eng and sun|moon disappeared into the panel. Dark is unchanged (`dock-fill` = `line`).
 - Panel Settings **Шрифт** is a dropdown **176**: Geist (default), SF Pro, Helvetica Neue, Georgia. Geist uses Geist Mono for numbers; the OS fonts use SF Mono. No extra font files. Scene Reset does not clear it.
 - Panel Settings is its own window (header `x`, like spring / Bezier / axis). Scene panel and the timeline close each other; the gear does not.

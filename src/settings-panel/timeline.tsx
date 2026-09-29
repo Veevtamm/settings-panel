@@ -293,7 +293,7 @@ function useDockLocale(panelId: string | undefined, localeProp: PanelLocale) {
 }
 
 type TimelineDockProps = Omit<SettingsTimelineSingleProps, "targets"> & {
-  /** Animation row (Figma `ex / Dropdown`), only with several players. */
+  /** Timeline row (Figma `ex / Dropdown`) when there is more than one player. */
   targetOptions?: readonly { id: string; label: string }[];
   onTargetChange?: (id: string) => void;
 };
@@ -711,6 +711,7 @@ function TimelineDockBody({
   const glassPad = DOCK_INSET;
   const targetDropdown = (
     <SettingEnumDropdown
+      icon="timer"
       label={tx(PANEL_COPY.timelineTarget, locale)}
       locale={locale}
       onChange={(id) => onTargetChange?.(id)}
@@ -761,7 +762,18 @@ function TimelineDockBody({
           <div className="flex flex-col gap-2 py-2 pl-3 pr-2">
             <div className="flex items-start gap-2">
               <div className="shrink-0" style={{ width: INSPECTOR }}>
-                {(targetOptions?.length ?? 0) > 1 ? targetDropdown : null}
+                {(targetOptions?.length ?? 0) > 1 ? (
+                  targetDropdown
+                ) : (
+                  <div className="flex h-[28px] items-center">
+                    <RowLabel
+                      icon="timer"
+                      label={tx(PANEL_COPY.timelineTarget, locale)}
+                      locale={locale}
+                      tone="main"
+                    />
+                  </div>
+                )}
               </div>
               <div className="min-w-0 flex-1">
                 <TransportRow

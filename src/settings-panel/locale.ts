@@ -166,7 +166,7 @@ export const PANEL_COPY = {
   staggerLine: L("строка", "line"),
   staggerStep: L("Шаг", "Step"),
   editCurve: L("Кривая элемента", "Edit curve"),
-  timelineTarget: L("Анимация", "Animation"),
+  timelineTarget: L("Таймлайн", "Timeline"),
   soloPhase: L("Только эта фаза", "Solo this phase"),
   clearSolo: L("Снять соло", "Clear solo"),
   openSearch: L("Найти параметр", "Find a parameter"),
