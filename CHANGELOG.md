@@ -13,6 +13,7 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 - Preset row has 3 numbered slots in their own 86 track. Transfer (`link`) is a separate Field 28 to the left of that track; collapse/expand-all is a 20px glyph to the right, like a section chevron.
 - Light Dock Bar: the open button uses `dim` (`#a9a9a9`), not `line` — `line` matches frosted glass on a dark page and the On state disappeared.
 - Dock search keeps the 34 `search` button; the 240 field opens to its right instead of replacing the glyph.
+- Timeline stagger lines («строка 1») use the same `text/main` as phase names, not dim. The stagger chevron sits to the right of the name, before the curve 28 — not next to the hover grip.
 
 ## 0.2.0
 

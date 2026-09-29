@@ -949,26 +949,6 @@ function TimelineDockBody({
                                   />
                                 </span>
                               ) : null}
-                              {stagger ? (
-                                <button
-                                  type="button"
-                                  aria-expanded={linesOpen}
-                                  aria-label={tx(
-                                    linesOpen
-                                      ? PANEL_COPY.collapse(segment.caption)
-                                      : PANEL_COPY.expand(segment.caption),
-                                    locale,
-                                  )}
-                                  onClick={() => toggleLines(index)}
-                                  className="mr-1 inline-flex size-5 shrink-0 items-center justify-center outline-none"
-                                >
-                                  <SfSymbol
-                                    name="chevron-up"
-                                    className={cn("size-5", !linesOpen && "rotate-180")}
-                                    style={{ color: MUTED }}
-                                  />
-                                </button>
-                              ) : null}
                               <RowLabel
                                 className="min-w-0"
                                 label={segment.caption}
@@ -982,6 +962,29 @@ function TimelineDockBody({
                                 }
                               />
                             </span>
+                            {stagger ? (
+                              <button
+                                type="button"
+                                aria-expanded={linesOpen}
+                                aria-label={tx(
+                                  linesOpen
+                                    ? PANEL_COPY.collapse(segment.caption)
+                                    : PANEL_COPY.expand(segment.caption),
+                                  locale,
+                                )}
+                                onClick={() => toggleLines(index)}
+                                className="inline-flex size-5 shrink-0 items-center justify-center outline-none"
+                              >
+                                <SfSymbol
+                                  name="chevron-up"
+                                  className={cn(
+                                    "size-5",
+                                    !linesOpen && "rotate-180",
+                                  )}
+                                  style={{ color: MUTED }}
+                                />
+                              </button>
+                            ) : null}
                             {onEditCurve ? (
                               <FieldButton
                                 label={tx(PANEL_COPY.editCurve, locale)}
@@ -1006,7 +1009,7 @@ function TimelineDockBody({
                                 <div key={k} className={childClass}>
                                   <span
                                     className="min-w-0 flex-1 truncate text-[15px] leading-[20px]"
-                                    style={{ color: DIM }}
+                                    style={{ color: MUTED }}
                                   >
                                     {`${stagger.caption} ${k + 1}`}
                                   </span>
