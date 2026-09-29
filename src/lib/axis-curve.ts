@@ -228,6 +228,30 @@ export function removeAxisBest(
   return { pts: nextPts, handles: nextH };
 }
 
+export function setAxisPointCount(
+  pts: AxisPoint[],
+  handles: AxisHandle[],
+  count: number,
+  sharp = 0,
+): { pts: AxisPoint[]; handles: AxisHandle[] } {
+  const target = clampNumber(Math.round(count), AXIS_POINTS_MIN, AXIS_POINTS_MAX);
+  let nextPts = cloneAxisPoints(pts);
+  let nextH = ensureAxisHandles(pts, handles);
+  while (nextPts.length < target) {
+    const inserted = insertAxisMid(nextPts, nextH, sharp);
+    if (!inserted) break;
+    nextPts = inserted.pts;
+    nextH = inserted.handles;
+  }
+  while (nextPts.length > target) {
+    const removed = removeAxisBest(nextPts, nextH);
+    if (!removed) break;
+    nextPts = removed.pts;
+    nextH = removed.handles;
+  }
+  return { pts: nextPts, handles: nextH };
+}
+
 /** Move a knot. Endpoints: t fixed, X free.
  *  Middles: t between neighbors (stable order), X free for zigzags.
  *  Stale handles on the moved knot are cleared → auto, so X edits aren’t fought. */

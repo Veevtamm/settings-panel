@@ -24,13 +24,13 @@
   --sp-tick: #616161; /* dim */
   --sp-knob: #ffffff; /* contrast */
   --sp-knob-off: #b8b8b8; /* text */
-  --sp-plot-bg: #161616; /* surface */
-  --sp-plot-grid: #242424; /* raised */
-  --sp-plot-diag: #303030; /* line */
+  --sp-plot-bg: #242424; /* raised — same step as Light (raised vs surface field) */
+  --sp-plot-grid: #303030; /* line */
+  --sp-plot-diag: #3d3d3d; /* line-2 */
   --sp-plot-ghost: #3d3d3d; /* line-2 */
   --sp-plot-help: #3d3d3d; /* line-2 */
   --sp-plot-play: #616161; /* dim */
-  --sp-plot-band: #242424; /* raised */
+  --sp-plot-band: #303030; /* line */
   --sp-plot-strong: #ffffff; /* contrast */
   --sp-plot-handle: #161616; /* surface */
   --sp-tooltip: #242424; /* raised */

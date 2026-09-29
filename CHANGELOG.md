@@ -14,6 +14,8 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 - Light Dock Bar: the open button uses `dim` (`#a9a9a9`), not `line` — `line` matches frosted glass on a dark page and the On state disappeared.
 - Dock search keeps the 34 `search` button; the 240 field opens to its right instead of replacing the glyph.
 - Timeline stagger lines («строка 1») use the same `text/main` as phase names, not dim. The stagger chevron sits to the right of the name, before the curve 28 — not next to the hover grip.
+- Axis editor: a **Точки** stepper (2–12) under the plot; Corner/Smooth still applies to the selected knot.
+- Dark Bezier / axis plot fill uses `raised` (`#242424`), like Light, so the graph reads against the `surface` field. The axis canvas paints that fill on the full inner square, not only the letterboxed screen.
 
 ## 0.2.0
 

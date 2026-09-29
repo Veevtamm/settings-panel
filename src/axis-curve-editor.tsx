@@ -9,6 +9,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import {
+  AXIS_POINTS_MAX,
+  AXIS_POINTS_MIN,
   AXIS_X0,
   AXIS_X1,
   autoHandle,
@@ -21,6 +23,7 @@ import {
   sampleAxisX,
   segmentControls,
   setAxisPointCorner,
+  setAxisPointCount,
   type AxisHandle,
   type AxisPoint,
 } from "./lib/axis-curve";
@@ -28,6 +31,7 @@ import { observePanelTheme, readPlotTheme } from "./lib/panel-plot-theme";
 import { cn } from "./lib/utils";
 import { FIELD, fieldChrome, pointerHeld } from "./settings-panel/chrome";
 import { SettingToggle } from "./settings-panel/fields";
+import { SettingNumber } from "./settings-panel/number";
 import { L, tx, type PanelLocale } from "./settings-panel/locale";
 import { usePanelLocale } from "./lib/panel-theme";
 import { usePrefersReducedMotion } from "./lib/prefers-reduced-motion";
@@ -61,6 +65,9 @@ export type AxisCurveEditorProps = {
 type PlotLayout = {
   canvasW: number;
   canvasH: number;
+  pad: number;
+  innerW: number;
+  innerH: number;
   x: number;
   y: number;
   w: number;
@@ -150,6 +157,9 @@ function layoutPlot(size: number, viewportAspect: number): PlotLayout {
   return {
     canvasW,
     canvasH,
+    pad,
+    innerW,
+    innerH,
     x,
     y,
     w,
@@ -247,7 +257,7 @@ export function AxisCurveEditor({
 
     g.fillStyle = theme.bg;
     g.beginPath();
-    g.roundRect(plot.screenX, plot.screenY, plot.screenW, plot.screenH, 2);
+    g.roundRect(plot.pad, plot.pad, plot.innerW, plot.innerH, 2);
     g.fill();
 
     g.strokeStyle = theme.grid;
@@ -676,6 +686,28 @@ export function AxisCurveEditor({
           aria-label={tx(L("Редактор оси", "Axis curve editor"), locale)}
         />
       </div>
+      <SettingNumber
+        label={tx(L("Точки", "Points"), locale)}
+        info={tx(
+          L(
+            "Сколько узлов на оси: 2 — только концы, до 12. Плюс ставит узел в самый длинный сегмент, минус снимает ближайший к прямой. На графике: дабл-клик по кривой — добавить, по узлу — убрать.",
+            "How many knots on the axis: 2 is endpoints only, up to 12. Plus inserts on the longest span, minus drops the flattest knot. On the plot: double-click the curve to add, a knot to remove.",
+          ),
+          locale,
+        )}
+        locale={locale}
+        min={AXIS_POINTS_MIN}
+        max={AXIS_POINTS_MAX}
+        step={1}
+        stepper
+        value={points.length}
+        onChange={(count) => {
+          const next = setAxisPointCount(points, handles, count, sharp);
+          if (sel >= next.pts.length) setSel(next.pts.length - 1);
+          emit(next.pts, next.handles);
+        }}
+        reduceMotion={reduceMotion}
+      />
       {showPointKind && sel >= 0 && sel < points.length ? (
         <SettingToggle
           label={tx(L("Точка", "Point"), locale)}

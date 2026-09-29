@@ -14,7 +14,7 @@ Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens s
 - Click the changes badge to see only changed rows; ⌘Z / ⇧⌘Z undo and redo panel edits
 - Share settings as a link (`?settings=`) or save / open them as a `.json` file with presets
 - Bottom animation timeline (`SettingsTimeline`): stays open together with the panel window; several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
-- Shared custom widgets: chips, skip cells, shuffle replay, stroke join, axis curve editor (`AxisCurveEditor`)
+- Shared custom widgets: chips, skip cells, shuffle replay, stroke join, axis curve editor (`AxisCurveEditor` — **Точки** stepper 2–12 under the plot)
 - Russian and English UI
 - Dark and light themes
 - Presets, per-row reset, and copy-as-defaults

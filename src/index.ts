@@ -149,6 +149,7 @@ export {
   sampleAxisX,
   segmentControls,
   setAxisPointCorner,
+  setAxisPointCount,
 } from "./lib/axis-curve";
 export type { AxisHandle, AxisPoint } from "./lib/axis-curve";
 export {
