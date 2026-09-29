@@ -8,6 +8,7 @@ import {
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
+import { closestPanelFont, type PanelFont } from "../lib/panel-theme";
 import { normalizeHex, parseRgb } from "../lib/hex";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { clampNumber, cn } from "../lib/utils";
@@ -100,6 +101,7 @@ export function ColorPickerFlyout({
   originY,
   side,
   theme,
+  font = "geist",
   top,
   popoverRef,
 }: {
@@ -118,6 +120,7 @@ export function ColorPickerFlyout({
   reduceMotion: boolean;
   side: "below" | "above";
   theme: "dark" | "light";
+  font?: PanelFont;
   top: number;
   popoverRef: RefObject<HTMLDivElement | null>;
 }) {
@@ -184,6 +187,7 @@ export function ColorPickerFlyout({
       aria-label={`${label} color`}
       data-settings-panel=""
       data-panel-theme={theme}
+      data-panel-font={font}
       className={cn(
         "fixed z-[110] flex flex-col gap-2 rounded-lg border border-[color:var(--sp-line)] p-2 backdrop-blur-[8px]",
         reduceMotion
@@ -541,6 +545,7 @@ export function SettingColor({
     ?.closest("[data-panel-theme]")
     ?.getAttribute("data-panel-theme");
   const theme = themeAttr === "light" ? "light" : "dark";
+  const font = closestPanelFont(swatchRef.current);
 
   return (
     <div ref={rootRef}>
@@ -663,6 +668,7 @@ export function SettingColor({
               reduceMotion={reduceMotion}
               side={pos.side}
               theme={theme}
+              font={font}
               top={pos.top}
               popoverRef={popoverRef}
             />,

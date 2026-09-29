@@ -7,6 +7,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
+import { closestPanelFont } from "../lib/panel-theme";
 import { TOTAL_AUTO, staggerSpan, type LaidClip } from "../lib/player-clips";
 import { clampNumber, cn } from "../lib/utils";
 import { bindPointerDrag, pickerChrome } from "./chrome";
@@ -106,6 +107,7 @@ export function PhaseLanes({
     items: { ms: number; x: number }[];
     y: number;
     theme: string;
+    font: string;
   } | null>(null);
   const layout = layoutOf(segments);
   const rows = (
@@ -144,6 +146,7 @@ export function PhaseLanes({
       theme:
         el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
         "dark",
+      font: closestPanelFont(el),
     });
   }
 
@@ -652,6 +655,7 @@ export function PhaseLanes({
                   key={`${item.ms}-${item.x}`}
                   role="tooltip"
                   data-panel-theme={hint.theme}
+                  data-panel-font={hint.font}
                   className="pointer-events-none fixed z-[120] -translate-x-1/2 -translate-y-full rounded-[8px] border border-[color:var(--sp-line-mid)] bg-[color:var(--sp-glass)] px-2 py-1 font-mono text-[11px] leading-[14px] tabular-nums text-[color:var(--sp-fg)] backdrop-blur-md"
                   style={{ left: item.x, top: hint.y - 4 }}
                 >

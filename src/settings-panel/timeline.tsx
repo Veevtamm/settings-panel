@@ -23,6 +23,7 @@ import {
   useDockSlot,
   usePanelLocale,
   usePanelTheme,
+  usePanelFont,
 } from "../lib/panel-theme";
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
@@ -53,6 +54,7 @@ import {
   SettingEnumDropdown,
 } from "./fields";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
+import { DockBarTips } from "./dock";
 import { snapStep } from "./number";
 import { PhaseLanes } from "./phase-lanes";
 import {
@@ -225,6 +227,7 @@ export function TimelineToggleButton({
         open ? PANEL_COPY.closeTimeline : PANEL_COPY.openTimeline,
         locale,
       )}
+      data-dock-tip={tx(PANEL_COPY.dockTimeline, locale)}
       onClick={onToggle}
       className={cn(dockBarButtonClass(open), className)}
     >
@@ -306,10 +309,12 @@ function TimelineDock(props: TimelineDockProps) {
   } = props;
   const chromeId = layoutPanelId ?? panelId;
   const theme = usePanelTheme(chromeId ?? "__timeline__");
+  const font = usePanelFont(chromeId ?? "__timeline__");
   const locale = useDockLocale(chromeId, localeProp);
   const dockCorner = useDockSlot(panelId, layoutPanelId, dockCornerProp);
   const open = usePlayerOpen(controller);
   const reduceMotion = usePrefersReducedMotion();
+  const dockBtnRef = useRef<HTMLDivElement>(null);
   const [hydrated, setHydrated] = useState(false);
   const surfaceMounted = useDeferredMount(open, reduceMotion, PANEL_EXIT_MS);
   useEffect(() => {
@@ -325,8 +330,11 @@ function TimelineDock(props: TimelineDockProps) {
     <>
       {showDockButton ? (
         <div
+          ref={dockBtnRef}
           data-settings-panel=""
           data-panel-theme={theme}
+          data-panel-font={font}
+          data-dock-bar=""
           className="fixed z-[100]"
           style={{
             left: dockRight ? undefined : dockCenter ? "50%" : DOCK_INSET,
@@ -337,6 +345,10 @@ function TimelineDock(props: TimelineDockProps) {
           }}
         >
           <SettingsTimelineDockButton controller={controller} locale={locale} />
+          <DockBarTips
+            barRef={dockBtnRef}
+            side={dockBottom ? "above" : "below"}
+          />
         </div>
       ) : null}
       {surfaceMounted ? (
@@ -345,6 +357,7 @@ function TimelineDock(props: TimelineDockProps) {
           open={open}
           reduceMotion={reduceMotion}
           theme={theme}
+          font={font}
           locale={locale}
           dockCorner={dockCorner}
         />
@@ -372,11 +385,13 @@ function TimelineDockBody({
   onTargetChange,
   defaults,
   theme,
+  font,
   dockCorner,
   open,
   reduceMotion,
 }: TimelineDockProps & {
   theme: string;
+  font: string;
   locale: PanelLocale;
   dockCorner: DockCorner;
   open: boolean;
@@ -718,6 +733,7 @@ function TimelineDockBody({
           data-settings-panel=""
           data-settings-timeline=""
           data-panel-theme={theme}
+          data-panel-font={font}
           role="region"
           aria-label={tx(PANEL_COPY.openTimeline, locale)}
           className={cn(

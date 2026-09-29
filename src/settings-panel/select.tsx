@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { closestPanelFont } from "../lib/panel-theme";
 import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import {
@@ -49,6 +50,7 @@ export function PanelSelectList({
     left: number;
     width: number;
     theme: string;
+    font: string;
   } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
@@ -79,6 +81,7 @@ export function PanelSelectList({
       theme:
         from.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
         "dark",
+      font: closestPanelFont(from),
     });
   }
 
@@ -256,6 +259,7 @@ export function PanelSelectList({
               className="fixed z-[130]"
               data-settings-panel=""
               data-panel-theme={box.theme}
+              data-panel-font={box.font}
               style={{ top: box.top, left: box.left, width: box.width }}
             >
               {chrome}

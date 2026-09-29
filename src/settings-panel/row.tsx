@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { closestPanelFont } from "../lib/panel-theme";
 import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
@@ -121,6 +122,7 @@ function hintBox(icon: HTMLElement) {
     top: below ? rect.bottom + 5 : rect.top - 5,
     below,
     theme,
+    font: closestPanelFont(icon),
   };
 }
 
@@ -184,6 +186,7 @@ export function InfoHint({ label, text }: { label: string; text: string }) {
             <div
               role="tooltip"
               data-panel-theme={pos.theme}
+              data-panel-font={pos.font}
               className={cn(
                 "pointer-events-none fixed",
                 pos.below ? "translate-y-0" : "-translate-y-full",

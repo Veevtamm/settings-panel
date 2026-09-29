@@ -351,7 +351,7 @@ export const pickerChrome =
 export const pickEase =
   "transition-[background-color,color] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]";
 export const pickActive =
-  "bg-[color:var(--sp-fill)] text-[color:var(--sp-fg)] fine-hover:hover:bg-[color:var(--sp-fill-strong)] focus-visible:bg-[color:var(--sp-fill-strong)] focus-visible:text-[color:var(--sp-fg)]";
+  "bg-[color:var(--sp-dock-fill)] text-[color:var(--sp-fg)] fine-hover:hover:bg-[color:var(--sp-dock-fill-hover)] focus-visible:bg-[color:var(--sp-dock-fill-hover)] focus-visible:text-[color:var(--sp-fg)]";
 export const pickIdle =
   "text-[color:var(--sp-fg-dim)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-muted)] focus-visible:bg-[color:var(--sp-fill)] focus-visible:text-[color:var(--sp-fg)]";
 

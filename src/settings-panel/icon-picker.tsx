@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { closestPanelFont, type PanelFont } from "../lib/panel-theme";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { cn } from "../lib/utils";
 import {
@@ -53,6 +54,7 @@ function IconPickerFlyout({
   value,
   popoverRef,
   theme,
+  font = "geist",
 }: {
   label: string;
   left: number;
@@ -66,6 +68,7 @@ function IconPickerFlyout({
   value?: SfSymbolName;
   popoverRef: RefObject<HTMLDivElement | null>;
   theme: "dark" | "light";
+  font?: PanelFont;
 }) {
   const gridRef = useRef<HTMLDivElement>(null);
 
@@ -111,6 +114,7 @@ function IconPickerFlyout({
       aria-label={label}
       data-settings-panel=""
       data-panel-theme={theme}
+      data-panel-font={font}
       className={cn(
         "fixed z-[110] overflow-hidden overscroll-contain rounded-lg border border-[color:var(--sp-line)] p-2 backdrop-blur-[8px]",
         reduceMotion
@@ -296,6 +300,7 @@ export function SectionIconPicker({
     ?.closest("[data-panel-theme]")
     ?.getAttribute("data-panel-theme");
   const theme = themeAttr === "light" ? "light" : "dark";
+  const font = closestPanelFont(triggerRef.current);
   const dialogLabel = `${label}: ${tx(PANEL_COPY.sectionIcon, locale)}`;
 
   return (
@@ -335,6 +340,7 @@ export function SectionIconPicker({
               reduceMotion={reduceMotion}
               side={pos.side}
               theme={theme}
+              font={font}
               top={pos.top}
               value={value}
             />,

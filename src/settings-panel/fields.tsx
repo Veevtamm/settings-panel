@@ -212,7 +212,7 @@ export function NumberField({
   );
 }
 
-/** Field 86, not editable: «Auto» for Width Stretch, a derived value, a staggered span. */
+/** Read-only value on the right of a row: no Field chrome (Version, spring settle, derived, stagger span). Width Stretch Auto stays `AutoNumberField`. */
 export function ReadOnlyField({
   label,
   unit,
@@ -222,22 +222,15 @@ export function ReadOnlyField({
   unit?: string;
   ariaLabel?: string;
 }) {
+  const text = unit ? `${label} ${unit}` : label;
   return (
-    <div
-      aria-label={ariaLabel}
-      className={cn(
-        "flex h-[28px] w-[86px] shrink-0 cursor-default items-center justify-between gap-1 px-1.5 text-[14px] leading-[18px]",
-        fieldChrome,
-      )}
-      style={{ background: FIELD, color: MUTED }}
+    <span
+      aria-label={ariaLabel ?? text}
+      className={cn("shrink-0 select-text", fieldValueMono)}
+      style={{ color: MUTED }}
     >
-      <span>{label}</span>
-      {unit ? (
-        <span className="pointer-events-none shrink-0 font-sans opacity-50" aria-hidden>
-          {unit}
-        </span>
-      ) : null}
-    </div>
+      {text}
+    </span>
   );
 }
 

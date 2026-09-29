@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { closestPanelFont } from "../lib/panel-theme";
 import { cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import { GLASS, fieldValueSans, pickEase, pickIdle, pickerChrome } from "./chrome";
@@ -29,6 +30,7 @@ export function SettingsTransferMenu({
     top: number;
     left: number;
     theme: string;
+    font: string;
   } | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -46,6 +48,7 @@ export function SettingsTransferMenu({
         theme:
           button.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
           "dark",
+        font: closestPanelFont(button),
       });
     };
     place();
@@ -141,6 +144,7 @@ export function SettingsTransferMenu({
               role="menu"
               data-settings-panel=""
               data-panel-theme={box.theme}
+              data-panel-font={box.font}
               className="fixed z-[130] flex w-[220px] flex-col gap-0.5 rounded-lg border border-[color:var(--sp-line)] p-1 backdrop-blur-[8px] font-sans"
               style={{ top: box.top, left: box.left, background: GLASS }}
             >

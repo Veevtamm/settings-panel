@@ -1,3 +1,5 @@
+import type { PanelFont } from "../lib/panel-theme";
+
 export type PanelLocale = "ru" | "en";
 
 export type LocaleText = { ru: string; en: string };
@@ -48,8 +50,24 @@ export const PANEL_COPY = {
       }`,
     ),
   panelSettings: L("Настройки панели", "Panel Settings"),
+  dockScene: L("Панель сцены", "Scene panel"),
+  dockTimeline: L("Таймлайн", "Timeline"),
+  dockReset: L("Сброс", "Reset"),
+  dockCopy: L("Копировать", "Copy"),
+  dockSearch: L("Поиск", "Search"),
+  dockChangedOnly: L("Только изменённые", "Changed only"),
+  dockShowAll: L("Все параметры", "All parameters"),
   language: L("Язык", "Language"),
   theme: L("Тема", "Theme"),
+  panelFont: L("Шрифт", "Font"),
+  panelFontInfo: L(
+    "Семейство интерфейса панели, не сцены. Geist уже в проекте; остальные — шрифты системы, без отдельных файлов.",
+    "Typeface of the panel UI, not the scene. Geist is already in the project; the rest are OS fonts, no extra files.",
+  ),
+  fontGeist: L("Geist", "Geist"),
+  fontSystem: L("SF Pro", "SF Pro"),
+  fontHelvetica: L("Helvetica Neue", "Helvetica Neue"),
+  fontGeorgia: L("Georgia", "Georgia"),
   chromeLayout: L("Положение", "Position"),
   resetChromeLayout: L("Сбросить", "Reset"),
   version: L("Версия", "Version"),
@@ -193,6 +211,13 @@ export const PANEL_COPY = {
   fileRejected: L("Файл не подошёл", "File not recognized"),
   noChanges: L("Всё по умолчанию", "All at defaults"),
 } as const;
+
+export const PANEL_FONT_LABEL: Record<PanelFont, LocaleText> = {
+  geist: PANEL_COPY.fontGeist,
+  system: PANEL_COPY.fontSystem,
+  helvetica: PANEL_COPY.fontHelvetica,
+  georgia: PANEL_COPY.fontGeorgia,
+};
 
 export const ANCHOR_COPY: Record<string, LocaleText> = {
   "top left": L("Верх слева", "Top left"),

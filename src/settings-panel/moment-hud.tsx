@@ -1,6 +1,6 @@
 "use client";
 
-import { usePanelLocale, usePanelTheme } from "../lib/panel-theme";
+import { usePanelLocale, usePanelTheme, usePanelFont } from "../lib/panel-theme";
 import { cn } from "../lib/utils";
 import { momentHudTop } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
@@ -43,6 +43,7 @@ export function SettingsMomentHud({
   const chromeId = layoutPanelId ?? panelId;
   const storedLocale = usePanelLocale(chromeId ?? "__timeline__");
   const theme = usePanelTheme(chromeId ?? "__timeline__");
+  const font = usePanelFont(chromeId ?? "__timeline__");
   const locale = chromeId ? storedLocale : localeProp;
   const top = momentHudTop(useDockSlot(panelId, layoutPanelId));
   const visible = useChromeVisible(enabled, hideBelow);
@@ -56,6 +57,7 @@ export function SettingsMomentHud({
           settings={target.settings}
           locale={locale}
           theme={theme}
+          font={font}
           top={top}
           className={className}
         />
@@ -69,6 +71,7 @@ function MomentHudItem<TSettings>({
   settings,
   locale,
   theme,
+  font,
   top,
   className,
 }: {
@@ -76,6 +79,7 @@ function MomentHudItem<TSettings>({
   settings: TSettings;
   locale: PanelLocale;
   theme: string;
+  font: string;
   top: number;
   className?: string;
 }) {
@@ -87,6 +91,7 @@ function MomentHudItem<TSettings>({
       settings={settings}
       locale={locale}
       theme={theme}
+      font={font}
       top={top}
       className={className}
     />
@@ -98,6 +103,7 @@ function MomentHudOpen<TSettings>({
   settings,
   locale,
   theme,
+  font,
   top,
   className,
 }: {
@@ -105,6 +111,7 @@ function MomentHudOpen<TSettings>({
   settings: TSettings;
   locale: PanelLocale;
   theme: string;
+  font: string;
   top: number;
   className?: string;
 }) {
@@ -119,6 +126,7 @@ function MomentHudOpen<TSettings>({
       type="button"
       data-settings-panel=""
       data-panel-theme={theme}
+      data-panel-font={font}
       title={tx(PANEL_COPY.copyMoment, locale)}
       onClick={() => {
         void copy(

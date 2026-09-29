@@ -5,6 +5,7 @@ import { cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import { GLASS, ICON, MUTED, PANEL_MOVE_EDGE } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
+import type { PanelFont } from "../lib/panel-theme";
 import { panelPopClassName, panelPopStyle } from "./motion-ui";
 
 export function ChromeViewSection({
@@ -13,6 +14,8 @@ export function ChromeViewSection({
   locale,
   modified,
   onResetValue,
+  onClose,
+  closeLabel,
   children,
 }: {
   icon?: SfSymbolName;
@@ -20,11 +23,13 @@ export function ChromeViewSection({
   locale: PanelLocale;
   modified?: boolean;
   onResetValue?: () => void;
+  onClose?: () => void;
+  closeLabel?: string;
   children: ReactNode;
 }) {
   return (
     <section className="flex w-full shrink-0 flex-col gap-4 p-2">
-      <div className="flex h-5 items-center">
+      <div className="flex h-5 w-full items-center justify-between gap-2">
         <span className="inline-flex min-w-0 items-center gap-1">
           {icon ? (
             <SfSymbol
@@ -61,6 +66,18 @@ export function ChromeViewSection({
             {title}
           </span>
         </span>
+        {onClose ? (
+          <button
+            type="button"
+            data-panel-no-move=""
+            aria-label={closeLabel ?? title}
+            onPointerDown={(event) => event.stopPropagation()}
+            onClick={onClose}
+            className="relative z-[3] inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
+          >
+            <SfSymbol name="x" className="size-5" style={{ color: ICON }} />
+          </button>
+        ) : null}
       </div>
       {children}
     </section>
@@ -79,6 +96,7 @@ export function DockedChromeWindow({
   origin,
   skip,
   theme,
+  font = "geist",
   width,
   maxHeight,
   float,
@@ -99,6 +117,7 @@ export function DockedChromeWindow({
   origin: string;
   skip: boolean;
   theme: "dark" | "light";
+  font?: PanelFont;
   width: number;
   maxHeight: number;
   float?: { x: number; y: number };
@@ -115,6 +134,7 @@ export function DockedChromeWindow({
       data-settings-panel=""
       data-settings-panel-window=""
       data-panel-theme={theme}
+      data-panel-font={font}
       role="region"
       aria-label={label}
       aria-roledescription={tx(PANEL_COPY.movePanel, locale)}

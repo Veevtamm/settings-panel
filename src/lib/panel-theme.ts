@@ -10,9 +10,25 @@ import type { PanelLocale } from "../settings-panel/locale";
 import { isSfSymbolName, resolvePanelIcon, type SfSymbolName } from "../sf-symbol";
 
 export type PanelTheme = "dark" | "light";
+/** UI typeface of the panel. Geist is the consumer webfont; the rest are OS stacks, no files. */
+export const PANEL_FONTS = [
+  "geist",
+  "system",
+  "helvetica",
+  "georgia",
+] as const;
+export type PanelFont = (typeof PANEL_FONTS)[number];
+
+export function isPanelFont(value: unknown): value is PanelFont {
+  return (
+    typeof value === "string" &&
+    (PANEL_FONTS as readonly string[]).includes(value)
+  );
+}
+
 export type { PanelLocale };
 
-export const CHROME_WINDOW_IDS = ["spring", "bezier", "axis"] as const;
+export const CHROME_WINDOW_IDS = ["settings", "spring", "bezier", "axis"] as const;
 export type ChromeWindowId = (typeof CHROME_WINDOW_IDS)[number];
 
 function parseXy(pos: unknown): { x: number; y: number } | undefined {
@@ -73,6 +89,8 @@ export type PanelSettingsFile = {
   theme?: PanelTheme;
   /** Panel Settings segment. Omit = ru. Reset does not clear. */
   locale?: PanelLocale;
+  /** UI typeface of the panel chrome. Omit = geist. Reset does not clear. */
+  font?: PanelFont;
   /** Panel Settings: edit-sections mode (grip, pin, icon picker). */
   reorderSections?: boolean;
   /** Section ids including Panel Settings. */
@@ -140,6 +158,7 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     const next: PanelSettingsFile = {};
     if (rec.theme === "light" || rec.theme === "dark") next.theme = rec.theme;
     if (rec.locale === "ru" || rec.locale === "en") next.locale = rec.locale;
+    if (isPanelFont(rec.font)) next.font = rec.font;
     if (typeof rec.reorderSections === "boolean") {
       next.reorderSections = rec.reorderSections;
     }
@@ -207,6 +226,7 @@ export function pickPanelLayout(file: PanelSettingsFile): PanelSettingsFile {
   if (file.panelHeight != null) next.panelHeight = file.panelHeight;
   if (file.theme) next.theme = file.theme;
   if (file.locale) next.locale = file.locale;
+  if (file.font) next.font = file.font;
   return next;
 }
 
@@ -301,12 +321,29 @@ export function readPanelLocale(
     : "ru";
 }
 
+export function readPanelFont(
+  panelId: string,
+  legacyPanelIds: readonly string[] = [],
+): PanelFont {
+  const stored = readPanelSettings(panelId, legacyPanelIds).font;
+  return isPanelFont(stored) ? stored : "geist";
+}
+
 export function writePanelTheme(panelId: string, theme: PanelTheme) {
   writePanelSettings(panelId, { theme });
 }
 
 export function writePanelLocale(panelId: string, locale: PanelLocale) {
   writePanelSettings(panelId, { locale });
+}
+
+export function writePanelFont(panelId: string, font: PanelFont) {
+  writePanelSettings(panelId, { font });
+}
+
+export function closestPanelFont(el: Element | null): PanelFont {
+  const raw = el?.closest("[data-panel-font]")?.getAttribute("data-panel-font");
+  return isPanelFont(raw) ? raw : "geist";
 }
 
 export function subscribePanelTheme(
@@ -348,6 +385,17 @@ export function usePanelLocale(
     (onChange) => subscribePanelTheme(panelId, onChange),
     () => readPanelLocale(panelId, legacyPanelIds),
     () => "ru",
+  );
+}
+
+export function usePanelFont(
+  panelId: string,
+  legacyPanelIds: readonly string[] = [],
+): PanelFont {
+  return useSyncExternalStore(
+    (onChange) => subscribePanelTheme(panelId, onChange),
+    () => readPanelFont(panelId, legacyPanelIds),
+    () => "geist",
   );
 }
 

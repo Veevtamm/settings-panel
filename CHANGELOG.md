@@ -4,9 +4,18 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ## Unreleased
 
+### Added
+
+- Dock Bar hover: a short name chip (`--sp-tooltip`, caret) on each button, like the macOS Dock. Top bar → below the icon; bottom bar → above. Not the native `title`.
+
 ### Changed
 
-- Spring stiffness, damping and mass rows use the same expandable scrub slider as scene number fields (28 `settings-2` toggle). Settle duration stays read-only.
+- Light segment / pick On uses `--sp-dock-fill` (`dim`), not `line` — `line` matches frosted glass on a dark page, so Ru|Eng and sun|moon disappeared into the panel. Dark is unchanged (`dock-fill` = `line`).
+- Panel Settings **Шрифт** is a dropdown **176**: Geist (default), SF Pro, Helvetica Neue, Georgia. Geist uses Geist Mono for numbers; the OS fonts use SF Mono. No extra font files. Scene Reset does not clear it.
+- Panel Settings is its own window (header `x`, like spring / Bezier / axis). Scene panel and the timeline close each other; the gear does not.
+- Spring, Bezier and axis windows get a 20 `x` close on the header, in the same slot as a section chevron. Dock buttons still toggle.
+- Dock Bar: a divider sits between the scene+timeline group and the spring / Bezier / axis group.
+- Spring stiffness, damping and mass rows use the same expandable scrub slider as scene number fields (28 `settings-2` toggle). Settle duration (and other `readOnly` numbers) is plain muted mono text, not a Field.
 - Dock Bar: Copy’s count badge no longer widens the Reset·Copy slot, so the gap before Fold matches the other 4px button gaps.
 - Spring, Bezier and axis windows drag from the 8px top edge like the scene panel (`chromeFloat` in panel-settings). They magnet only to their own dock slot, not the Dock Bar. The dragged window stacks above the others. «Положение» docks them again. Dragging a window no longer selects field text.
 - Named subsection titles line up with row labels at rest; the grip no longer leaves a 4px gap.

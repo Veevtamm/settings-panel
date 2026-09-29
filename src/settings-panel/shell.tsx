@@ -27,9 +27,15 @@ import {
   parsePanelSettingsObject,
   readPanelSettings,
   writePanelLocale,
+  writePanelFont,
   writePanelSettings,
   writePanelTheme,
   type PanelFocusDetail,
+  type ChromeWindowId,
+  type PanelFont,
+  PANEL_FONTS,
+  isPanelFont,
+  CHROME_WINDOW_IDS,
 } from "../lib/panel-theme";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { cn } from "../lib/utils";
@@ -43,7 +49,6 @@ import {
   FIELD,
   GLASS,
   MUTED,
-  ICON,
   DOCK_INSET,
   PANEL_DOCK_GAP,
   PANEL_ENTER_MS,
@@ -70,13 +75,14 @@ import {
   DockCountBadge,
   DockToast,
   DockBarDivider,
+  DockBarTips,
   DockFoldButton,
   DockSearchField,
 } from "./dock";
 import { EasingPlayheadGate } from "./easing-playhead";
 import { PANEL_VERSION } from "../version";
-import { SettingToggle } from "./fields";
-import { copyKey, PANEL_COPY, tx, type PanelLocale } from "./locale";
+import { SettingEnumDropdown, SettingToggle } from "./fields";
+import { copyKey, PANEL_COPY, PANEL_FONT_LABEL, tx, type PanelLocale } from "./locale";
 import {
   applyLiftTransform,
   blockTopsByAttr,
@@ -103,7 +109,6 @@ import {
 } from "./model";
 import {
   DockBarSlot,
-  PanelViewSwitch,
   panelPopClassName,
   panelPopStyle,
 } from "./motion-ui";
@@ -223,8 +228,7 @@ export function SettingsPanelImpl<TSettings>({
   const onSettingsChange = (patch: Partial<TSettings>) => history.record(patch);
 
   const [panelOpen, setPanelOpen] = useState(false);
-  /** Scene and Panel Settings share one window. Bezier / Axis are separate. */
-  const [panelView, setPanelView] = useState<"scene" | "settings">("scene");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [bezierOpen, setBezierOpen] = useState(false);
   const [axisOpen, setAxisOpen] = useState(false);
   const [springOpen, setSpringOpen] = useState(false);
@@ -446,6 +450,7 @@ export function SettingsPanelImpl<TSettings>({
   };
   const [panelTheme, setPanelTheme] = useState<"dark" | "light">("dark");
   const [locale, setLocale] = useState<PanelLocale>("ru");
+  const [panelFont, setPanelFont] = useState<PanelFont>("geist");
   const [transferToast, setTransferToast] = useState<{
     id: number;
     text: string;
@@ -555,6 +560,11 @@ export function SettingsPanelImpl<TSettings>({
     reduceMotion,
     reduceMotion ? 0 : PANEL_EXIT_MS,
   );
+  const settingsMounted = useDeferredMount(
+    settingsOpen,
+    reduceMotion,
+    reduceMotion ? 0 : PANEL_EXIT_MS,
+  );
 
   const groupsForPanel = useMemo(
     () =>
@@ -584,7 +594,7 @@ export function SettingsPanelImpl<TSettings>({
     setChangedOnly(true);
     setSearchOpen(true);
     setPanelInstant(false);
-    setPanelView("scene");
+    closeDockPlayers();
     setPanelOpen(true);
   };
   const changedBadge = (count: number) => (
@@ -595,6 +605,12 @@ export function SettingsPanelImpl<TSettings>({
         changedFilterActive
           ? PANEL_COPY.showAllRows
           : PANEL_COPY.showChangedOnly(changedCount),
+        locale,
+      )}
+      tip={tx(
+        changedFilterActive
+          ? PANEL_COPY.dockShowAll
+          : PANEL_COPY.dockChangedOnly,
         locale,
       )}
       onToggle={toggleChangedOnly}
@@ -800,6 +816,10 @@ export function SettingsPanelImpl<TSettings>({
     const nextLocale = chrome.locale ?? parsed.locale;
     if (theme) setPanelTheme(theme);
     if (nextLocale) setLocale(nextLocale);
+    if (chrome.font ?? parsed.font) {
+      const stored = chrome.font ?? parsed.font;
+      setPanelFont(isPanelFont(stored) ? stored : "geist");
+    }
     if (parsed.sectionOrder) {
       setSectionOrder(withoutRetiredSectionIds(parsed.sectionOrder));
     }
@@ -838,6 +858,11 @@ export function SettingsPanelImpl<TSettings>({
   const persistLocale = (value: PanelLocale) => {
     setLocale(value);
     writePanelLocale(layoutStoreId, value);
+  };
+
+  const persistFont = (value: PanelFont) => {
+    setPanelFont(value);
+    writePanelFont(layoutStoreId, value);
   };
 
   const persistSectionIcon = (
@@ -1251,7 +1276,7 @@ export function SettingsPanelImpl<TSettings>({
         setAxisOpen(true);
         raiseWindow("axis");
       } else {
-        setPanelView("scene");
+        closeDockPlayers();
         setPanelOpen(true);
         raiseWindow("scene");
       }
@@ -1290,8 +1315,10 @@ export function SettingsPanelImpl<TSettings>({
 
       event.preventDefault();
       setPanelInstant(true);
-      setPanelView("scene");
-      setPanelOpen((open) => !open);
+      setPanelOpen((open) => {
+        if (!open) closeDockPlayers();
+        return !open;
+      });
     };
 
     window.addEventListener("keydown", onKey);
@@ -1316,6 +1343,7 @@ export function SettingsPanelImpl<TSettings>({
       if (hide) {
         closeDockPlayers();
         setPanelOpen(false);
+        setSettingsOpen(false);
         setBezierOpen(false);
         setAxisOpen(false);
         setSpringOpen(false);
@@ -1348,19 +1376,26 @@ export function SettingsPanelImpl<TSettings>({
     return () => unsubs.forEach((unsub) => unsub());
   }, [dockPlayerKey]);
 
+  useEffect(() => {
+    if (timelineOpen) setPanelOpen(false);
+  }, [timelineOpen]);
+
   const sectionVisible = (sectionId: string) => {
     if (sectionId === PANEL_SECTION_ID) return false;
     return filteredGroups.some((group) => group.id === sectionId);
   };
-  type PanelView = "scene" | "settings";
-  const togglePanelView = (view: PanelView) => {
+  const toggleSettings = () => {
     setPanelInstant(false);
-    if (panelOpen && panelView === view) {
+    setSettingsOpen((open) => !open);
+    if (!settingsOpen) raiseWindow("settings");
+  };
+  const toggleScene = () => {
+    setPanelInstant(false);
+    if (panelOpen) {
       setPanelOpen(false);
       return;
     }
-    if (view !== "scene") closeSearch();
-    setPanelView(view);
+    closeDockPlayers();
     setPanelOpen(true);
     raiseWindow("scene");
   };
@@ -1381,11 +1416,13 @@ export function SettingsPanelImpl<TSettings>({
   };
   const panelScroll =
     "overflow-y-auto overscroll-y-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
-  const extraDockLeft = (id: "spring" | "bezier" | "axis") => {
+  const extraDockLeft = (id: ChromeWindowId) => {
+    const rank = CHROME_WINDOW_IDS.indexOf(id);
     const index =
       (panelOpen && panelFloat == null ? 1 : 0) +
-      (id !== "spring" && springOpen ? 1 : 0) +
-      (id === "axis" && bezierOpen ? 1 : 0);
+      (settingsOpen && rank > 0 ? 1 : 0) +
+      (springOpen && rank > 1 ? 1 : 0) +
+      (bezierOpen && rank > 2 ? 1 : 0);
     const dir = dockRight ? -1 : 1;
     const x = dockedX + dir * index * (frameW + PANEL_DOCK_GAP);
     const maxX = Math.max(DOCK_INSET, viewportW - frameW - DOCK_INSET);
@@ -1535,6 +1572,7 @@ export function SettingsPanelImpl<TSettings>({
     <div
       data-settings-panel=""
       data-panel-theme={panelTheme}
+      data-panel-font={panelFont}
       data-dock-dragging={dockDragging ? "" : undefined}
       data-dock-corner={layoutCorner}
       className={cn(
@@ -1566,21 +1604,22 @@ export function SettingsPanelImpl<TSettings>({
         >
           <button
             type="button"
-            aria-expanded={panelOpen && panelView === "settings"}
-            aria-controls={panelId}
+            aria-expanded={settingsOpen}
+            aria-controls={`${panelId}-settings`}
             aria-label={tx(
-              panelOpen && panelView === "settings"
+              settingsOpen
                 ? PANEL_COPY.closePanelSettings
                 : PANEL_COPY.openPanelSettings,
               locale,
             )}
+            data-dock-tip={tx(PANEL_COPY.panelSettings, locale)}
             className={cn(
-              dockBarButtonClass(panelOpen && panelView === "settings"),
+              dockBarButtonClass(settingsOpen),
               dockDragging && "cursor-grabbing active:scale-100",
             )}
             onClick={() => {
               if (dockMovedRef.current) return;
-              togglePanelView("settings");
+              toggleSettings();
             }}
           >
             <SfSymbol name="settings" className="size-5" />
@@ -1590,23 +1629,24 @@ export function SettingsPanelImpl<TSettings>({
           <button
             type="button"
             id={`${panelId}-trigger`}
-            aria-expanded={panelOpen && panelView === "scene"}
+            aria-expanded={panelOpen}
             aria-controls={panelId}
             aria-keyshortcuts={shortcut ? "Meta+M" : undefined}
             aria-label={
-              panelOpen && panelView === "scene"
+              panelOpen
                 ? tx(PANEL_COPY.closePanel, locale)
                 : changedCount > 0
                   ? tx(PANEL_COPY.openPanelChanged(changedCount), locale)
                   : tx(PANEL_COPY.openPanel, locale)
             }
+            data-dock-tip={tx(PANEL_COPY.dockScene, locale)}
             className={cn(
-              dockBarButtonClass(panelOpen && panelView === "scene"),
+              dockBarButtonClass(panelOpen),
               dockDragging && "cursor-grabbing active:scale-100",
             )}
             onClick={() => {
               if (dockMovedRef.current) return;
-              togglePanelView("scene");
+              toggleScene();
             }}
           >
             <SfSymbol name="sliders-horizontal" className="size-5" />
@@ -1626,9 +1666,18 @@ export function SettingsPanelImpl<TSettings>({
                   return;
                 }
                 setPanelInstant(false);
+                setPanelOpen(false);
                 openDockTimeline();
               }}
             />
+          </DockBarSlot>
+          <DockBarSlot
+            open={
+              hasSpringTargets || hasEasingTargets || Boolean(curveSection)
+            }
+            reduceMotion={reduceMotion}
+          >
+            <DockBarDivider />
           </DockBarSlot>
           <DockBarSlot open={hasSpringTargets} reduceMotion={reduceMotion}>
             <button
@@ -1639,6 +1688,7 @@ export function SettingsPanelImpl<TSettings>({
                 springOpen ? PANEL_COPY.closeSpring : PANEL_COPY.openSpring,
                 locale,
               )}
+              data-dock-tip={tx(PANEL_COPY.spring, locale)}
               className={cn(
                 dockBarButtonClass(springOpen),
                 dockDragging && "cursor-grabbing active:scale-100",
@@ -1663,6 +1713,7 @@ export function SettingsPanelImpl<TSettings>({
                 bezierOpen ? PANEL_COPY.closeBezier : PANEL_COPY.openBezier,
                 locale,
               )}
+              data-dock-tip={tx(PANEL_COPY.bezierCurve, locale)}
               className={cn(
                 dockBarButtonClass(bezierOpen),
                 dockDragging && "cursor-grabbing active:scale-100",
@@ -1684,6 +1735,7 @@ export function SettingsPanelImpl<TSettings>({
                 axisOpen ? PANEL_COPY.closeAxis : PANEL_COPY.openAxis,
                 locale,
               )}
+              data-dock-tip={tx(PANEL_COPY.axisCurve, locale)}
               className={cn(
                 dockBarButtonClass(axisOpen),
                 dockDragging && "cursor-grabbing active:scale-100",
@@ -1710,6 +1762,7 @@ export function SettingsPanelImpl<TSettings>({
               <button
                 type="button"
                 aria-label={tx(PANEL_COPY.resetSettings(changedCount), locale)}
+                data-dock-tip={tx(PANEL_COPY.dockReset, locale)}
                 className={dockBarButtonClass()}
                 onClick={() => {
                   if (Object.keys(sectionIcons).length > 0) {
@@ -1744,6 +1797,7 @@ export function SettingsPanelImpl<TSettings>({
                       ? tx(PANEL_COPY.copyDefaultsDone, locale)
                       : tx(PANEL_COPY.copyDefaults(changedCount), locale)
                   }
+                  data-dock-tip={tx(PANEL_COPY.dockCopy, locale)}
                   className={dockBarButtonClass()}
                   onClick={copyChangedSettings}
                 >
@@ -1768,20 +1822,23 @@ export function SettingsPanelImpl<TSettings>({
             locale={locale}
             onOpen={() => {
               setSearchOpen(true);
-              if (panelOpen && panelView !== "scene") {
-                setPanelView("scene");
-              }
             }}
             onQuery={(value) => {
               setChangedOnly(false);
               setSearchQuery(value);
               if (!value.trim()) return;
-              setPanelView("scene");
+              closeDockPlayers();
               setPanelOpen(true);
+              raiseWindow("scene");
             }}
             onClose={closeSearch}
           />
         </div>
+        <DockBarTips
+          barRef={barRef}
+          disabled={dockDragging}
+          side={dockBottom ? "above" : "below"}
+        />
         {historyToast}
 
         {(() => {
@@ -1791,6 +1848,7 @@ export function SettingsPanelImpl<TSettings>({
           data-settings-panel=""
           data-settings-panel-window=""
           data-panel-theme={panelTheme}
+          data-panel-font={panelFont}
           role="region"
           aria-label={`${storageLabel} animation settings`}
           aria-roledescription={tx(PANEL_COPY.movePanel, locale)}
@@ -2114,76 +2172,6 @@ export function SettingsPanelImpl<TSettings>({
           </section>
               );
             }
-            if (sectionId === PANEL_SECTION_ID) {
-              return shell(
-          <section
-            data-panel-move=""
-            className="flex w-full shrink-0 flex-col gap-4 p-2"
-          >
-            <div className="flex h-5 items-center">
-              <span className="inline-flex min-w-0 items-center gap-1">
-                <SfSymbol
-                  name="settings"
-                  className="size-5 shrink-0"
-                  style={{ color: ICON }}
-                />
-                <span
-                  className="truncate text-[15px] font-sans leading-[20px] select-none"
-                  style={{ color: MUTED }}
-                >
-                  {tx(PANEL_COPY.panelSettings, locale)}
-                </span>
-              </span>
-            </div>
-            <div className="flex flex-col gap-2">
-              <SettingToggle
-                label={tx(PANEL_COPY.language, locale)}
-                control="segment"
-                offLabel="Ru"
-                onLabel="Eng"
-                onChange={(en) => persistLocale(en ? "en" : "ru")}
-                value={locale === "en"}
-              />
-              <SettingToggle
-                label={tx(PANEL_COPY.theme, locale)}
-                control="segment"
-                offLabel="Light"
-                onLabel="Dark"
-                offIcon="sun"
-                onIcon="moon"
-                onChange={(dark) =>
-                  persistPanelTheme(dark ? "dark" : "light")
-                }
-                value={panelTheme === "dark"}
-              />
-              <SettingToggle
-                label={tx(PANEL_COPY.chromeLayout, locale)}
-                locale={locale}
-                control="action"
-                offLabel={tx(PANEL_COPY.resetChromeLayout, locale)}
-                onLabel={tx(PANEL_COPY.resetChromeLayout, locale)}
-                onChange={() => resetChromeLayout()}
-                value={false}
-              />
-              <div
-                data-setting-row
-                className="flex h-[28px] items-center justify-between gap-4"
-              >
-                <RowLabel
-                  label={tx(PANEL_COPY.version, locale)}
-                  locale={locale}
-                />
-                <span
-                  className="shrink-0 font-mono text-[14px] leading-[18px] select-text"
-                  style={{ color: MUTED }}
-                >
-                  {PANEL_VERSION}
-                </span>
-              </div>
-            </div>
-          </section>
-              );
-            }
             const group = filteredGroups.find((item) => item.id === sectionId);
             if (!group) return null;
             return shell(
@@ -2232,25 +2220,15 @@ export function SettingsPanelImpl<TSettings>({
             </SectionBlock>
             );
           };
-          const chromeView = panelView === "settings";
-          const visibleTop =
-            chromeView
-              ? []
-              : narrowActive
-                ? sectionRails.top.filter(sectionVisible)
-                : [PRESETS_SECTION_ID, ...sectionRails.top.filter(sectionVisible)];
-          const visibleMid = panelView === "settings"
-            ? [PANEL_SECTION_ID]
-            : sectionRails.mid.filter(sectionVisible);
+          const visibleTop = narrowActive
+            ? sectionRails.top.filter(sectionVisible)
+            : [PRESETS_SECTION_ID, ...sectionRails.top.filter(sectionVisible)];
+          const visibleMid = sectionRails.mid.filter(sectionVisible);
           const searchMiss =
             searchQueryActive &&
             visibleTop.length === 0 &&
             visibleMid.length === 0;
           return (
-          <PanelViewSwitch
-            viewKey={chromeView ? panelView : "scene"}
-            reduceMotion={reduceMotion}
-          >
           <div
             className="grid min-h-0 w-full grid-rows-[auto_minmax(0,auto)] overflow-hidden"
             data-section-list=""
@@ -2277,7 +2255,6 @@ export function SettingsPanelImpl<TSettings>({
               )}
             </div>
           </div>
-          </PanelViewSwitch>
           );
           })() : null}
           {panelOpen ? (
@@ -2341,6 +2318,101 @@ export function SettingsPanelImpl<TSettings>({
           ? createPortal(panelWindow, windowHost)
           : panelWindow;
         })()}
+        {windowHost
+          ? createPortal(
+              <DockedChromeWindow
+                id={`${panelId}-settings`}
+                open={settingsOpen}
+                mounted={settingsMounted}
+                label={tx(PANEL_COPY.panelSettings, locale)}
+                left={extraDockLeft("settings")}
+                top={dockedWindowTop}
+                bottom={dockedWindowBottom}
+                fromBottom={dockBottom}
+                origin={dockedOrigin}
+                skip={reduceMotion}
+                theme={panelTheme}
+                font={panelFont}
+                width={frameW}
+                maxHeight={extraMaxH}
+                locale={locale}
+                float={chromeFloat.settings}
+                moving={chromeMoving === "settings"}
+                zIndex={windowZ.settings ?? 100}
+                onPointerDown={startChromeMove("settings")}
+              >
+                <ChromeViewSection
+                  icon="settings"
+                  title={tx(PANEL_COPY.panelSettings, locale)}
+                  locale={locale}
+                  onClose={() => setSettingsOpen(false)}
+                  closeLabel={tx(PANEL_COPY.closePanelSettings, locale)}
+                >
+                  <div className="flex flex-col gap-2">
+                    <SettingToggle
+                      label={tx(PANEL_COPY.language, locale)}
+                      control="segment"
+                      offLabel="Ru"
+                      onLabel="Eng"
+                      onChange={(en) => persistLocale(en ? "en" : "ru")}
+                      value={locale === "en"}
+                    />
+                    <SettingToggle
+                      label={tx(PANEL_COPY.theme, locale)}
+                      control="segment"
+                      offLabel="Light"
+                      onLabel="Dark"
+                      offIcon="sun"
+                      onIcon="moon"
+                      onChange={(dark) =>
+                        persistPanelTheme(dark ? "dark" : "light")
+                      }
+                      value={panelTheme === "dark"}
+                    />
+                    <SettingEnumDropdown
+                      label={tx(PANEL_COPY.panelFont, locale)}
+                      info={tx(PANEL_COPY.panelFontInfo, locale)}
+                      locale={locale}
+                      reduceMotion={reduceMotion}
+                      value={panelFont}
+                      onChange={(id) => {
+                        if (isPanelFont(id)) persistFont(id);
+                      }}
+                      options={PANEL_FONTS.map((id) => ({
+                        value: id,
+                        label: tx(PANEL_FONT_LABEL[id], locale),
+                      }))}
+                    />
+                    <SettingToggle
+                      label={tx(PANEL_COPY.chromeLayout, locale)}
+                      locale={locale}
+                      control="action"
+                      offLabel={tx(PANEL_COPY.resetChromeLayout, locale)}
+                      onLabel={tx(PANEL_COPY.resetChromeLayout, locale)}
+                      onChange={() => resetChromeLayout()}
+                      value={false}
+                    />
+                    <div
+                      data-setting-row
+                      className="flex h-[28px] items-center justify-between gap-4"
+                    >
+                      <RowLabel
+                        label={tx(PANEL_COPY.version, locale)}
+                        locale={locale}
+                      />
+                      <span
+                        className="shrink-0 font-mono text-[14px] leading-[18px] select-text"
+                        style={{ color: MUTED }}
+                      >
+                        {PANEL_VERSION}
+                      </span>
+                    </div>
+                  </div>
+                </ChromeViewSection>
+              </DockedChromeWindow>,
+              windowHost,
+            )
+          : null}
         {windowHost && hasSpringTargets && activeSpring
           ? createPortal(
               <DockedChromeWindow
@@ -2355,6 +2427,7 @@ export function SettingsPanelImpl<TSettings>({
                 origin={dockedOrigin}
                 skip={reduceMotion}
                 theme={panelTheme}
+                font={panelFont}
                 width={frameW}
                 maxHeight={extraMaxH}
                 locale={locale}
@@ -2369,6 +2442,8 @@ export function SettingsPanelImpl<TSettings>({
                   locale={locale}
                   modified={springDot?.modified}
                   onResetValue={springDot?.onResetValue}
+                  onClose={() => setSpringOpen(false)}
+                  closeLabel={tx(PANEL_COPY.closeSpring, locale)}
                 >
                   <div className="flex w-full flex-col gap-2">
                     {springTargets.length > 1 ? (
@@ -2411,6 +2486,7 @@ export function SettingsPanelImpl<TSettings>({
                 origin={dockedOrigin}
                 skip={reduceMotion}
                 theme={panelTheme}
+                font={panelFont}
                 width={frameW}
                 maxHeight={extraMaxH}
                 locale={locale}
@@ -2428,6 +2504,8 @@ export function SettingsPanelImpl<TSettings>({
                   locale={locale}
                   modified={easingDot?.modified}
                   onResetValue={easingDot?.onResetValue}
+                  onClose={() => setBezierOpen(false)}
+                  closeLabel={tx(PANEL_COPY.closeBezier, locale)}
                 >
                   {renderEasingEditor(easingTargets)}
                 </ChromeViewSection>
@@ -2449,6 +2527,7 @@ export function SettingsPanelImpl<TSettings>({
                 origin={dockedOrigin}
                 skip={reduceMotion}
                 theme={panelTheme}
+                font={panelFont}
                 width={frameW}
                 maxHeight={extraMaxH}
                 locale={locale}
@@ -2463,6 +2542,8 @@ export function SettingsPanelImpl<TSettings>({
                   locale={locale}
                   modified={curveDot?.modified}
                   onResetValue={curveDot?.onResetValue}
+                  onClose={() => setAxisOpen(false)}
+                  closeLabel={tx(PANEL_COPY.closeAxis, locale)}
                 >
                   {curveSection}
                 </ChromeViewSection>
