@@ -4,12 +4,12 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
-import { GLASS, fieldValueSans, pickEase, pickIdle } from "./chrome";
+import { GLASS, fieldValueSans, pickEase, pickIdle, pickerChrome } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 
 /**
- * G5: 28 cell left of the preset slots. Menu = link with values, save a
- * `.json`, open a `.json`. `done` shows `check` after the link is copied.
+ * G5: own Field 28 to the left of the numbered preset slots. Menu = link,
+ * save a `.json`, open a `.json`. `done` shows `check` after the link is copied.
  */
 export function SettingsTransferMenu({
   locale,
@@ -115,7 +115,8 @@ export function SettingsTransferMenu({
         aria-label={tx(PANEL_COPY.transferSettings, locale)}
         onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "flex size-[28px] items-center justify-center outline-none",
+          "relative flex size-[28px] shrink-0 items-center justify-center overflow-hidden rounded outline-none",
+          pickerChrome,
           pickEase,
           pickIdle,
         )}

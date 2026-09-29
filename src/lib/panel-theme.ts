@@ -12,6 +12,35 @@ import { isSfSymbolName, resolvePanelIcon, type SfSymbolName } from "../sf-symbo
 export type PanelTheme = "dark" | "light";
 export type { PanelLocale };
 
+export const CHROME_WINDOW_IDS = ["spring", "bezier", "axis"] as const;
+export type ChromeWindowId = (typeof CHROME_WINDOW_IDS)[number];
+
+function parseXy(pos: unknown): { x: number; y: number } | undefined {
+  if (!pos || typeof pos !== "object" || Array.isArray(pos)) return;
+  const rec = pos as Record<string, unknown>;
+  if (
+    typeof rec.x === "number" &&
+    Number.isFinite(rec.x) &&
+    typeof rec.y === "number" &&
+    Number.isFinite(rec.y)
+  ) {
+    return { x: rec.x, y: rec.y };
+  }
+}
+
+function parseChromeFloat(
+  raw: unknown,
+): PanelSettingsFile["chromeFloat"] | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return;
+  const rec = raw as Record<string, unknown>;
+  const next: NonNullable<PanelSettingsFile["chromeFloat"]> = {};
+  for (const id of CHROME_WINDOW_IDS) {
+    const pos = parseXy(rec[id]);
+    if (pos) next[id] = pos;
+  }
+  return Object.keys(next).length > 0 ? next : undefined;
+}
+
 export const PANEL_THEME_EVENT = "experimental:panel-theme";
 /** Open a settings-panel view (scene group, Bezier, or Axis). */
 export const PANEL_FOCUS_EVENT = "settings-panel:focus";
@@ -56,7 +85,9 @@ export type PanelSettingsFile = {
   panelHeight?: number;
   /** Viewport top-left of a free-floating panel. Omit / null = docked to the gear. */
   panelFloat?: { x: number; y: number } | null;
-  /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Scene Reset does not clear; Panel Settings «Положение» does. */
+  /** Viewport top-left of a free-floating spring / Bezier / axis window. Omit = docked in the stack beside the scene. */
+  chromeFloat?: Partial<Record<ChromeWindowId, { x: number; y: number }>> | null;
+  /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Scene Reset and Panel Settings «Положение» do not clear it. */
   dockSlot?: DockCorner;
   /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
   sectionIcons?: Record<string, SfSymbolName>;
@@ -136,17 +167,10 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     ) {
       next.panelHeight = rec.panelHeight;
     }
-    if (rec.panelFloat && typeof rec.panelFloat === "object" && !Array.isArray(rec.panelFloat)) {
-      const pos = rec.panelFloat as Record<string, unknown>;
-      if (
-        typeof pos.x === "number" &&
-        Number.isFinite(pos.x) &&
-        typeof pos.y === "number" &&
-        Number.isFinite(pos.y)
-      ) {
-        next.panelFloat = { x: pos.x, y: pos.y };
-      }
-    }
+    const panelPos = parseXy(rec.panelFloat);
+    if (panelPos) next.panelFloat = panelPos;
+    const chromePos = parseChromeFloat(rec.chromeFloat);
+    if (chromePos) next.chromeFloat = chromePos;
     const icons = parseSectionIcons(rec.sectionIcons);
     if (icons) next.sectionIcons = icons;
     const lastEdited = parseLastEdited(rec.lastEdited);
@@ -178,6 +202,7 @@ export function pickPanelLayout(file: PanelSettingsFile): PanelSettingsFile {
   const next: PanelSettingsFile = {};
   if (file.dockSlot) next.dockSlot = file.dockSlot;
   if (file.panelFloat !== undefined) next.panelFloat = file.panelFloat;
+  if (file.chromeFloat) next.chromeFloat = file.chromeFloat;
   if (file.panelWidth != null) next.panelWidth = file.panelWidth;
   if (file.panelHeight != null) next.panelHeight = file.panelHeight;
   if (file.theme) next.theme = file.theme;
@@ -189,6 +214,7 @@ export function panelLayoutHasChrome(file: PanelSettingsFile) {
   return (
     file.dockSlot != null ||
     file.panelFloat != null ||
+    file.chromeFloat != null ||
     file.panelWidth != null ||
     file.panelHeight != null
   );
@@ -229,6 +255,14 @@ export function writePanelSettings(
   if (patch.panelFloat !== undefined) {
     if (patch.panelFloat === null) delete next.panelFloat;
     else next.panelFloat = patch.panelFloat;
+  }
+  if (patch.chromeFloat !== undefined) {
+    if (
+      patch.chromeFloat == null ||
+      Object.keys(patch.chromeFloat).length === 0
+    ) {
+      delete next.chromeFloat;
+    } else next.chromeFloat = patch.chromeFloat;
   }
   if (patch.sectionIcons !== undefined) {
     if (Object.keys(patch.sectionIcons).length === 0) delete next.sectionIcons;

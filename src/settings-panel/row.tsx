@@ -11,6 +11,7 @@ import {
   HINT_POP_MS,
   HINT_SESSION_MS,
   ICON,
+  PANEL_HINT_Z,
   SECTION_MS,
   rowLabelClass,
   rowLabelMainClass,
@@ -167,6 +168,7 @@ export function InfoHint({ label, text }: { label: string; text: string }) {
   return (
     <span
       ref={iconRef}
+      data-panel-no-move=""
       tabIndex={0}
       role="note"
       aria-label={`${label}: ${text}`}
@@ -183,13 +185,14 @@ export function InfoHint({ label, text }: { label: string; text: string }) {
               role="tooltip"
               data-panel-theme={pos.theme}
               className={cn(
-                "pointer-events-none fixed z-[120]",
+                "pointer-events-none fixed",
                 pos.below ? "translate-y-0" : "-translate-y-full",
               )}
               style={{
                 left: pos.left,
                 top: pos.top,
                 width: pos.width,
+                zIndex: PANEL_HINT_Z,
               }}
             >
               <div

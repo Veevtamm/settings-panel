@@ -181,6 +181,7 @@ export type {
   PanelFocusDetail,
   PanelSettingsFile,
   PanelTheme,
+  ChromeWindowId,
 } from "./lib/panel-theme";
 export { isOverSettingsPanel } from "./lib/is-over-settings-panel";
 export { usePrefersReducedMotion } from "./lib/prefers-reduced-motion";

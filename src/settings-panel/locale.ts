@@ -51,16 +51,8 @@ export const PANEL_COPY = {
   language: L("Язык", "Language"),
   theme: L("Тема", "Theme"),
   chromeLayout: L("Положение", "Position"),
-  chromeLayoutInfo: L(
-    "Возвращает Dock Bar в стартовое место и пристыковывает окно к бару. Ширину, тему и язык не трогает.",
-    "Puts the Dock Bar back in its starting slot and docks the window to the bar. Width, theme, and language stay as they are.",
-  ),
   resetChromeLayout: L("Сбросить", "Reset"),
   version: L("Версия", "Version"),
-  versionInfo: L(
-    "Версия пакета @veevtamm/settings-panel. Что изменилось — CHANGELOG.md в репозитории.",
-    "@veevtamm/settings-panel package version. What changed is in CHANGELOG.md in the repo.",
-  ),
   resizePanelWidth: L("Изменить ширину панели", "Resize panel width"),
   resizePanelHeight: L("Изменить высоту панели", "Resize panel height"),
   resizePanelCorner: L("Изменить размер панели", "Resize panel"),

@@ -7,7 +7,7 @@ import { readMigratedPanelUi, valuesEqual } from "./model";
 const emptySlots = <T>(): (T | null)[] =>
   Array.from({ length: SNAPSHOT_SLOTS }, () => null);
 
-/** Presets row: 5 slots in `${panelId}:snapshots`, only this page's keys apply. */
+/** Presets row: 3 slots in `${panelId}:snapshots`, only this page's keys apply. */
 export function usePanelSnapshots<TSettings>({
   panelId,
   legacyPanelIds,
@@ -52,7 +52,11 @@ export function usePanelSnapshots<TSettings>({
           : emptySlots(),
       );
       setActiveSnapshot(
-        typeof parsed.active === "number" ? parsed.active : null,
+        typeof parsed.active === "number" &&
+          parsed.active >= 0 &&
+          parsed.active < SNAPSHOT_SLOTS
+          ? parsed.active
+          : null,
       );
     } catch {
       reset();

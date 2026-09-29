@@ -459,7 +459,7 @@ export type SettingsPanelProps<TSettings> = {
   onReset?: () => void;
   /** Per-row reset dots: rows whose value differs from these defaults get a dot. */
   defaultSettings?: TSettings;
-  /** Scene buttons (34) in the Dock Bar group after Fold / pointer; their own glass is stripped inside the bar. */
+  /** Scene buttons (34) in the Dock Bar group after Reset · Copy; their own glass is stripped inside the bar. */
   dockExtra?: ReactNode;
   /**
    * Dock Bar slot when `${panelId}:panel-settings` has no `dockSlot`.

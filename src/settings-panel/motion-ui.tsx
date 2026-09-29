@@ -71,7 +71,9 @@ export function DockBarSlot({
     const inner = innerRef.current;
     if (!inner) return;
     const apply = () => {
-      setWidth(open ? Math.max(inner.scrollWidth, inner.offsetWidth) : 0);
+      // offsetWidth, not scrollWidth: Copy's count badge is absolute and
+      // would pad the slot, leaving a hole before Search.
+      setWidth(open ? inner.offsetWidth : 0);
     };
     apply();
     const observer = new ResizeObserver(apply);

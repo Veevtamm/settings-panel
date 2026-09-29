@@ -8,6 +8,7 @@ import {
   EASE_OUT,
   FIELD,
   GLASS,
+  ICON,
   PANEL_ENTER_MS,
   PANEL_EXIT_MS,
   DOCK_SEARCH_W,
@@ -101,7 +102,7 @@ export function DockFoldButton({
         locale,
       )}
       onClick={onToggle}
-      className={dockBarButtonClass()}
+      className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
     >
       <SfSymbol
         name={
@@ -109,6 +110,8 @@ export function DockFoldButton({
             ? "list-chevrons-down-up"
             : "list-chevrons-up-down"
         }
+        className="size-5"
+        style={{ color: ICON }}
       />
     </button>
   );
@@ -146,85 +149,83 @@ export function DockSearchField({
   return (
     <div
       data-dock-search=""
-      className={cn(
-        "relative flex h-[34px] shrink-0 items-center overflow-hidden rounded",
-        open && fieldChrome,
-        !reduceMotion && "transition-[width,border-color,background-color]",
-      )}
-      style={{
-        width: open ? DOCK_SEARCH_W : 34,
-        background: open ? FIELD : "transparent",
-        ...motion,
-      }}
+      className="flex h-[34px] shrink-0 items-center"
     >
       <button
         type="button"
         aria-expanded={open}
-        aria-label={tx(PANEL_COPY.openSearch, locale)}
-        tabIndex={open ? -1 : 0}
-        className={cn(
-          dockBarButtonClass(),
-          "absolute inset-y-0 left-0",
-          open && "pointer-events-none opacity-0",
-          !reduceMotion && "transition-opacity",
+        aria-label={tx(
+          open ? PANEL_COPY.closeSearch : PANEL_COPY.openSearch,
+          locale,
         )}
-        style={motion}
-        onClick={onOpen}
+        className={dockBarButtonClass(open)}
+        onClick={() => (open ? onClose() : onOpen())}
       >
         <SfSymbol name="search" className="size-5" />
       </button>
-      {open && !query ? (
-        <span
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute left-2.5 truncate",
-            fieldValueSans,
-          )}
-          style={{ color: "var(--sp-fg)", opacity: filterLabel ? 1 : 0.4 }}
-        >
-          {filterLabel ?? tx(PANEL_COPY.searchPlaceholder, locale)}
-        </span>
-      ) : null}
-      <input
-        ref={inputRef}
-        type="search"
-        value={query}
-        aria-hidden={!open}
-        tabIndex={open ? 0 : -1}
-        aria-label={tx(PANEL_COPY.searchField, locale)}
-        autoComplete="off"
+      <div
         className={cn(
-          "h-full w-full bg-transparent pr-8 pl-2.5 text-[color:var(--sp-fg)] outline-none",
-          "[&::-webkit-search-cancel-button]:hidden",
-          fieldValueSans,
-          !open && "pointer-events-none opacity-0",
-          !reduceMotion && "transition-opacity",
+          "relative flex h-[34px] items-center overflow-hidden rounded",
+          open && fieldChrome,
+          !reduceMotion &&
+            "transition-[width,margin-left,border-color,background-color]",
         )}
-        style={motion}
-        onChange={(event) => onQuery(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key !== "Escape") return;
-          event.preventDefault();
-          event.stopPropagation();
-          if (query) onQuery("");
-          else onClose();
+        style={{
+          width: open ? DOCK_SEARCH_W : 0,
+          marginLeft: open ? 4 : 0,
+          background: open ? FIELD : "transparent",
+          ...motion,
         }}
-      />
-      <button
-        type="button"
-        aria-label={tx(PANEL_COPY.closeSearch, locale)}
-        aria-hidden={!open}
-        tabIndex={open ? 0 : -1}
-        className={cn(
-          "absolute right-0.5 inline-flex size-7 items-center justify-center rounded text-[color:var(--sp-muted)] fine-hover:hover:text-[color:var(--sp-fg)]",
-          !open && "pointer-events-none opacity-0",
-          !reduceMotion && "transition-opacity",
-        )}
-        style={motion}
-        onClick={onClose}
       >
-        <SfSymbol name="x" className="size-5" />
-      </button>
+        {open && !query ? (
+          <span
+            aria-hidden
+            className={cn(
+              "pointer-events-none absolute left-2.5 truncate",
+              fieldValueSans,
+            )}
+            style={{ color: "var(--sp-fg)", opacity: filterLabel ? 1 : 0.4 }}
+          >
+            {filterLabel ?? tx(PANEL_COPY.searchPlaceholder, locale)}
+          </span>
+        ) : null}
+        <input
+          ref={inputRef}
+          type="search"
+          value={query}
+          aria-hidden={!open}
+          tabIndex={open ? 0 : -1}
+          aria-label={tx(PANEL_COPY.searchField, locale)}
+          autoComplete="off"
+          className={cn(
+            "h-full min-w-0 w-full bg-transparent pr-8 pl-2.5 text-[color:var(--sp-fg)] outline-none",
+            "[&::-webkit-search-cancel-button]:hidden",
+            fieldValueSans,
+            !open && "pointer-events-none",
+          )}
+          onChange={(event) => onQuery(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            event.stopPropagation();
+            if (query) onQuery("");
+            else onClose();
+          }}
+        />
+        <button
+          type="button"
+          aria-label={tx(PANEL_COPY.closeSearch, locale)}
+          aria-hidden={!open}
+          tabIndex={open ? 0 : -1}
+          className={cn(
+            "absolute right-0.5 inline-flex size-7 items-center justify-center rounded text-[color:var(--sp-muted)] fine-hover:hover:text-[color:var(--sp-fg)]",
+            !open && "pointer-events-none",
+          )}
+          onClick={onClose}
+        >
+          <SfSymbol name="x" className="size-5" />
+        </button>
+      </div>
     </div>
   );
 }

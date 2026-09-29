@@ -370,7 +370,7 @@ export function SubsectionBlock({
         <span
           className={cn(
             "inline-flex min-w-0 flex-1 items-center",
-            reorderable || icon || onIconChange ? "gap-1" : "gap-0",
+            icon || onIconChange ? "gap-1" : "gap-0",
           )}
         >
           {reorderable ? (
@@ -381,8 +381,8 @@ export function SubsectionBlock({
               "inline-flex h-5 shrink-0 cursor-grab items-center justify-center overflow-hidden active:cursor-grabbing",
               !reduceMotion && "transition-[width,margin,opacity,transform]",
               dragging
-                ? "w-5 mr-1 scale-100 opacity-100"
-                : "w-5 mr-1 scale-100 opacity-100 fine-hover:mr-0 fine-hover:w-0 fine-hover:scale-95 fine-hover:opacity-0 fine-hover:group-hover/sub:mr-1 fine-hover:group-hover/sub:w-5 fine-hover:group-hover/sub:scale-100 fine-hover:group-hover/sub:opacity-100",
+                ? "w-5 mr-2 scale-100 opacity-100"
+                : "w-5 mr-2 scale-100 opacity-100 fine-hover:mr-0 fine-hover:w-0 fine-hover:scale-95 fine-hover:opacity-0 fine-hover:group-hover/sub:mr-2 fine-hover:group-hover/sub:w-5 fine-hover:group-hover/sub:scale-100 fine-hover:group-hover/sub:opacity-100",
             )}
             style={
               reduceMotion

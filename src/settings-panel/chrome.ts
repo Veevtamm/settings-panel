@@ -55,6 +55,8 @@ export function clampPanelHeight(height: number, maxHeight: number) {
 export const PANEL_DOCK_GAP = 8;
 /** Snap back onto the dock bar when the panel is this close. */
 export const PANEL_MAGNET_PX = 28;
+/** ⓘ tooltip / flyouts above floating scene · spring · bezier · axis windows. */
+export const PANEL_HINT_Z = 300;
 
 /** Docked panel x: under the bar's center for `*-center`, flush with the bar's outer edge in corners. */
 export function dockedPanelX(
@@ -115,11 +117,16 @@ export function shouldMagnetPanel(
   panel: { x: number; y: number; w: number; h: number },
   docked: { x: number; y: number },
   buttons: { x: number; y: number; w: number; h: number },
+  /** Scene: snap when overlapping the Dock Bar. Chrome windows: slot only. */
+  magnetBar = true,
 ) {
   if (Math.hypot(panel.x - docked.x, panel.y - docked.y) < PANEL_MAGNET_PX) {
     return true;
   }
-  return aabbGap(panel, buttons) < PANEL_MAGNET_PX;
+  if (!magnetBar) return false;
+  // Docked scene sits PANEL_DOCK_GAP (8) from the bar — an AABB *gap* of 28
+  // would keep it stuck while sliding parallel. Overlap = drop onto the bar.
+  return aabbGap(panel, buttons) === 0;
 }
 
 export function isPanelMoveTarget(target: EventTarget | null) {
@@ -127,7 +134,7 @@ export function isPanelMoveTarget(target: EventTarget | null) {
   if (target.closest("[data-panel-no-move]")) return false;
   if (
     target.closest(
-      "input, textarea, select, [role=slider], [contenteditable=true], canvas, [data-panel-resize], [aria-grabbed]",
+      "button, input, textarea, select, [role=slider], [role=radio], [role=switch], [contenteditable=true], canvas, [data-panel-resize], [aria-grabbed]",
     )
   ) {
     return false;
@@ -148,6 +155,17 @@ export const DOCK_BAR_H = DOCK_BTN + DOCK_BAR_PAD * 2 + 2;
 export const DOCK_INSET = 12;
 /** Gear drag starts after this travel (px); below = click. */
 export const DOCK_DRAG_PX = 4;
+
+/** Kill native text selection for a window drag (capture before the 4px threshold). */
+export function lockPanelTextSelect(el: HTMLElement, pointerId: number) {
+  window.getSelection()?.removeAllRanges();
+  document.documentElement.dataset.panelMoving = "";
+  try {
+    el.setPointerCapture(pointerId);
+  } catch {
+    /* already released */
+  }
+}
 
 /** Primary button still down. Touch may report `buttons === 0` while held. */
 export function pointerHeld(
@@ -228,7 +246,7 @@ export function dockBarButtonClass(active = false) {
     "transition-[background-color,color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
     "focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)] active:scale-[0.97]",
     active
-      ? "bg-[color:var(--sp-fill)] text-[color:var(--sp-fg)] fine-hover:hover:bg-[color:var(--sp-fill-strong)]"
+      ? "bg-[color:var(--sp-dock-fill)] text-[color:var(--sp-fg)] fine-hover:hover:bg-[color:var(--sp-dock-fill-hover)]"
       : "text-[color:var(--sp-muted)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",
   );
 }
@@ -337,7 +355,9 @@ export const pickActive =
 export const pickIdle =
   "text-[color:var(--sp-fg-dim)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-muted)] focus-visible:bg-[color:var(--sp-fill)] focus-visible:text-[color:var(--sp-fg)]";
 
-export const SNAPSHOT_SLOTS = 5;
+export const SNAPSHOT_SLOTS = 3;
+/** Numbered preset cells with 1px rules: 28×N + (N−1). */
+export const SNAPSHOT_TRACK_W = 28 * SNAPSHOT_SLOTS + (SNAPSHOT_SLOTS - 1);
 
 export const SCRUB_MAX_TICK_STOPS = 14;
 export const SCRUB_PAD_X = 4;

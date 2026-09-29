@@ -8,9 +8,9 @@ Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens s
 
 ## Features
 
-- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, spring, Bezier, axis, search by parameter name, fold all, Reset, Copy), top center by default; drag it to any corner or to bottom center
+- Dock Bar — a horizontal glass bar of buttons (gear for the panel’s own settings, scene panel, timeline, spring, Bezier, axis, search by parameter name, Reset, Copy), top center by default; drag it to any corner or to bottom center
 - Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
-- Spring window (`springTargets`): stiffness, damping and mass with a response graph and the settle time; `springLinearEasing` turns a spring into a CSS `linear()` curve
+- Spring window (`springTargets`): stiffness, damping and mass with expandable scrub sliders, a response graph and the settle time; drag the window from the top edge; `springLinearEasing` turns a spring into a CSS `linear()` curve
 - Click the changes badge to see only changed rows; ⌘Z / ⇧⌘Z undo and redo panel edits
 - Share settings as a link (`?settings=`) or save / open them as a `.json` file with presets
 - Bottom animation timeline (`SettingsTimeline`): stays open together with the panel window; several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`

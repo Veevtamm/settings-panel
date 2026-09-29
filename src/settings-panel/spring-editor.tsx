@@ -103,6 +103,7 @@ export function SpringEditor({
       value={value[key]}
       defaultValue={defaultValue?.[key]}
       {...range}
+      scrub
       reduceMotion={reduceMotion}
       onChange={(next) => onChange({ ...value, [key]: next })}
       modified={defaultValue != null && defaultValue[key] !== value[key]}

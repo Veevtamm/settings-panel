@@ -43,6 +43,7 @@ import {
   FIELD,
   GLASS,
   MUTED,
+  ICON,
   DOCK_INSET,
   PANEL_DOCK_GAP,
   PANEL_ENTER_MS,
@@ -52,6 +53,7 @@ import {
   PANEL_RESIZE_HIT,
   SECTION_CLOSED_PX,
   SNAPSHOT_SLOTS,
+  SNAPSHOT_TRACK_W,
   SUBSECTION_DRAG_PX,
   dockBarButtonClass,
   SUBSECTION_HEADER_PX,
@@ -338,6 +340,12 @@ export function SettingsPanelImpl<TSettings>({
     frameH,
     startPanelResize,
     startPanelMove,
+    startChromeMove,
+    chromeFloat,
+    chromeMoving,
+    windowZ,
+    raiseWindow,
+    chromeDockedXRef,
     onDockPointerDown,
     resetChromeLayout,
   } = usePanelWindow({
@@ -1238,11 +1246,14 @@ export function SettingsPanelImpl<TSettings>({
         (detail.group === "bezier" && Boolean(curveSection) && !detail.easingId);
       if (openBezier && easingTargets.length > 0) {
         setBezierOpen(true);
+        raiseWindow("bezier");
       } else if (openAxis && curveSection) {
         setAxisOpen(true);
+        raiseWindow("axis");
       } else {
         setPanelView("scene");
         setPanelOpen(true);
+        raiseWindow("scene");
       }
       const group =
         detail.group &&
@@ -1341,7 +1352,6 @@ export function SettingsPanelImpl<TSettings>({
     if (sectionId === PANEL_SECTION_ID) return false;
     return filteredGroups.some((group) => group.id === sectionId);
   };
-  const sceneOpen = panelOpen && panelView === "scene";
   type PanelView = "scene" | "settings";
   const togglePanelView = (view: PanelView) => {
     setPanelInstant(false);
@@ -1352,18 +1362,22 @@ export function SettingsPanelImpl<TSettings>({
     if (view !== "scene") closeSearch();
     setPanelView(view);
     setPanelOpen(true);
+    raiseWindow("scene");
   };
   const toggleBezier = () => {
     setPanelInstant(false);
     setBezierOpen((open) => !open);
+    if (!bezierOpen) raiseWindow("bezier");
   };
   const toggleAxis = () => {
     setPanelInstant(false);
     setAxisOpen((open) => !open);
+    if (!axisOpen) raiseWindow("axis");
   };
   const toggleSpring = () => {
     setPanelInstant(false);
     setSpringOpen((open) => !open);
+    if (!springOpen) raiseWindow("spring");
   };
   const panelScroll =
     "overflow-y-auto overscroll-y-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
@@ -1377,6 +1391,7 @@ export function SettingsPanelImpl<TSettings>({
     const maxX = Math.max(DOCK_INSET, viewportW - frameW - DOCK_INSET);
     return Math.min(maxX, Math.max(DOCK_INSET, x));
   };
+  chromeDockedXRef.current = extraDockLeft;
   const dockedWindowTop = dockBottom
     ? ("auto" as const)
     : shownPos.y + DOCK_BAR_H + PANEL_DOCK_GAP;
@@ -1742,13 +1757,6 @@ export function SettingsPanelImpl<TSettings>({
               ) : null}
             </DockBarSlot>
           ) : null}
-          <DockBarSlot open={sceneOpen} reduceMotion={reduceMotion}>
-            <DockFoldButton
-              collapse={canCollapseAll}
-              locale={locale}
-              onToggle={toggleFoldAll}
-            />
-          </DockBarSlot>
           <DockSearchField
             open={searchOpen}
             query={searchQuery}
@@ -1815,7 +1823,7 @@ export function SettingsPanelImpl<TSettings>({
           )}
           style={{
             background: GLASS,
-            zIndex: 100,
+            zIndex: windowZ.scene ?? 100,
             width: frameW,
             maxHeight: frameH ?? maxPanelH,
             height: "auto",
@@ -1989,7 +1997,10 @@ export function SettingsPanelImpl<TSettings>({
             );
             if (sectionId === PRESETS_SECTION_ID) {
               return shell(
-          <section className="flex w-full shrink-0 p-2">
+          <section
+            data-panel-move=""
+            className="flex w-full shrink-0 p-2"
+          >
             <div
               className="flex h-[28px] min-w-0 w-full items-center justify-between gap-4"
               data-setting-row=""
@@ -2013,22 +2024,23 @@ export function SettingsPanelImpl<TSettings>({
                 info={tx(PANEL_COPY.presetsInfo, locale)}
               />
               </span>
+            <div className="flex shrink-0 items-center gap-1">
+            <SettingsTransferMenu
+              locale={locale}
+              done={transfer.linkCopied}
+              onCopyLink={() => void transfer.copyLink()}
+              onSaveFile={transfer.saveFile}
+              onOpenFile={(file) => void transfer.openFile(file)}
+            />
             <div
               role="group"
               aria-label={tx(PANEL_COPY.presetsAria, locale)}
               className={cn(
-                "grid h-[28px] w-[173px] shrink-0 grid-cols-[28px_1px_28px_1px_28px_1px_28px_1px_28px_1px_28px]",
+                "grid h-[28px] shrink-0 grid-cols-[28px_1px_28px_1px_28px]",
                 pickerChrome,
               )}
+              style={{ width: SNAPSHOT_TRACK_W }}
             >
-              <SettingsTransferMenu
-                locale={locale}
-                done={transfer.linkCopied}
-                onCopyLink={() => void transfer.copyLink()}
-                onSaveFile={transfer.saveFile}
-                onOpenFile={(file) => void transfer.openFile(file)}
-              />
-              <div aria-hidden className="bg-[color:var(--sp-fill-strong)]" />
               {Array.from({ length: SNAPSHOT_SLOTS }, (_, index) => {
                 const filled = snapshots[index] != null;
                 const active = filled && activeSnapshot === index;
@@ -2092,19 +2104,35 @@ export function SettingsPanelImpl<TSettings>({
                 ];
               })}
             </div>
+            <DockFoldButton
+              collapse={canCollapseAll}
+              locale={locale}
+              onToggle={toggleFoldAll}
+            />
+            </div>
             </div>
           </section>
               );
             }
             if (sectionId === PANEL_SECTION_ID) {
               return shell(
-          <section className="flex w-full shrink-0 flex-col gap-4 p-2">
+          <section
+            data-panel-move=""
+            className="flex w-full shrink-0 flex-col gap-4 p-2"
+          >
             <div className="flex h-5 items-center">
-              <span
-                className="truncate text-[15px] font-sans leading-[20px] select-none"
-                style={{ color: MUTED }}
-              >
-                {tx(PANEL_COPY.panelSettings, locale)}
+              <span className="inline-flex min-w-0 items-center gap-1">
+                <SfSymbol
+                  name="settings"
+                  className="size-5 shrink-0"
+                  style={{ color: ICON }}
+                />
+                <span
+                  className="truncate text-[15px] font-sans leading-[20px] select-none"
+                  style={{ color: MUTED }}
+                >
+                  {tx(PANEL_COPY.panelSettings, locale)}
+                </span>
               </span>
             </div>
             <div className="flex flex-col gap-2">
@@ -2130,7 +2158,6 @@ export function SettingsPanelImpl<TSettings>({
               />
               <SettingToggle
                 label={tx(PANEL_COPY.chromeLayout, locale)}
-                info={tx(PANEL_COPY.chromeLayoutInfo, locale)}
                 locale={locale}
                 control="action"
                 offLabel={tx(PANEL_COPY.resetChromeLayout, locale)}
@@ -2144,7 +2171,6 @@ export function SettingsPanelImpl<TSettings>({
               >
                 <RowLabel
                   label={tx(PANEL_COPY.version, locale)}
-                  info={tx(PANEL_COPY.versionInfo, locale)}
                   locale={locale}
                 />
                 <span
@@ -2259,7 +2285,7 @@ export function SettingsPanelImpl<TSettings>({
               <div
                 data-panel-move=""
                 className={cn(
-                  "absolute z-[2] cursor-grab touch-none active:cursor-grabbing",
+                  "absolute z-[2] cursor-grab touch-none select-none active:cursor-grabbing",
                   "left-2 right-2",
                   dockBottom ? "top-1.5" : "top-0",
                 )}
@@ -2331,6 +2357,11 @@ export function SettingsPanelImpl<TSettings>({
                 theme={panelTheme}
                 width={frameW}
                 maxHeight={extraMaxH}
+                locale={locale}
+                float={chromeFloat.spring}
+                moving={chromeMoving === "spring"}
+                zIndex={windowZ.spring ?? 100}
+                onPointerDown={startChromeMove("spring")}
               >
                 <ChromeViewSection
                   icon="activity"
@@ -2382,6 +2413,11 @@ export function SettingsPanelImpl<TSettings>({
                 theme={panelTheme}
                 width={frameW}
                 maxHeight={extraMaxH}
+                locale={locale}
+                float={chromeFloat.bezier}
+                moving={chromeMoving === "bezier"}
+                zIndex={windowZ.bezier ?? 100}
+                onPointerDown={startChromeMove("bezier")}
               >
                 <ChromeViewSection
                   icon="spline"
@@ -2415,6 +2451,11 @@ export function SettingsPanelImpl<TSettings>({
                 theme={panelTheme}
                 width={frameW}
                 maxHeight={extraMaxH}
+                locale={locale}
+                float={chromeFloat.axis}
+                moving={chromeMoving === "axis"}
+                zIndex={windowZ.axis ?? 100}
+                onPointerDown={startChromeMove("axis")}
               >
                 <ChromeViewSection
                   icon={curveSectionIcon}

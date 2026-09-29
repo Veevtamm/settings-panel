@@ -2,6 +2,18 @@
 
 Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.2.0"`. Without `#tag` npm takes `main`.
 
+## Unreleased
+
+### Changed
+
+- Spring stiffness, damping and mass rows use the same expandable scrub slider as scene number fields (28 `settings-2` toggle). Settle duration stays read-only.
+- Dock Bar: Copy’s count badge no longer widens the Reset·Copy slot, so the gap before Fold matches the other 4px button gaps.
+- Spring, Bezier and axis windows drag from the 8px top edge like the scene panel (`chromeFloat` in panel-settings). They magnet only to their own dock slot, not the Dock Bar. The dragged window stacks above the others. «Положение» docks them again. Dragging a window no longer selects field text.
+- Named subsection titles line up with row labels at rest; the grip no longer leaves a 4px gap.
+- Preset row has 3 numbered slots in their own 86 track. Transfer (`link`) is a separate Field 28 to the left of that track; collapse/expand-all is a 20px glyph to the right, like a section chevron.
+- Light Dock Bar: the open button uses `dim` (`#a9a9a9`), not `line` — `line` matches frosted glass on a dark page and the On state disappeared.
+- Dock search keeps the 34 `search` button; the 240 field opens to its right instead of replacing the glyph.
+
 ## 0.2.0
 
 ### Breaking
