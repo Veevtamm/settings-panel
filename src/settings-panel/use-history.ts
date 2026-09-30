@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { valuesEqual } from "./model";
+import { isPhysicalKey, UNDO_CODES } from "../lib/hotkeys";
 
 /** One undo step: values before and after, for the keys the edit wrote. */
 type HistoryStep<TSettings> = {
@@ -119,7 +120,8 @@ export function useSettingsHistory<TSettings>({
   useEffect(() => {
     if (!enabled) return;
     const onKey = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || event.code !== "KeyZ") return;
+      if (!(event.metaKey || event.ctrlKey) || !isPhysicalKey(event, UNDO_CODES))
+        return;
       if (event.altKey) return;
       const target = event.target;
       if (target instanceof HTMLElement && target.closest(TYPING)) return;

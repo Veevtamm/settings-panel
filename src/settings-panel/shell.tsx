@@ -38,6 +38,11 @@ import {
   CHROME_WINDOW_IDS,
 } from "../lib/panel-theme";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
+import {
+  isHideDockKey,
+  isPhysicalKey,
+  SCENE_PANEL_CODES,
+} from "../lib/hotkeys";
 import { cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import { BezierCoordsRow } from "./bezier-coords";
@@ -69,7 +74,11 @@ import {
   pickerChrome,
   pointerHeld,
 } from "./chrome";
-import { ChromeViewSection, DockedChromeWindow } from "./chrome-window";
+import {
+  ChromeHintRow,
+  ChromeViewSection,
+  DockedChromeWindow,
+} from "./chrome-window";
 import {
   DockBadgeAnchor,
   DockCountBadge,
@@ -82,7 +91,7 @@ import {
 import { EasingPlayheadGate } from "./easing-playhead";
 import { PANEL_VERSION } from "../version";
 import { SettingEnumDropdown, SettingToggle } from "./fields";
-import { copyKey, PANEL_COPY, PANEL_FONT_LABEL, tx, type PanelLocale } from "./locale";
+import { copyKey, isAppleKeyboard, PANEL_COPY, PANEL_FONT_LABEL, shortcutKeys, tx, type PanelLocale } from "./locale";
 import {
   applyLiftTransform,
   blockTopsByAttr,
@@ -229,6 +238,7 @@ export function SettingsPanelImpl<TSettings>({
 
   const [panelOpen, setPanelOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [hotkeysOpen, setHotkeysOpen] = useState(false);
   const [bezierOpen, setBezierOpen] = useState(false);
   const [axisOpen, setAxisOpen] = useState(false);
   const [springOpen, setSpringOpen] = useState(false);
@@ -1299,8 +1309,7 @@ export function SettingsPanelImpl<TSettings>({
   useEffect(() => {
     if (!shortcut) return;
     const onKey = (event: KeyboardEvent) => {
-      // Physical M + Command (meta). Ignore when typing in fields.
-      if (!(event.metaKey && event.code === "KeyM")) return;
+      if (!(event.metaKey && isPhysicalKey(event, SCENE_PANEL_CODES))) return;
       if (event.altKey || event.ctrlKey || event.shiftKey) return;
 
       const target = event.target;
@@ -1328,8 +1337,8 @@ export function SettingsPanelImpl<TSettings>({
   useEffect(() => {
     if (!hideShortcut || !chromeVisible) return;
     const onKey = (event: KeyboardEvent) => {
-      if (!(event.metaKey && event.code === "Backslash")) return;
-      if (event.altKey || event.ctrlKey || event.shiftKey) return;
+      if (!(event.metaKey || event.ctrlKey) || !isHideDockKey(event)) return;
+      if (event.altKey || event.shiftKey) return;
       const target = event.target;
       if (
         target instanceof HTMLElement &&
@@ -1558,7 +1567,9 @@ export function SettingsPanelImpl<TSettings>({
             : tx(PANEL_COPY.parameters(keys.length), locale)
         }
         hint={tx(
-          kind === "undo" ? PANEL_COPY.redoHint : PANEL_COPY.undoHint,
+          kind === "undo"
+            ? PANEL_COPY.redoHint(isAppleKeyboard())
+            : PANEL_COPY.undoHint(isAppleKeyboard()),
           locale,
         )}
         onDone={history.clearNotice}
@@ -2392,21 +2403,54 @@ export function SettingsPanelImpl<TSettings>({
                       onChange={() => resetChromeLayout()}
                       value={false}
                     />
-                    <div
-                      data-setting-row
-                      className="flex h-[28px] items-center justify-between gap-4"
-                    >
-                      <RowLabel
-                        label={tx(PANEL_COPY.version, locale)}
+                    <ChromeHintRow
+                      label={tx(PANEL_COPY.version, locale)}
+                      value={PANEL_VERSION}
+                      locale={locale}
+                    />
+                    {hideShortcut || undoShortcut ? (
+                      <SubsectionBlock
+                        title={tx(PANEL_COPY.hotkeys, locale)}
+                        orderKey="Хоткеи"
                         locale={locale}
-                      />
-                      <span
-                        className="shrink-0 font-mono text-[14px] leading-[18px] select-text"
-                        style={{ color: MUTED }}
+                        plain={false}
+                        open={hotkeysOpen}
+                        onToggle={() => setHotkeysOpen((open) => !open)}
+                        dragging={false}
+                        float={null}
+                        theme={panelTheme}
+                        reorderable={false}
+                        onGripPointerDown={() => {}}
+                        reduceMotion={reduceMotion}
                       >
-                        {PANEL_VERSION}
-                      </span>
-                    </div>
+                        <div className="flex flex-col gap-2">
+                          {hideShortcut ? (
+                            <ChromeHintRow
+                              label={tx(PANEL_COPY.shortcutHideDock, locale)}
+                              value={shortcutKeys("hideDock")}
+                              locale={locale}
+                              mono={false}
+                            />
+                          ) : null}
+                          {undoShortcut ? (
+                            <>
+                              <ChromeHintRow
+                                label={tx(PANEL_COPY.shortcutUndo, locale)}
+                                value={shortcutKeys("undo")}
+                                locale={locale}
+                                mono={false}
+                              />
+                              <ChromeHintRow
+                                label={tx(PANEL_COPY.shortcutRedo, locale)}
+                                value={shortcutKeys("redo")}
+                                locale={locale}
+                                mono={false}
+                              />
+                            </>
+                          ) : null}
+                        </div>
+                      </SubsectionBlock>
+                    ) : null}
                   </div>
                 </ChromeViewSection>
               </DockedChromeWindow>,

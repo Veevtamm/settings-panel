@@ -5,8 +5,46 @@ import { cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import { GLASS, ICON, MUTED, PANEL_MOVE_EDGE } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
+import { RowLabel } from "./row";
 import type { PanelFont } from "../lib/panel-theme";
 import { panelPopClassName, panelPopStyle } from "./motion-ui";
+
+/** Read-only value on the right — Version (mono) and shortcut keys (sans). No Field. */
+export function ChromeHintRow({
+  label,
+  value,
+  locale,
+  mono = true,
+}: {
+  label: string;
+  value: string;
+  locale: PanelLocale;
+  /** Version numbers stay mono; Mac key glyphs need sans (Geist Mono has no ⌘). */
+  mono?: boolean;
+}) {
+  return (
+    <div
+      data-setting-row
+      className="flex h-[28px] items-center justify-between gap-4"
+    >
+      <RowLabel label={label} locale={locale} />
+      <span
+        className={cn(
+          "shrink-0 text-[14px] leading-[18px] select-text",
+          mono ? "font-mono" : "font-sans",
+        )}
+        style={{
+          color: MUTED,
+          fontFamily: mono
+            ? undefined
+            : "ui-sans-serif, system-ui, -apple-system, sans-serif",
+        }}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 export function ChromeViewSection({
   icon,

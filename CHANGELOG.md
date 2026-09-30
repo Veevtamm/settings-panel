@@ -6,6 +6,7 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ### Added
 
+- Panel Settings has a **Хоткеи** subsection (closed by default): Hide dock, Undo, Redo. Apple shows ⌘ · ⇧; Windows / Linux show Ctrl · Shift. Bindings use physical `KeyboardEvent.code` (Z / M / Backslash), not the layout letter. Hidden when `hideShortcut` / `undoShortcut` are off. ⌘M is not listed.
 - Dock Bar hover: a short name chip (`--sp-tooltip`, caret) on each button, like the macOS Dock. Top bar → below the icon; bottom bar → above. Not the native `title`.
 
 ### Changed

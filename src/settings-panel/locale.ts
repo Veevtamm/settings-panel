@@ -22,6 +22,22 @@ export function copyKey(copy: Copy): string {
   return typeof copy === "string" ? copy : copy.ru;
 }
 
+/** Mac / iOS use ⌘ · ⇧. Windows / Linux use Ctrl · Shift. */
+export function isAppleKeyboard() {
+  if (typeof navigator === "undefined") return true;
+  const plat = navigator.platform ?? "";
+  const ua = navigator.userAgent ?? "";
+  return /Mac|iPhone|iPad|iPod/.test(plat) || /Mac OS X/.test(ua);
+}
+
+export type ShortcutKind = "hideDock" | "undo" | "redo";
+
+export function shortcutKeys(kind: ShortcutKind, apple = isAppleKeyboard()) {
+  if (kind === "hideDock") return apple ? "⌘\\" : "Ctrl+\\";
+  if (kind === "undo") return apple ? "⌘Z" : "Ctrl+Z";
+  return apple ? "⇧⌘Z" : "Ctrl+Shift+Z";
+}
+
 export const PANEL_COPY = {
   presets: L("Пресеты", "Presets"),
   presetsInfo: L(
@@ -71,6 +87,10 @@ export const PANEL_COPY = {
   chromeLayout: L("Положение", "Position"),
   resetChromeLayout: L("Сбросить", "Reset"),
   version: L("Версия", "Version"),
+  hotkeys: L("Хоткеи", "Hotkeys"),
+  shortcutHideDock: L("Скрыть бар", "Hide dock"),
+  shortcutUndo: L("Отменить", "Undo"),
+  shortcutRedo: L("Вернуть", "Redo"),
   resizePanelWidth: L("Изменить ширину панели", "Resize panel width"),
   resizePanelHeight: L("Изменить высоту панели", "Resize panel height"),
   resizePanelCorner: L("Изменить размер панели", "Resize panel"),
@@ -184,8 +204,14 @@ export const PANEL_COPY = {
   showAllRows: L("Показать все параметры", "Show all parameters"),
   undone: L("Отменено", "Undone"),
   redone: L("Возвращено", "Redone"),
-  redoHint: L("⇧⌘Z вернуть", "⇧⌘Z redo"),
-  undoHint: L("⌘Z отменить", "⌘Z undo"),
+  redoHint: (apple: boolean) =>
+    apple
+      ? L("⇧⌘Z вернуть", "⇧⌘Z redo")
+      : L("Ctrl+Shift+Z вернуть", "Ctrl+Shift+Z redo"),
+  undoHint: (apple: boolean) =>
+    apple
+      ? L("⌘Z отменить", "⌘Z undo")
+      : L("Ctrl+Z отменить", "Ctrl+Z undo"),
   resetStep: L("Сброс", "Reset"),
   presetStep: (slot: number) => L(`Пресет ${slot}`, `Preset ${slot}`),
   parameters: (n: number) => {
