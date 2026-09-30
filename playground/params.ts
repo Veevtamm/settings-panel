@@ -5,7 +5,7 @@ import type { CubicBezier } from "../src/lib/cubic-bezier";
 import type { SpringConfig } from "../src/lib/spring";
 import type { AxisHandle, AxisPoint } from "../src/lib/axis-curve";
 
-/** One record per control in the AGENTS control map — the catalog to check against Panel System. */
+/** Settings the playground stage actually reads. */
 export const P = defineParams({
   cardSize: param.number({
     label: L("Сторона", "Side"),
@@ -16,6 +16,7 @@ export const P = defineParams({
     step: 1,
     unit: "px",
     scrub: true,
+    icon: "square",
     layer: "layout",
   }),
   radius: param.number({
@@ -31,6 +32,7 @@ export const P = defineParams({
       { value: 16, label: L("Мягко", "Soft") },
       { value: 60, label: L("Кругло", "Round") },
     ],
+    tickSnap: false,
     layer: "layout",
   }),
   columns: param.number({
@@ -38,7 +40,7 @@ export const P = defineParams({
     info: L("Сколько строк-плашек под карточкой", "How many bars under the card"),
     default: 4,
     min: 1,
-    max: 8,
+    max: 6,
     stepper: true,
     layer: "layout",
   }),
@@ -101,17 +103,6 @@ export const P = defineParams({
     after: "textColor",
     layer: "type",
   }),
-  mode: param.choice({
-    label: L("Режим", "Mode"),
-    info: L("Как картинка заполняет карточку", "How the image fills the card"),
-    default: "fill",
-    options: [
-      { value: "fit", label: L("Вписать", "Fit") },
-      { value: "fill", label: L("Заполнить", "Fill") },
-      { value: "stretch", label: L("Растянуть", "Stretch") },
-    ],
-    layer: "layout",
-  }),
   order: param.choice({
     label: L("Порядок", "Order"),
     info: L("С какой стороны идут плашки", "Which side the bars start from"),
@@ -150,18 +141,74 @@ export const P = defineParams({
     default: true,
     layer: "color",
   }),
-  cover: param.toggle({
-    label: L("Картинка", "Image"),
-    info: L("Картинка вписана или заполняет", "Image fits or fills"),
+  cardLead: param.number({
+    label: L("Задержка", "Delay"),
+    info: L("Пауза перед появлением карточки", "Pause before the card appears"),
+    default: 0,
+    min: 0,
+    max: 400,
+    step: 10,
+    unit: "ms",
+    easingId: "card",
+    layer: "motion",
+  }),
+  strokeWidth: param.number({
+    label: L("Толщина обводки", "Stroke width"),
+    info: L("Толщина контура карточки", "Card outline width"),
+    default: 2,
+    min: 0,
+    max: 12,
+    step: 0.5,
+    unit: "px",
+    scrub: true,
+    layer: "color",
+  }),
+  strokeColor: param.color({
+    label: L("Обводка", "Stroke"),
+    info: L("Цвет контура карточки", "Card outline color"),
+    default: "#101014",
+    layer: "color",
+  }),
+  barsFill: param.toggle({
+    label: L("Ширина", "Width"),
+    info: L("Плашки во всю ширину или по кривой оси", "Bars fill the width or follow the axis curve"),
     default: false,
     control: "segment",
     controlWidth: 176,
-    offLabel: L("Вписать", "Fit"),
-    onLabel: L("Заполнить", "Fill"),
+    offLabel: L("Ось", "Axis"),
+    onLabel: L("Во всю", "Fill"),
     layer: "layout",
   }),
-  skipCells: param.value({ default: "", layer: "grid" }),
+  barsBlocks: param.toggle({
+    label: L("Вид", "Kind"),
+    info: L("Тонкие линии или высокие блоки", "Thin lines or tall blocks"),
+    default: false,
+    control: "action",
+    offLabel: L("Линии", "Lines"),
+    onLabel: L("Блоки", "Blocks"),
+    layer: "layout",
+  }),
+  barCap: param.choice({
+    label: L("Кромка", "Cap"),
+    info: L("Скругление концов плашек", "How the bar ends are rounded"),
+    default: "round",
+    options: [
+      { value: "round", label: L("Круг", "Round") },
+      { value: "soft", label: L("Срез", "Cut") },
+      { value: "sharp", label: L("Прямо", "Sharp") },
+    ],
+    layer: "layout",
+  }),
   showLayoutGrid: param.value({ default: false, layer: "grid" }),
+  gridLineColor: param.color({
+    label: L("Линии", "Lines"),
+    info: L("Цвет оверлея сетки", "Layout grid line color"),
+    default: "#FFFFFF",
+    layer: "grid",
+  }),
+  skipCells: param.value({ default: "", layer: "grid" }),
+  strokeJoin: param.value({ default: "miter", layer: "color" }),
+  barGaps: param.value({ default: "8", layer: "layout" }),
   reel: param.player({
     label: L("Появление", "Appear"),
     total: { key: "reelTotalMs", default: 1400 },
@@ -195,7 +242,7 @@ export const P = defineParams({
   }),
   axisPoints: param.value({
     default: [
-      [0, 0],
+      [0, 0.2],
       [0.5, 0.8],
       [1, 1],
     ] as AxisPoint[],

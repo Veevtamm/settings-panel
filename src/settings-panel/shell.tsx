@@ -931,7 +931,7 @@ export function SettingsPanelImpl<TSettings>({
 
   const sectionIconProps = (
     id: string,
-    fallback: SfSymbolName,
+    fallback: SfSymbolName | undefined,
     extra?: ResetDotProps,
   ) => {
     const dots = withPanelIcon(id, fallback, extra ?? {});

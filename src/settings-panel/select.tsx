@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
+import { placeSelectOverlay } from "../lib/select-overlay";
 import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import {
@@ -51,6 +52,9 @@ export function PanelSelectList({
     width: number;
     theme: string;
     font: string;
+    side: "below" | "above";
+    listMaxPx: number;
+    bottom: number;
   } | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const anchorRef = useRef<HTMLDivElement | null>(null);
@@ -74,6 +78,11 @@ export function PanelSelectList({
   function readBox(from: HTMLElement | null) {
     if (!from) return;
     const rect = from.getBoundingClientRect();
+    const place = placeSelectOverlay(
+      rect.top,
+      rect.bottom,
+      window.innerHeight,
+    );
     setBox({
       top: rect.top,
       left: rect.left,
@@ -82,6 +91,7 @@ export function PanelSelectList({
         from.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
         "dark",
       font: closestPanelFont(from),
+      ...place,
     });
   }
 
@@ -152,7 +162,8 @@ export function PanelSelectList({
     <div
       ref={rootRef}
       className={cn(
-        "relative flex w-full flex-col rounded after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded after:border after:border-[color:var(--sp-line-mid)] after:transition-[border-color] after:duration-150 after:ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:after:border-[color:var(--sp-line-strong)] focus-within:after:border-[color:var(--sp-line-focus)]",
+        "relative flex w-full rounded after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded after:border after:border-[color:var(--sp-line-mid)] after:transition-[border-color] after:duration-150 after:ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:after:border-[color:var(--sp-line-strong)] focus-within:after:border-[color:var(--sp-line-focus)]",
+        overlay && open && box?.side === "above" ? "flex-col-reverse" : "flex-col",
         className,
       )}
       style={{
@@ -202,17 +213,18 @@ export function PanelSelectList({
       <SectionCollapse open={canOpen && open} reduceMotion={reduceMotion}>
         <ul
           ref={listRef}
-          className="flex max-h-48 flex-col gap-2 overflow-y-auto overscroll-contain px-1.5 pb-2 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex flex-col gap-2 overflow-y-auto overscroll-contain px-1.5 pb-2 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           role="listbox"
           aria-label={ariaLabel}
-          style={
-            fadeMask
+          style={{
+            maxHeight: overlay && box ? box.listMaxPx : 192,
+            ...(fadeMask
               ? {
                   maskImage: fadeMask,
                   WebkitMaskImage: fadeMask,
                 }
-              : undefined
-          }
+              : undefined),
+          }}
         >
           {options
             .filter((option) => option.id !== value)
@@ -260,7 +272,13 @@ export function PanelSelectList({
               data-settings-panel=""
               data-panel-theme={box.theme}
               data-panel-font={box.font}
-              style={{ top: box.top, left: box.left, width: box.width }}
+              style={{
+                left: box.left,
+                width: box.width,
+                ...(box.side === "below"
+                  ? { top: box.top }
+                  : { bottom: box.bottom }),
+              }}
             >
               {chrome}
             </div>,

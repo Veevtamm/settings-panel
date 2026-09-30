@@ -11,7 +11,7 @@ describe("playground schema", () => {
         groups,
         players: [{ ...P.reel, controller: {} as PlayerController }],
         defaultSettings: DEFAULTS,
-        defaultOpenSections: ["layout", "type", "color"],
+        defaultOpenSections: ["card", "title", "bars"],
         easingTargets: EASING_TARGETS,
         springTargets: SPRING_TARGETS,
         params: P,

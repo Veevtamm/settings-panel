@@ -35,7 +35,7 @@ export function SectionBlock({
   locale = "ru",
   onIconChange,
 }: {
-  icon: SfSymbolName;
+  icon?: SfSymbolName;
   title: string;
   open: boolean;
   onToggle: () => void;
@@ -119,7 +119,7 @@ export function SectionBlock({
           className="flex min-w-0 flex-1 cursor-pointer items-center text-left outline-none"
         >
           <span className="inline-flex min-w-0 items-center gap-1">
-            {onIconChange ? null : (
+            {onIconChange || !icon ? null : (
               <SfSymbol name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
             )}
             {modified && onResetValue ? (

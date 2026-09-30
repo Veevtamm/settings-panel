@@ -557,7 +557,13 @@ export function SectionRows<TSettings>({
     );
   }
   for (const item of section.orients ?? []) {
-    rows.push(fromIndexed({ kind: "orient", item }, `orient:${String(item.key)}`));
+    rows.push(
+      fromIndexed(
+        { kind: "orient", item },
+        `orient:${String(item.key)}`,
+        item.after,
+      ),
+    );
   }
   for (const item of section.toggles ?? []) {
     rows.push(
@@ -628,6 +634,7 @@ export function SectionRows<TSettings>({
       fromIndexed(
         { kind: "pair", item: pair },
         `pair:${pair.fields.map((field) => String(field.key)).join("-")}`,
+        pair.after,
       ),
     );
   }

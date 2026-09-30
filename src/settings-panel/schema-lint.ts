@@ -192,15 +192,6 @@ export function lintSettingsSchema<TSettings>(
       push("duplicate-group-id", `duplicate group id "${group.id}"`);
     }
     groupIds.add(group.id);
-    if (
-      !isLayerId(group.id) &&
-      !(EXTRA_GROUP_IDS as readonly string[]).includes(group.id)
-    ) {
-      push(
-        "unknown-group-id",
-        `group "${group.id}" is not a layer (timings/layout/type/color/motion/grid) or honeycomb`,
-      );
-    }
     if (isLayerId(group.id)) {
       const expected = LAYER_GROUP_TITLES[group.id];
       if (typeof group.title === "string") {

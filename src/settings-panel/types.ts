@@ -168,6 +168,7 @@ export type FrameOrientSetting<TSettings> = {
   label: Copy;
   info?: Copy;
   icon?: SfSymbolName;
+  after?: keyof TSettings;
 } & ParamPlacement;
 
 export type EnumMark = "from-start" | "from-center" | "from-end";
@@ -239,6 +240,7 @@ export type PairSetting<TSettings> = {
   info?: Copy;
   icon?: SfSymbolName;
   fields: readonly [PairField<TSettings>, PairField<TSettings>];
+  after?: keyof TSettings;
 } & ParamPlacement;
 
 /** One clip on the player track. `kind: "pause"` is a packed hole (empty track), not a labeled clip. Prefer `startKey` on the next phase. */
@@ -415,7 +417,8 @@ export type SettingsSection<TSettings> = {
 export type SettingsGroup<TSettings> = {
   id: string;
   title: Copy;
-  icon: SfSymbolName;
+  /** Lucide glyph before the title. Omit when no glyph fits the section. */
+  icon?: SfSymbolName;
   sections: SettingsSection<TSettings>[];
   /** Eye next to the group chevron — boolean visibility, not a row. */
   visibilityKey?: keyof TSettings;

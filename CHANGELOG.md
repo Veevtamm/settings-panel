@@ -4,6 +4,10 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ## Unreleased
 
+### Fixed
+
+- Bezier (and other) `PanelSelectList` overlays no longer grow past the bottom of the screen: if 192px does not fit below the trigger, the list opens upward and shrinks to the remaining viewport.
+
 ### Added
 
 - Panel Settings has a **Хоткеи** subsection (closed by default): Hide dock, Undo, Redo. Apple shows ⌘ · ⇧; Windows / Linux show Ctrl · Shift. Bindings use physical `KeyboardEvent.code` (Z / M / Backslash), not the layout letter. Hidden when `hideShortcut` / `undoShortcut` are off. ⌘M is not listed.
@@ -11,6 +15,7 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ### Changed
 
+- Playground is the place to see the panel's controls: scene objects plus the widgets, eye, spring, Bezier, axis and timeline. Each one changes the card or its animation. A group id no longer has to be one of the six layers, and a section icon can be omitted.
 - Timeline inspector header: the 328 column shows **Таймлайн** with the `timer` glyph (dropdown only when there is more than one player).
 - Timeline transport speed (×1 / ×3 / ×5 / ×10) uses Lucide `circle-gauge` (Tools `468:6042`), not `timer`.
 - Field 28 (`FieldButton`) On uses `--sp-dock-fill`, like a pick cell — Light `--sp-fill` (`line`) matches frosted glass. Hover is a CSS fill, not an inline background that blocked it.
