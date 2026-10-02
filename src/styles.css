@@ -104,6 +104,29 @@
     monospace;
 }
 
+/*
+ * Consumers with `@theme inline` bake Geist into `.font-sans` / `.font-mono`
+ * (`font-family: var(--font-geist-sans)`), so swapping `--font-sans` does nothing.
+ * These rules sit outside Tailwind layers and win over that utility.
+ */
+[data-settings-panel].font-sans,
+[data-settings-panel] .font-sans,
+[data-panel-theme].font-sans,
+[data-panel-theme] .font-sans,
+[data-panel-font].font-sans,
+[data-panel-font] .font-sans {
+  font-family: var(--sp-font-sans);
+}
+
+[data-settings-panel].font-mono,
+[data-settings-panel] .font-mono,
+[data-panel-theme].font-mono,
+[data-panel-theme] .font-mono,
+[data-panel-font].font-mono,
+[data-panel-font] .font-mono {
+  font-family: var(--sp-font-mono);
+}
+
 [data-settings-panel] button,
 [data-panel-theme] button {
   cursor: pointer;

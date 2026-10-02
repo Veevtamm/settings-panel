@@ -6,5 +6,10 @@ const port = Number(process.env.PORT) || undefined;
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { port, strictPort: port != null, allowedHosts: [".localhost"] },
+  server: {
+    host: process.env.HOST || "127.0.0.1",
+    port,
+    strictPort: port != null,
+    allowedHosts: [".localhost"],
+  },
 });

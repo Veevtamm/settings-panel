@@ -18,7 +18,7 @@
 |------|---------|
 | Kind | React 19 library (client components), TypeScript |
 | Styling | Tailwind CSS 4 utility classes + `--sp-*` tokens in `src/styles.css` |
-| Fonts | Consumer loads Geist (default). Panel Settings **Шрифт** = dropdown **176**: Geist · SF Pro · Helvetica Neue · Georgia (`font` in `${panelId}:panel-settings`). Geist pairs with Geist Mono; the OS fonts pair with SF Mono. No extra files. `font-sans` / `font-mono` remap via `--sp-font-*` on `[data-panel-font]` |
+| Fonts | Consumer loads Geist (default). Panel Settings **Шрифт** = dropdown **176**: Geist · SF Pro · Helvetica Neue · Georgia (`font` in `${panelId}:panel-settings`). Geist pairs with Geist Mono; the OS fonts pair with SF Mono. No extra files. `font-sans` / `font-mono` remap via `--sp-font-*` on `[data-panel-font]`. Apps with Tailwind `@theme inline` bake Geist into the utility, so `styles.css` also sets `font-family` on `.font-sans` / `.font-mono` inside the panel |
 | Package | `@veevtamm/settings-panel`, source exports (no `dist` build) |
 | Manager | npm |
 | Checks | `npm run check` = `tsc` + `vitest` (`test/*.test.ts`); GitHub Action `.github/workflows/check.yml` |
