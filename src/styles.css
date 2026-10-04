@@ -80,6 +80,16 @@
     Monaco, monospace;
   --font-sans: var(--sp-font-sans);
   --font-mono: var(--sp-font-mono);
+  /* Dock stays in the scene tree (windows portal to body). Scene wrappers
+     leak weight / stretch / caps into search and labels — reset here. */
+  font-weight: 400;
+  font-style: normal;
+  font-stretch: 100%;
+  letter-spacing: normal;
+  text-transform: none;
+  font-variant: normal;
+  font-feature-settings: normal;
+  font-variation-settings: normal;
 }
 
 [data-panel-font="system"] {

@@ -6,6 +6,7 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ### Fixed
 
+- Dock search (and other in-flow chrome) no longer inherits the scene’s `font-weight` / `text-transform` / stretch. The bar stays in the scene tree; windows already portal to `body`. On experimental `/9` the 700 Areal wrapper made «Поиск» look like small caps.
 - Panel Settings **Шрифт** now changes the panel in apps that use Tailwind `@theme inline` (experimental on Vercel). Those builds pin `.font-sans` to Geist, so swapping the `--font-sans` variable did nothing.
 - Bezier (and other) `PanelSelectList` overlays no longer grow past the bottom of the screen: if 192px does not fit below the trigger, the list opens upward and shrinks to the remaining viewport.
 
