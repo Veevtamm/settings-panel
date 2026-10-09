@@ -531,6 +531,7 @@ export function SettingText({
   label,
   onChange,
   value,
+  rows = 3,
   modified,
   onResetValue,
   info,
@@ -541,7 +542,15 @@ export function SettingText({
   label: string;
   onChange: (value: string) => void;
   value: string;
+  rows?: number;
 } & ResetDotProps) {
+  const fieldClass = cn(
+    "w-full rounded px-1.5 text-left",
+    fieldValueSans,
+    fieldChrome,
+    rows <= 1 ? "h-[28px]" : "min-h-[56px] resize-y py-1.5",
+  );
+  const fieldStyle = { background: FIELD, color: MUTED };
   return (
     <div className="flex w-full flex-col gap-1" data-setting-row="">
       <RowLabel
@@ -553,23 +562,29 @@ export function SettingText({
         onIconChange={onIconChange}
         locale={locale}
       />
-      <textarea
-        spellCheck={false}
-        autoComplete="off"
-        aria-label={label}
-        rows={3}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className={cn(
-          "min-h-[56px] w-full resize-y rounded px-1.5 py-1.5 text-left",
-          fieldValueSans,
-          fieldChrome,
-        )}
-        style={{
-          background: FIELD,
-          color: MUTED,
-        }}
-      />
+      {rows <= 1 ? (
+        <input
+          type="text"
+          spellCheck={false}
+          autoComplete="off"
+          aria-label={label}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={fieldClass}
+          style={fieldStyle}
+        />
+      ) : (
+        <textarea
+          spellCheck={false}
+          autoComplete="off"
+          aria-label={label}
+          rows={rows}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className={fieldClass}
+          style={fieldStyle}
+        />
+      )}
     </div>
   );
 }

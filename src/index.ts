@@ -105,6 +105,7 @@ export type {
 } from "./settings-panel/timeline";
 export { SettingsMomentHud } from "./settings-panel/moment-hud";
 export { SettingsPanel } from "./settings-panel/shell";
+export { DockBarDivider } from "./settings-panel/dock";
 export { FieldButton, SettingToggle } from "./settings-panel/fields";
 export { PickRadioGroup } from "./settings-panel/pick";
 export { SettingChips } from "./settings-panel/chips";
@@ -162,6 +163,7 @@ export {
   PANEL_FOCUS_EVENT,
   PANEL_THEME_EVENT,
   focusPanel,
+  togglePanel,
   panelThemeStorageKey,
   parsePanelSettingsObject,
   PANEL_FONTS,

@@ -4,16 +4,30 @@ Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Vee
 
 ## Unreleased
 
+### Added
+
+- `besidePanelId` — while that window is open, this docked scene window sits one panel width aside. Its float is stored on `panelId`, so dragging it does not move the other window.
+- Lucide `lock` (Tools `651:7145`), `log-in` (`467:4635`), `log-out` (`467:4638`), `folder-tree` (`468:5636`), `app-window-mac` (`468:4738`) in the panel glyph set.
+- `hideDock` — scene window without a Dock Bar (second panel on a shared site bar).
+- `togglePanel(panelId)` — open or close the scene window.
+- `DockBarDivider` exported for `dockExtra`.
+- `sceneIcon` — Dock Bar scene trigger (default `sliders-horizontal`).
+- `sceneLabel` — Dock Bar hover chip for that trigger (default «Панель сцены»).
+- `panelFontRow` / `chromeLayoutRow` — hide Panel Settings **Шрифт** and **Положение** (default on).
+- `versionRow={false}` — hide Panel Settings **Версия** (default on).
+- A scene window with a single group uses a close `x` instead of a section chevron. The `x` closes the window.
+- `dockSearch={false}` — no лупа and no trailing Dock Bar divider when Reset/Copy are also off.
+- Panel Settings has a **Хоткеи** subsection (closed by default): Hide dock, Undo, Redo. Apple shows ⌘ · ⇧; Windows / Linux show Ctrl · Shift. Bindings use physical `KeyboardEvent.code` (Z / M / Backslash), not the layout letter. Hidden when `hideShortcut` / `undoShortcut` are off. ⌘M is not listed.
+- Dock Bar hover: a short name chip (`--sp-tooltip`, caret) on each button, like the macOS Dock. Top bar → below the icon; bottom bar → above. Not the native `title`.
+- `TextSetting.rows` — default stays a 3-line textarea. `rows: 1` is a single-line field, 28px.
+- `valueReset={false}` — hide per-row reset dots and the dock change badge. Default on.
+- `headerLeading` — control before the group title. `headerAction` stays on the right. Sole-group close is the same 28px field button.
+
 ### Fixed
 
 - Dock search (and other in-flow chrome) no longer inherits the scene’s `font-weight` / `text-transform` / stretch. The bar stays in the scene tree; windows already portal to `body`. On experimental `/9` the 700 Areal wrapper made «Поиск» look like small caps.
 - Panel Settings **Шрифт** now changes the panel in apps that use Tailwind `@theme inline` (experimental on Vercel). Those builds pin `.font-sans` to Geist, so swapping the `--font-sans` variable did nothing.
 - Bezier (and other) `PanelSelectList` overlays no longer grow past the bottom of the screen: if 192px does not fit below the trigger, the list opens upward and shrinks to the remaining viewport.
-
-### Added
-
-- Panel Settings has a **Хоткеи** subsection (closed by default): Hide dock, Undo, Redo. Apple shows ⌘ · ⇧; Windows / Linux show Ctrl · Shift. Bindings use physical `KeyboardEvent.code` (Z / M / Backslash), not the layout letter. Hidden when `hideShortcut` / `undoShortcut` are off. ⌘M is not listed.
-- Dock Bar hover: a short name chip (`--sp-tooltip`, caret) on each button, like the macOS Dock. Top bar → below the icon; bottom bar → above. Not the native `title`.
 
 ### Changed
 

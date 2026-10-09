@@ -67,6 +67,8 @@ export type PanelFocusDetail = {
   group?: string;
   /** `easingTargets[].id` — opens the Bezier dock view on this target. */
   easingId?: string;
+  /** Close the scene window if it is already open. */
+  toggle?: boolean;
 };
 
 export function focusPanel(
@@ -79,6 +81,11 @@ export function focusPanel(
       detail: { panelId, ...detail },
     }),
   );
+}
+
+/** Open the scene window, or close it if it is already open. */
+export function togglePanel(panelId: string) {
+  focusPanel(panelId, { toggle: true });
 }
 
 export function panelThemeStorageKey(panelId: string) {

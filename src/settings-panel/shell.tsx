@@ -185,11 +185,17 @@ export function SettingsPanelImpl<TSettings>({
   curveSection,
   curveSectionTitle,
   curveSectionIcon = "waypoints",
+  sceneIcon = "sliders-horizontal",
+  sceneLabel,
+  panelFontRow = true,
+  chromeLayoutRow = true,
+  versionRow = true,
   easingSectionTitle,
   onReplay,
   getReplayDurationMs,
   onReset,
   defaultSettings,
+  valueReset = true,
   dockExtra,
   defaultDockCorner,
   layoutPanelId,
@@ -205,6 +211,9 @@ export function SettingsPanelImpl<TSettings>({
   players = [],
   enabled = true,
   hideBelow,
+  dockSearch = true,
+  hideDock = false,
+  besidePanelId,
 }: SettingsPanelProps<TSettings>) {
   useEffect(() => {
     reportSettingsSchemaLint(
@@ -237,6 +246,8 @@ export function SettingsPanelImpl<TSettings>({
   const onSettingsChange = (patch: Partial<TSettings>) => history.record(patch);
 
   const [panelOpen, setPanelOpen] = useState(false);
+  const panelOpenRef = useRef(false);
+  panelOpenRef.current = panelOpen;
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hotkeysOpen, setHotkeysOpen] = useState(false);
   const [bezierOpen, setBezierOpen] = useState(false);
@@ -263,7 +274,7 @@ export function SettingsPanelImpl<TSettings>({
     icon?: SfSymbolName,
   ): ResetDotProps => {
     const defaults = defaultSettings;
-    if (defaults == null) return { info, icon };
+    if (!valueReset || defaults == null) return { info, icon };
     return {
       info,
       icon,
@@ -285,7 +296,7 @@ export function SettingsPanelImpl<TSettings>({
     icon?: SfSymbolName,
   ): ResetDotProps => {
     const defaults = defaultSettings;
-    if (defaults == null) return { info, icon };
+    if (!valueReset || defaults == null) return { info, icon };
     return {
       info,
       icon,
@@ -323,7 +334,9 @@ export function SettingsPanelImpl<TSettings>({
     () => readLastDockBarW(layoutStoreId) ?? DOCK_BAR_H,
   );
   useLayoutEffect(() => {
-    const bar = barRef.current;
+    const bar = hideDock
+      ? document.querySelector<HTMLElement>("[data-dock-bar]")
+      : barRef.current;
     if (!bar) return;
     const measure = () => {
       const width = bar.offsetWidth;
@@ -334,7 +347,7 @@ export function SettingsPanelImpl<TSettings>({
     const observer = new ResizeObserver(measure);
     observer.observe(bar);
     return () => observer.disconnect();
-  }, [chromeVisible, layoutStoreId]);
+  }, [chromeVisible, hideDock, layoutStoreId]);
   const {
     panelFloat,
     dockDragging,
@@ -368,6 +381,7 @@ export function SettingsPanelImpl<TSettings>({
     legacyPanelIds,
     defaultDockCorner,
     barW,
+    besidePanelId,
   });
 
   const copyChangedSettings = async () => {
@@ -1285,6 +1299,8 @@ export function SettingsPanelImpl<TSettings>({
       } else if (openAxis && curveSection) {
         setAxisOpen(true);
         raiseWindow("axis");
+      } else if (detail.toggle && panelOpenRef.current) {
+        setPanelOpen(false);
       } else {
         closeDockPlayers();
         setPanelOpen(true);
@@ -1587,25 +1603,32 @@ export function SettingsPanelImpl<TSettings>({
       data-dock-dragging={dockDragging ? "" : undefined}
       data-dock-corner={layoutCorner}
       className={cn(
-        "pointer-events-auto fixed z-[100] font-sans text-left",
+        "fixed z-[100] font-sans text-left",
+        hideDock ? "pointer-events-none" : "pointer-events-auto",
         dockDragging && "select-none",
       )}
       aria-hidden={dockHidden || undefined}
-      style={{
-        top: shownPos.y,
-        left: shownPos.x,
-        opacity: dockHidden ? 0 : 1,
-        visibility: dockHidden ? "hidden" : "visible",
-        ...(dockDragging || skipPanelMotion
-          ? {}
+      style={
+        hideDock
+          ? { top: 0, left: 0, width: 0, height: 0 }
           : {
-              transitionProperty: "top, left, opacity, visibility",
-              transitionDuration: `${PANEL_ENTER_MS}ms`,
-              transitionTimingFunction: EASE_OUT,
-            }),
-      }}
+              top: shownPos.y,
+              left: shownPos.x,
+              opacity: dockHidden ? 0 : 1,
+              visibility: dockHidden ? "hidden" : "visible",
+              ...(dockDragging || skipPanelMotion
+                ? {}
+                : {
+                    transitionProperty: "top, left, opacity, visibility",
+                    transitionDuration: `${PANEL_ENTER_MS}ms`,
+                    transitionTimingFunction: EASE_OUT,
+                  }),
+            }
+      }
     >
       <div className="relative flex flex-col items-start">
+        {hideDock ? null : (
+        <>
         <div
           ref={barRef}
           data-dock-bar=""
@@ -1644,13 +1667,15 @@ export function SettingsPanelImpl<TSettings>({
             aria-controls={panelId}
             aria-keyshortcuts={shortcut ? "Meta+M" : undefined}
             aria-label={
-              panelOpen
-                ? tx(PANEL_COPY.closePanel, locale)
-                : changedCount > 0
-                  ? tx(PANEL_COPY.openPanelChanged(changedCount), locale)
-                  : tx(PANEL_COPY.openPanel, locale)
+              sceneLabel
+                ? `${locale === "en" ? (panelOpen ? "Close" : "Open") : panelOpen ? "Закрыть" : "Открыть"} ${tx(sceneLabel, locale)}`
+                : panelOpen
+                  ? tx(PANEL_COPY.closePanel, locale)
+                  : changedCount > 0
+                    ? tx(PANEL_COPY.openPanelChanged(changedCount), locale)
+                    : tx(PANEL_COPY.openPanel, locale)
             }
-            data-dock-tip={tx(PANEL_COPY.dockScene, locale)}
+            data-dock-tip={tx(sceneLabel ?? PANEL_COPY.dockScene, locale)}
             className={cn(
               dockBarButtonClass(panelOpen),
               dockDragging && "cursor-grabbing active:scale-100",
@@ -1660,9 +1685,9 @@ export function SettingsPanelImpl<TSettings>({
               toggleScene();
             }}
           >
-            <SfSymbol name="sliders-horizontal" className="size-5" />
+            <SfSymbol name={sceneIcon} className="size-5" />
           </button>
-          {changedBadge(panelOpen ? 0 : changedCount)}
+          {changedBadge(!valueReset || panelOpen ? 0 : changedCount)}
           </DockBadgeAnchor>
           <DockBarSlot
             open={players.length > 0}
@@ -1764,7 +1789,7 @@ export function SettingsPanelImpl<TSettings>({
               {dockExtra}
             </div>
           </DockBarSlot>
-          <DockBarDivider />
+          {dockSearch || onReset ? <DockBarDivider /> : null}
           {onReset ? (
             <DockBarSlot
               open={Boolean(dockActionsVisible)}
@@ -1822,6 +1847,7 @@ export function SettingsPanelImpl<TSettings>({
               ) : null}
             </DockBarSlot>
           ) : null}
+          {dockSearch ? (
           <DockSearchField
             open={searchOpen}
             query={searchQuery}
@@ -1844,6 +1870,7 @@ export function SettingsPanelImpl<TSettings>({
             }}
             onClose={closeSearch}
           />
+          ) : null}
         </div>
         <DockBarTips
           barRef={barRef}
@@ -1851,6 +1878,8 @@ export function SettingsPanelImpl<TSettings>({
           side={dockBottom ? "above" : "below"}
         />
         {historyToast}
+        </>
+        )}
 
         {(() => {
         const panelWindow = (
@@ -1867,7 +1896,7 @@ export function SettingsPanelImpl<TSettings>({
           inert={panelOpen ? undefined : true}
           onPointerDown={startPanelMove}
           className={cn(
-            "flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
+            "pointer-events-auto flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
             "fixed",
             panelFloat == null
               ? dockBottom
@@ -2185,12 +2214,28 @@ export function SettingsPanelImpl<TSettings>({
             }
             const group = filteredGroups.find((item) => item.id === sectionId);
             if (!group) return null;
+            const soleGroup = groups.length === 1;
             return shell(
             <SectionBlock
               {...sectionIconProps(group.id, group.icon)}
               title={tx(group.title, locale)}
-              open={narrowActive || openSections.has(group.id)}
-              onToggle={() => toggleSection(group.id)}
+              open={soleGroup || narrowActive || openSections.has(group.id)}
+              onToggle={() => {
+                if (!soleGroup) toggleSection(group.id);
+              }}
+              onClose={
+                soleGroup
+                  ? () => {
+                      setPanelInstant(false);
+                      setPanelOpen(false);
+                    }
+                  : undefined
+              }
+              closeLabel={
+                sceneLabel
+                  ? `${locale === "en" ? "Close" : "Закрыть"} ${tx(sceneLabel, locale)}`
+                  : tx(PANEL_COPY.closePanel, locale)
+              }
               reduceMotion={reduceMotion}
               locale={locale}
               {...sectionReorderProps(group.id)}
@@ -2208,6 +2253,7 @@ export function SettingsPanelImpl<TSettings>({
                   : undefined
               }
               headerAction={group.headerAction}
+              headerLeading={group.headerLeading}
             >
               <div
                 className="flex flex-col gap-4"
@@ -2380,6 +2426,7 @@ export function SettingsPanelImpl<TSettings>({
                       }
                       value={panelTheme === "dark"}
                     />
+                    {panelFontRow ? (
                     <SettingEnumDropdown
                       label={tx(PANEL_COPY.panelFont, locale)}
                       info={tx(PANEL_COPY.panelFontInfo, locale)}
@@ -2394,6 +2441,8 @@ export function SettingsPanelImpl<TSettings>({
                         label: tx(PANEL_FONT_LABEL[id], locale),
                       }))}
                     />
+                    ) : null}
+                    {chromeLayoutRow ? (
                     <SettingToggle
                       label={tx(PANEL_COPY.chromeLayout, locale)}
                       locale={locale}
@@ -2403,11 +2452,14 @@ export function SettingsPanelImpl<TSettings>({
                       onChange={() => resetChromeLayout()}
                       value={false}
                     />
+                    ) : null}
+                    {versionRow ? (
                     <ChromeHintRow
                       label={tx(PANEL_COPY.version, locale)}
                       value={PANEL_VERSION}
                       locale={locale}
                     />
+                    ) : null}
                     {hideShortcut || undoShortcut ? (
                       <SubsectionBlock
                         title={tx(PANEL_COPY.hotkeys, locale)}

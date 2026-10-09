@@ -202,6 +202,11 @@ export type TextSetting<TSettings> = {
   label: Copy;
   info?: Copy;
   icon?: SfSymbolName;
+  /**
+   * Line count. Default **3** (textarea). `1` is a single-line field, 28px,
+   * same height as the other row controls.
+   */
+  rows?: number;
   /** Render this field right under the matching toggle. */
   after?: keyof TSettings;
 } & ParamPlacement;
@@ -422,6 +427,8 @@ export type SettingsGroup<TSettings> = {
   sections: SettingsSection<TSettings>[];
   /** Eye next to the group chevron — boolean visibility, not a row. */
   visibilityKey?: keyof TSettings;
+  /** Control before the title. Back in a folder drill. */
+  headerLeading?: ReactNode;
   /** Control left of the group chevron (folio Decrypt Replay). */
   headerAction?: ReactNode;
 } & ParamPlacement;
@@ -452,6 +459,16 @@ export type SettingsPanelProps<TSettings> = {
   curveSectionTitle?: Copy;
   /** Header glyph in the Axis view (default `waypoints`). */
   curveSectionIcon?: SfSymbolName;
+  /** Dock Bar scene trigger (default `sliders-horizontal`). */
+  sceneIcon?: SfSymbolName;
+  /** Dock Bar hover chip + aria for the scene trigger (default «Панель сцены»). */
+  sceneLabel?: Copy;
+  /** Panel Settings **Шрифт** row. Default `true`. */
+  panelFontRow?: boolean;
+  /** Panel Settings **Положение** reset row. Default `true`. */
+  chromeLayoutRow?: boolean;
+  /** Panel Settings **Версия** row. Default `true`. */
+  versionRow?: boolean;
   /** Title for the Bezier view when a plot is also present. */
   easingSectionTitle?: Copy;
   /** Replay the animation tied to the active easing target id */
@@ -462,6 +479,11 @@ export type SettingsPanelProps<TSettings> = {
   onReset?: () => void;
   /** Per-row reset dots: rows whose value differs from these defaults get a dot. */
   defaultSettings?: TSettings;
+  /**
+   * Dots that restore a row to `defaultSettings`. Default on.
+   * Off for a CMS: edits stay until the scene's own save, they do not snap back to the schema default.
+   */
+  valueReset?: boolean;
   /** Scene buttons (34) in the Dock Bar group after Reset · Copy; their own glass is stripped inside the bar. */
   dockExtra?: ReactNode;
   /**
@@ -521,4 +543,18 @@ export type SettingsPanelProps<TSettings> = {
    * keys join Reset, Copy, and the dock badge.
    */
   players?: readonly PlayerSetting<TSettings>[];
+  /** Dock Bar search (лупа). Default `true`. */
+  dockSearch?: boolean;
+  /**
+   * Skip the Dock Bar, keep the scene window. For a second panel that
+   * shares the site bar (`layoutPanelId` + `dockExtra` on the owner).
+   */
+  hideDock?: boolean;
+  /**
+   * While this scene window is docked, place it one panel width beside the
+   * open window `#id` (8px gap; to the right of a center/left dock, to the
+   * left of a right dock). Its float is stored on `panelId`, so dragging it
+   * does not move the other window.
+   */
+  besidePanelId?: string;
 };

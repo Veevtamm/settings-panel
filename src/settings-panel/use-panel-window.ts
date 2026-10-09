@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   readPanelLayout,
+  readPanelSettings,
   writePanelSettings,
   type ChromeWindowId,
 } from "../lib/panel-theme";
@@ -52,12 +53,33 @@ export function writeLastDockBarW(storeId: string, width: number) {
   lastDockBarW.set(storeId, width);
 }
 
+/** Docked x one window aside, when that side still clears the other window. */
+function besideDockedX(
+  base: number,
+  open: boolean,
+  dockRight: boolean,
+  frameW: number,
+  viewportW: number,
+) {
+  if (!open) return base;
+  const gap = frameW + PANEL_DOCK_GAP;
+  const maxX = Math.max(DOCK_INSET, viewportW - frameW - DOCK_INSET);
+  const clamp = (x: number) => Math.min(maxX, Math.max(DOCK_INSET, x));
+  const dir = dockRight ? -1 : 1;
+  const first = clamp(base + dir * gap);
+  if (Math.abs(first - base) >= frameW / 2) return first;
+  const second = clamp(base - dir * gap);
+  if (Math.abs(second - base) >= frameW / 2) return second;
+  return first;
+}
+
 export function usePanelWindow({
   panelId,
   layoutPanelId,
   legacyPanelIds = [],
   barW,
   defaultDockCorner = DEFAULT_DOCK_CORNER,
+  besidePanelId,
 }: {
   panelId: string;
   layoutPanelId?: string;
@@ -65,8 +87,11 @@ export function usePanelWindow({
   /** Measured Dock Bar width (grows as buttons appear). */
   barW: number;
   defaultDockCorner?: DockCorner;
+  /** Open window to sit beside while this one is docked. Float stays on `panelId`. */
+  besidePanelId?: string;
 }) {
   const layoutStoreId = layoutPanelId ?? panelId;
+  const ownFloat = Boolean(besidePanelId);
   const legacyPanelKey = legacyPanelIds.join("\0");
   const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH);
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
@@ -81,6 +106,8 @@ export function usePanelWindow({
     null,
   );
   const windowZSeq = useRef(100);
+  const dockedXRef = useRef(0);
+  const [besideOpen, setBesideOpen] = useState(false);
   const [windowZ, setWindowZ] = useState<Partial<Record<FloatWindowId, number>>>(
     {},
   );
@@ -162,6 +189,31 @@ export function usePanelWindow({
     return () => window.clearTimeout(id);
   }, [dockSnap]);
 
+  useEffect(() => {
+    if (!besidePanelId) return;
+    let attr: MutationObserver | null = null;
+    const sync = (el: HTMLElement) =>
+      setBesideOpen(el.getAttribute("aria-hidden") !== "true");
+    const watch = () => {
+      const el = document.getElementById(besidePanelId);
+      if (!el) return false;
+      sync(el);
+      attr = new MutationObserver(() => sync(el));
+      attr.observe(el, { attributes: true, attributeFilter: ["aria-hidden"] });
+      return true;
+    };
+    if (watch()) return () => attr?.disconnect();
+    const root = new MutationObserver(() => {
+      if (!watch()) return;
+      root.disconnect();
+    });
+    root.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      root.disconnect();
+      attr?.disconnect();
+    };
+  }, [besidePanelId]);
+
   useLayoutEffect(() => {
     const parsed = readPanelLayout(
       panelId,
@@ -170,10 +222,11 @@ export function usePanelWindow({
     );
     if (parsed.panelWidth != null) setPanelWidth(parsed.panelWidth);
     if (parsed.panelHeight != null) setPanelHeight(parsed.panelHeight);
-    if (parsed.panelFloat) setPanelFloat(parsed.panelFloat);
+    if (ownFloat) setPanelFloat(readPanelSettings(panelId).panelFloat ?? null);
+    else if (parsed.panelFloat) setPanelFloat(parsed.panelFloat);
     if (parsed.chromeFloat) setChromeFloat(parsed.chromeFloat);
     setDockCorner(parsed.dockSlot ?? defaultDockCorner);
-  }, [defaultDockCorner, layoutPanelId, legacyPanelKey, panelId]);
+  }, [defaultDockCorner, layoutPanelId, legacyPanelKey, ownFloat, panelId]);
 
   useEffect(() => {
     setPanelWidth((w) => clampPanelWidth(w, viewportW));
@@ -387,6 +440,7 @@ export function usePanelWindow({
           nextDrag.height,
           vw,
         );
+        docked.x = dockedXRef.current;
         const buttons = { x: bar.x, y: bar.y, w: bw, h: DOCK_BAR_H };
         const magnet = shouldMagnetPanel(
           { x: next.x, y: next.y, w: nextDrag.width, h: nextDrag.height },
@@ -415,7 +469,9 @@ export function usePanelWindow({
           window.removeEventListener("click", suppressClick, true);
         }, 0);
         const stored = nextDrag.lastPos;
-        writePanelSettings(layoutStoreId, { panelFloat: stored });
+        writePanelSettings(ownFloat ? panelId : layoutStoreId, {
+          panelFloat: stored,
+        });
         setPanelFloat(stored);
       },
     });
@@ -538,6 +594,11 @@ export function usePanelWindow({
   const resetChromeLayout = () => {
     setPanelFloat(null);
     setChromeFloat({});
+    if (ownFloat) {
+      writePanelSettings(panelId, { panelFloat: null });
+      writePanelSettings(layoutStoreId, { chromeFloat: null });
+      return;
+    }
     writePanelSettings(layoutStoreId, {
       panelFloat: null,
       chromeFloat: null,
@@ -635,13 +696,14 @@ export function usePanelWindow({
   const frameW = clampPanelWidth(panelWidth, viewportW);
   const frameH =
     panelHeight == null ? null : clampPanelHeight(panelHeight, maxPanelH);
-  const dockedX = dockedPanelX(
-    layoutCorner,
-    shownPos.x,
-    barW,
+  const dockedX = besideDockedX(
+    dockedPanelX(layoutCorner, shownPos.x, barW, frameW, viewportW),
+    besideOpen,
+    dockRight,
     frameW,
     viewportW,
   );
+  dockedXRef.current = dockedX;
 
   return {
     panelFloat,

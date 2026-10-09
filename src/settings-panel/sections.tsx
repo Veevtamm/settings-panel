@@ -14,6 +14,7 @@ import { SectionIconPicker } from "./icon-picker";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { applyLiftTransform, type LiftSize, type LiftXy } from "./model";
 import { SectionCollapse } from "./row";
+import { FieldButton } from "./fields";
 
 export function SectionBlock({
   icon,
@@ -27,6 +28,9 @@ export function SectionBlock({
   visibilityOn,
   onVisibilityChange,
   headerAction,
+  headerLeading,
+  onClose,
+  closeLabel,
   reorderable,
   onGripPointerDown,
   dragging,
@@ -46,6 +50,10 @@ export function SectionBlock({
   visibilityOn?: boolean;
   onVisibilityChange?: (next: boolean) => void;
   headerAction?: ReactNode;
+  headerLeading?: ReactNode;
+  /** Replaces the section chevron with a window close control. */
+  onClose?: () => void;
+  closeLabel?: string;
   reorderable?: boolean;
   onGripPointerDown?: (event: ReactPointerEvent<HTMLSpanElement>) => void;
   dragging?: boolean;
@@ -61,7 +69,12 @@ export function SectionBlock({
         open && "gap-4",
       )}
     >
-      <div className="flex h-5 w-full items-center justify-between gap-2">
+      <div
+        className={cn(
+          "flex w-full items-center justify-between gap-2",
+          onClose ? "h-7" : "h-5",
+        )}
+      >
         {reorderable || onPinClick ? (
           <span className="inline-flex shrink-0 items-center gap-1">
             {reorderable && onGripPointerDown ? (
@@ -104,6 +117,7 @@ export function SectionBlock({
           </span>
         ) : null}
         <span className="inline-flex min-w-0 flex-1 items-center gap-1">
+          {headerLeading}
           {!onIconChange ? null : (
             <SectionIconPicker
               label={title}
@@ -112,6 +126,46 @@ export function SectionBlock({
               value={icon}
             />
           )}
+        {onClose ? (
+        <span className="flex min-w-0 flex-1 items-center text-left">
+          <span className="inline-flex min-w-0 items-center gap-1">
+            {onIconChange || !icon ? null : (
+              <SfSymbol name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
+            )}
+            {modified && onResetValue ? (
+              <span
+                role="button"
+                tabIndex={0}
+                aria-label={`${title}: ${tx(PANEL_COPY.resetDefault, locale)}`}
+                title={tx(PANEL_COPY.resetDefault, locale)}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onResetValue();
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onResetValue();
+                  }
+                }}
+                className="group/reset-dot -mx-0.5 flex size-3.5 shrink-0 cursor-pointer items-center justify-center rounded-full outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)]"
+              >
+                <span
+                  aria-hidden
+                  className="size-[5px] rounded-full bg-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:group-hover/reset-dot:bg-[color:var(--sp-fg)]"
+                />
+              </span>
+            ) : null}
+            <span
+              className="truncate text-[15px] font-sans leading-[20px] select-none"
+              style={{ color: MUTED }}
+            >
+              {title}
+            </span>
+          </span>
+        </span>
+        ) : (
         <button
           type="button"
           onClick={onToggle}
@@ -155,6 +209,7 @@ export function SectionBlock({
             </span>
           </span>
         </button>
+        )}
         </span>
         <span className="inline-flex shrink-0 items-center gap-1.5">
           {headerAction}
@@ -173,6 +228,15 @@ export function SectionBlock({
               />
             </button>
           ) : null}
+          {onClose ? (
+          <FieldButton
+            label={closeLabel ?? title}
+            onClick={onClose}
+            className="relative z-[3]"
+          >
+            <SfSymbol name="x" className="size-5" />
+          </FieldButton>
+          ) : (
           <button
             type="button"
             onClick={onToggle}
@@ -202,6 +266,7 @@ export function SectionBlock({
               }
             />
           </button>
+          )}
         </span>
       </div>
       <SectionCollapse open={open} reduceMotion={reduceMotion}>

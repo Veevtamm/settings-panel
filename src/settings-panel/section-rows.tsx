@@ -339,6 +339,7 @@ export function SectionRows<TSettings>({
           node: (
             <SettingText
               label={t(item.label)}
+              rows={item.rows}
               onChange={(value) =>
                 patch({ [item.key]: value } as Partial<TSettings>)
               }
