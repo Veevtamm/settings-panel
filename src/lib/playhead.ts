@@ -169,7 +169,8 @@ export abstract class PlayheadClock implements PlayerController {
     const tick = (now: number) => {
       this.raf = null;
       if (!this.state.playing) return;
-      const dt = Math.min(now - this.loopLast, 48);
+      // The rAF timestamp is the frame start, which can precede a play() called from input in that frame.
+      const dt = Math.min(Math.max(0, now - this.loopLast), 48);
       this.loopLast = now;
       const span = this.spanMs(this.state.direction);
       if (span <= 0) {
@@ -180,8 +181,9 @@ export abstract class PlayheadClock implements PlayerController {
       const q = this.state.q + dt * rate;
       const start = this.rangeStart();
       const end = this.rangeEnd();
-      if (q >= end || q <= start) {
-        const stop = q >= end ? end : start;
+      const forward = this.state.direction > 0;
+      if (forward ? q >= end : q <= start) {
+        const stop = forward ? end : start;
         this.drive(stop);
         this.patch({ q: stop, playing: false });
         return;
