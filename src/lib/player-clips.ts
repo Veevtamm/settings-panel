@@ -63,6 +63,104 @@ export function resolveTotal(
   return Math.max(stored, min);
 }
 
+/**
+ * Move several clips by one delta. The group stops at 0 and at `ceiling`,
+ * and the gaps between the clips stay put. Clips outside `origins` are left
+ * alone.
+ */
+export function shiftClipGroup(
+  layout: readonly LaidClip[],
+  origins: ReadonlyMap<number, number>,
+  delta: number,
+  ceiling: number,
+): LaidClip[] {
+  if (origins.size === 0) return layout.slice();
+  let minDelta = Number.NEGATIVE_INFINITY;
+  let maxDelta = Number.POSITIVE_INFINITY;
+  for (const [index, origin] of origins) {
+    const clip = layout[index];
+    if (!clip) continue;
+    const maxStart = Math.max(0, ceiling - clip.duration);
+    minDelta = Math.max(minDelta, -origin);
+    maxDelta = Math.min(maxDelta, maxStart - origin);
+  }
+  const applied =
+    minDelta > maxDelta ? 0 : clampNumber(delta, minDelta, maxDelta);
+  return layout.map((clip, index) => {
+    const origin = origins.get(index);
+    if (origin == null) return clip;
+    const start = origin + applied;
+    return { ...clip, packed: false, start, end: start + clip.duration };
+  });
+}
+
+function snapGrid(value: number, grid: number) {
+  if (!(grid > 0)) return value;
+  return Math.round(value / grid) * grid;
+}
+
+/**
+ * Space clips evenly. The gap is the distance from the first start to the
+ * last; when they already share a start, the gap is the first clip's duration.
+ * The run stays inside `ceiling`.
+ */
+export function evenClipStarts(
+  layout: readonly LaidClip[],
+  indices: readonly number[],
+  grid: number,
+  ceiling: number,
+): LaidClip[] {
+  const ordered = [...new Set(indices)].filter((index) => layout[index] != null);
+  ordered.sort((a, b) => layout[a].start - layout[b].start || a - b);
+  if (ordered.length < 2) return layout.slice();
+  const firstStart = layout[ordered[0]].start;
+  const lastStart = layout[ordered[ordered.length - 1]].start;
+  const gaps = ordered.length - 1;
+  const span = lastStart - firstStart;
+  let step =
+    span > grid / 2
+      ? Math.max(grid, snapGrid(span / gaps, grid))
+      : Math.max(grid, snapGrid(layout[ordered[0]].duration, grid));
+  const lastDuration = layout[ordered[ordered.length - 1]].duration;
+  const maxStep = Math.max(0, (ceiling - lastDuration - firstStart) / gaps);
+  if (step > maxStep) step = maxStep;
+  const starts = new Map<number, number>();
+  ordered.forEach((index, k) => {
+    const start = firstStart + k * step;
+    const room = Math.max(0, ceiling - layout[index].duration);
+    starts.set(index, clampNumber(start, 0, room));
+  });
+  return layout.map((clip, index) => {
+    const start = starts.get(index);
+    if (start == null) return clip;
+    return { ...clip, packed: false, start, end: start + clip.duration };
+  });
+}
+
+/** Place selected clips on a fixed start interval. The first stays; clip k starts `gap` later. */
+export function spaceClipStarts(
+  layout: readonly LaidClip[],
+  indices: readonly number[],
+  gap: number,
+  ceiling: number,
+): LaidClip[] {
+  const ordered = [...new Set(indices)].filter((index) => layout[index] != null);
+  ordered.sort((a, b) => layout[a].start - layout[b].start || a - b);
+  if (ordered.length < 2) return layout.slice();
+  const firstStart = layout[ordered[0]].start;
+  const starts = new Map<number, number>();
+  ordered.forEach((index, k) => {
+    const start = firstStart + k * gap;
+    const room = Math.max(0, ceiling - layout[index].duration);
+    starts.set(index, clampNumber(start, 0, room));
+  });
+  return layout.map((clip, index) => {
+    const start = starts.get(index);
+    if (start == null) return clip;
+    return { ...clip, packed: false, start, end: start + clip.duration };
+  });
+}
+
 /** Clips trimmed to a timeline of `total` ms: start ≤ total − min, end ≤ total. */
 export function fitClipsToTotal(
   layout: readonly LaidClip[],

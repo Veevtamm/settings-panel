@@ -5,13 +5,13 @@ import {
   useEffect,
   useRef,
   useState,
-  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import {
   autoTotal,
   fitClipsToTotal,
   isTotalAuto,
+  spaceClipStarts,
   layoutClips,
   resolveTotal,
   staggerSpan,
@@ -25,6 +25,13 @@ import {
   usePanelTheme,
   usePanelFont,
 } from "../lib/panel-theme";
+import { parseBezierInput, type CubicBezier } from "../lib/cubic-bezier";
+import { savedCurveExtras } from "../lib/curve-library";
+import {
+  easingForPreset,
+  easingPresetSections,
+  matchEasingPreset,
+} from "../lib/easing-presets";
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { SfSymbol } from "../sf-symbol";
@@ -34,21 +41,16 @@ import {
   DIM,
   DOCK_BAR_H,
   DOCK_INSET,
-  EASE_OUT,
   GAP_IN,
   GLASS,
   MUTED,
   PANEL_EXIT_MS,
-  SUBSECTION_DRAG_PX,
-  CHEVRON_MS,
   dockBarButtonClass,
-  pointerHeld,
   type DockCorner,
 } from "./chrome";
 import { panelPopClassName, panelPopStyle } from "./motion-ui";
 import {
   AutoNumberField,
-  FieldButton,
   NumberField,
   ReadOnlyField,
   SettingEnumDropdown,
@@ -56,7 +58,9 @@ import {
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { DockBarTips } from "./dock";
 import { snapStep } from "./number";
-import { PhaseLanes } from "./phase-lanes";
+import { PhaseLanes, clipMenuFromPointer, sameLaneHover, type ClipMenuRequest, type LaneHover } from "./phase-lanes";
+import { useCurveLibrary } from "./use-curve-library";
+import { recordPanelChange } from "./use-history";
 import {
   LANE_PAD_PX,
   PlayerTrack,
@@ -79,8 +83,16 @@ import type {
 } from "./types";
 import { useChromeVisible, useViewportHeight } from "./use-chrome-visible";
 
-/** Inspector = panel row width: label + curve 28 + field 86 without truncating phase names. */
+/** Inspector = panel row width: label + field 86 without truncating phase names. */
 const INSPECTOR = 328;
+/** Hover pill starts 6px left of the column so the label sits 12px from the glass edge. */
+const ROW_EDGE = 6;
+const inspectorBleed = { width: INSPECTOR + ROW_EDGE, marginLeft: -ROW_EDGE };
+/** Inspector field row. No grip. Hover fills the row with `fill-hover` (raised), radius 4. */
+const TIMELINE_ROW_HOVER =
+  "rounded-[4px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)]";
+/** One nest step past the 6px row padding. */
+const NEST_PAD = ["pl-[6px]", "pl-[18px]", "pl-[30px]"] as const;
 /** Cap so an ultrawide does not stretch clips across the whole screen. */
 const TIMELINE_WIDTH_MAX = 1600;
 /** Inspector / lane row 28 + `gap-1`. */
@@ -144,6 +156,108 @@ function readTimelineOrder(panelId: string, playerId: string): string[] | undefi
   } catch {
     return undefined;
   }
+}
+
+type ClipGroup = { id: string; name: string; keys: string[] };
+type GroupFile = { groups: ClipGroup[]; names: Record<string, string> };
+
+function emptyGroupFile(): GroupFile {
+  return { groups: [], names: {} };
+}
+
+function readGroupFile(panelId: string, playerId: string): GroupFile {
+  try {
+    const raw = localStorage.getItem(`${panelId}:timeline-groups`);
+    if (!raw) return emptyGroupFile();
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return emptyGroupFile();
+    }
+    const slot = (parsed as Record<string, unknown>)[playerId];
+    if (!slot || typeof slot !== "object" || Array.isArray(slot)) return emptyGroupFile();
+    const groups = Array.isArray((slot as { groups?: unknown }).groups)
+      ? (slot as { groups: unknown[] }).groups.flatMap((item) => {
+          if (!item || typeof item !== "object") return [];
+          const group = item as { id?: unknown; name?: unknown; keys?: unknown };
+          if (
+            typeof group.id !== "string" ||
+            typeof group.name !== "string" ||
+            !Array.isArray(group.keys)
+          ) {
+            return [];
+          }
+          const keys = group.keys.filter((key): key is string => typeof key === "string");
+          return keys.length >= 2 ? [{ id: group.id, name: group.name, keys }] : [];
+        })
+      : [];
+    const names: Record<string, string> = {};
+    const rawNames = (slot as { names?: unknown }).names;
+    if (rawNames && typeof rawNames === "object" && !Array.isArray(rawNames)) {
+      for (const [key, value] of Object.entries(rawNames)) {
+        if (typeof value === "string" && value.trim()) names[key] = value;
+      }
+    }
+    return { groups, names };
+  } catch {
+    return emptyGroupFile();
+  }
+}
+
+function writeGroupFile(panelId: string, playerId: string, file: GroupFile) {
+  try {
+    const raw = localStorage.getItem(`${panelId}:timeline-groups`);
+    const parsed = raw != null ? (JSON.parse(raw) as unknown) : {};
+    const store =
+      parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? { ...(parsed as Record<string, GroupFile>) }
+        : {};
+    store[playerId] = file;
+    localStorage.setItem(`${panelId}:timeline-groups`, JSON.stringify(store));
+  } catch {
+    /* quota / private mode */
+  }
+}
+
+/** One inspector row per phase, or one row for a whole user group (header + members). */
+function orderUnits(
+  order: readonly string[],
+  groups: readonly { keys: readonly string[] }[],
+) {
+  const seen = new Set<string>();
+  const units: string[][] = [];
+  for (const id of order) {
+    if (seen.has(id)) continue;
+    const group = groups.find((item) => item.keys.includes(id));
+    if (group) {
+      const ids = order.filter((key) => group.keys.includes(key));
+      for (const key of ids) seen.add(key);
+      units.push(ids);
+    } else {
+      seen.add(id);
+      units.push([id]);
+    }
+  }
+  return units;
+}
+
+function clusterIds(order: readonly string[], block: readonly string[]) {
+  const member = new Set(block);
+  const without = order.filter((id) => !member.has(id));
+  const at = order
+    .slice(0, Math.max(0, order.findIndex((id) => member.has(id))))
+    .filter((id) => !member.has(id)).length;
+  const sorted = [...block].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  without.splice(at, 0, ...sorted);
+  return without;
+}
+
+function freshGroupName(groups: readonly { name: string }[], locale: PanelLocale) {
+  const base = tx(PANEL_COPY.clipGroup, locale);
+  const taken = new Set(groups.map((group) => group.name));
+  if (!taken.has(base)) return base;
+  let n = 2;
+  while (taken.has(`${base} ${n}`)) n += 1;
+  return `${base} ${n}`;
 }
 
 function writeTimelineOrder(
@@ -296,6 +410,13 @@ type TimelineDockProps = Omit<SettingsTimelineSingleProps, "targets"> & {
   /** Timeline row (Figma `ex / Dropdown`) when there is more than one player. */
   targetOptions?: readonly { id: string; label: string }[];
   onTargetChange?: (id: string) => void;
+  curveOptions?: readonly { id: string; label: string }[];
+  curveSections?: readonly {
+    title: string;
+    options: readonly { id: string; label: string }[];
+  }[];
+  curveValue?: (phase: number) => string | undefined;
+  onPickCurve?: (indices: number[], presetId: string) => void;
 };
 
 function TimelineDock(props: TimelineDockProps) {
@@ -381,6 +502,10 @@ function TimelineDockBody({
   onChange,
   locale,
   onEditCurve,
+  curveOptions,
+  curveSections,
+  curveValue,
+  onPickCurve,
   targetOptions,
   onTargetChange,
   defaults,
@@ -434,16 +559,35 @@ function TimelineDockBody({
       movableIds(segments),
     ),
   );
-  const [dragVisual, setDragVisual] = useState<number | null>(null);
-  const rowsRef = useRef<HTMLDivElement>(null);
-  const orderDragRef = useRef<{
-    visual: number;
-    pointerId: number;
-    startY: number;
-    moved: boolean;
-  } | null>(null);
-  const orderIdsRef = useRef(orderIds);
-  orderIdsRef.current = orderIds;
+  const [groupFile, setGroupFile] = useState<GroupFile>(() =>
+    panelId ? readGroupFile(panelId, controller.id) : emptyGroupFile(),
+  );
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [foldedGroups, setFoldedGroups] = useState<ReadonlySet<string>>(() => new Set());
+  const [laneHover, setLaneHover] = useState<LaneHover | null>(null);
+  const openClipMenu = useRef<((menu: ClipMenuRequest) => void) | null>(null);
+  function hoverLane(next: LaneHover | null) {
+    setLaneHover((prev) => (sameLaneHover(prev, next) ? prev : next));
+  }
+  function openRowMenu(
+    event: {
+      preventDefault(): void;
+      stopPropagation(): void;
+      clientX: number;
+      clientY: number;
+      currentTarget: Element;
+    },
+    phase: number,
+    indices: number[],
+  ) {
+    event.preventDefault();
+    event.stopPropagation();
+    openClipMenu.current?.(clipMenuFromPointer(event, phase, indices));
+  }
+  useEffect(() => {
+    if (!panelId) return;
+    writeGroupFile(panelId, controller.id, groupFile);
+  }, [panelId, controller.id, groupFile]);
 
   const idsKey = movableIds(segments).join("|");
   useEffect(() => {
@@ -451,78 +595,26 @@ function TimelineDockBody({
   }, [idsKey]);
 
   const rowOrder = indicesFor(segments, orderIds);
-
-  function onGripPointerDown(
-    event: ReactPointerEvent<HTMLSpanElement>,
-    visual: number,
-  ) {
-    if (event.button !== 0) return;
-    if (rowOrder.length < 2) return;
-    event.preventDefault();
-    event.stopPropagation();
-    orderDragRef.current = {
-      visual,
-      pointerId: event.pointerId,
-      startY: event.clientY,
-      moved: false,
-    };
-    setDragVisual(visual);
+  const knownIds = new Set(movableIds(segments));
+  const clipGroups = groupFile.groups
+    .map((group) => ({
+      ...group,
+      keys: group.keys.filter((key) => knownIds.has(key)),
+    }))
+    .filter((group) => group.keys.length >= 2);
+  const groupLeads = new Set<number>();
+  for (const group of clipGroups) {
+    const lead = rowOrder.find((index) =>
+      group.keys.includes(segmentId(segments[index], index)),
+    );
+    if (lead != null) groupLeads.add(lead);
   }
-
-  useEffect(() => {
-    const drag = orderDragRef.current;
-    if (dragVisual == null || !drag) return;
-    const html = document.documentElement;
-    html.dataset.panelReorder = "";
-    const onMove = (event: PointerEvent) => {
-      if (event.pointerId !== drag.pointerId) return;
-      if (!pointerHeld(event)) {
-        onUp(event);
-        return;
-      }
-      if (
-        !drag.moved &&
-        Math.abs(event.clientY - drag.startY) < SUBSECTION_DRAG_PX
-      ) {
-        return;
-      }
-      drag.moved = true;
-      const list = rowsRef.current;
-      if (!list) return;
-      if (orderIdsRef.current.length < 2) return;
-      /** Row groups differ in height (staggered lines), so count midpoints above the pointer. */
-      const target = Array.from(list.children).filter((child, visual) => {
-        if (visual === drag.visual) return false;
-        const rect = child.getBoundingClientRect();
-        return rect.top + rect.height / 2 < event.clientY;
-      }).length;
-      if (target === drag.visual) return;
-      const next = [...orderIdsRef.current];
-      const [moved] = next.splice(drag.visual, 1);
-      if (moved == null) return;
-      next.splice(target, 0, moved);
-      drag.visual = target;
-      setDragVisual(target);
-      setOrderIds(next);
-    };
-    const onUp = (event: PointerEvent) => {
-      if (event.pointerId !== drag.pointerId) return;
-      if (panelId && drag.moved) {
-        writeTimelineOrder(panelId, controller.id, orderIdsRef.current);
-      }
-      orderDragRef.current = null;
-      setDragVisual(null);
-    };
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-    return () => {
-      delete html.dataset.panelReorder;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-  }, [controller.id, dragVisual, panelId]);
+  const units = orderUnits(orderIds, clipGroups);
+  function phaseName(index: number) {
+    const segment = segments[index];
+    if (!segment) return "";
+    return groupFile.names[segmentId(segment, index)] ?? segment.caption;
+  }
 
   useEffect(() => {
     setView((prev) => {
@@ -632,34 +724,93 @@ function TimelineDockBody({
     onChange(emitClips(nextLayout, auto ? TOTAL_AUTO : total, segments));
   }
 
-  /** E1: offset between lines; the parent clip grows or shrinks with it. */
-  function applyStep(index: number, next: number) {
-    const clip = layout[index];
-    const segment = segments[index];
-    const stagger = segment?.stagger;
-    if (!clip || !stagger || stagger.count < 2) return;
-    const gaps = stagger.count - 1;
-    const room = auto
-      ? stagger.stepMax
-      : Math.floor((scale - clip.start - segment.value) / gaps / step) * step;
-    const nextStep = clampNumber(
-      snapStep(next, step),
-      0,
-      Math.max(0, Math.min(stagger.stepMax, room)),
-    );
-    const duration = segment.value + gaps * nextStep;
-    const steps = segments.map((item) => item.stagger?.step);
-    steps[index] = nextStep;
+  function commitGroupName(id: string, raw: string) {
+    const name = raw.trim();
+    setRenaming(null);
+    if (!name) return;
+    if (id.startsWith("phase:")) {
+      const key = id.slice("phase:".length);
+      setGroupFile((prev) => ({ ...prev, names: { ...prev.names, [key]: name } }));
+      return;
+    }
+    setGroupFile((prev) => ({
+      ...prev,
+      groups: prev.groups.map((group) => (group.id === id ? { ...group, name } : group)),
+    }));
+  }
+
+  function makeClipStep(indices: number[], gap: number) {
+    const amount = Math.max(0, gap);
+    if (indices.length === 1) {
+      const index = indices[0];
+      const segment = segments[index];
+      const clip = layout[index];
+      const stagger = segment?.stagger;
+      if (segment && clip && stagger && stagger.count > 1) {
+        const duration = Math.max(0, segment.value) + (stagger.count - 1) * amount;
+        const nextLayout = layout.map((item, i) =>
+          i === index
+            ? { ...item, packed: false, duration, end: item.start + duration }
+            : item,
+        );
+        const steps = segments.map((item, i) =>
+          i === index ? amount : item.stagger?.step,
+        );
+        onChange(
+          emitClips(nextLayout, auto ? TOTAL_AUTO : total, segments, steps),
+        );
+        return;
+      }
+    }
     onChange(
       emitClips(
-        layout.map((item, i) =>
-          i === index ? { ...item, duration, end: item.start + duration } : item,
-        ),
+        spaceClipStarts(layout, indices, amount, scale),
         auto ? TOTAL_AUTO : total,
         segments,
-        steps,
       ),
     );
+  }
+
+  function groupClips(indices: number[]) {
+    const keys = [
+      ...new Set(indices.map((index) => segmentId(segments[index], index))),
+    ];
+    if (keys.length < 2) return;
+    const block = [...keys].sort((a, b) => orderIds.indexOf(a) - orderIds.indexOf(b));
+    setGroupFile((prev) => ({
+      ...prev,
+      groups: [
+        ...prev.groups
+          .map((group) => ({
+            ...group,
+            keys: group.keys.filter((key) => !block.includes(key)),
+          }))
+          .filter((group) => group.keys.length >= 2),
+        {
+          id: `g${Math.random().toString(36).slice(2, 8)}`,
+          name: freshGroupName(prev.groups, locale),
+          keys: block,
+        },
+      ],
+    }));
+    setOrderIds((prev) => {
+      const next = clusterIds(prev, block);
+      if (panelId) writeTimelineOrder(panelId, controller.id, next);
+      return next;
+    });
+  }
+
+  function ungroupClips(indices: number[]) {
+    const keys = new Set(indices.map((index) => segmentId(segments[index], index)));
+    setGroupFile((prev) => ({
+      ...prev,
+      groups: prev.groups
+        .map((group) => ({
+          ...group,
+          keys: group.keys.filter((key) => !keys.has(key)),
+        }))
+        .filter((group) => group.keys.length >= 2),
+    }));
   }
 
   function resetTotal() {
@@ -685,6 +836,15 @@ function TimelineDockBody({
         steps,
       ),
     );
+  }
+
+  function toggleGroup(id: string) {
+    setFoldedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   function toggleLines(index: number) {
@@ -790,8 +950,11 @@ function TimelineDockBody({
             <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2">
               <div
-                className="flex h-[28px] shrink-0 items-center justify-between gap-2"
-                style={{ width: INSPECTOR }}
+                className={cn(
+                  "flex h-[28px] shrink-0 items-center justify-between gap-2 pl-[6px]",
+                  TIMELINE_ROW_HOVER,
+                )}
+                style={inspectorBleed}
               >
                 <RowLabel
                   label={totalTitle}
@@ -838,8 +1001,11 @@ function TimelineDockBody({
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  className="flex h-5 shrink-0 items-center justify-between outline-none"
-                  style={{ width: INSPECTOR }}
+                  className={cn(
+                    "flex h-[28px] shrink-0 items-center justify-between pl-[6px] outline-none",
+                    TIMELINE_ROW_HOVER,
+                  )}
+                  style={inspectorBleed}
                   aria-expanded={elementsOpen}
                   onClick={() => setElementsOpen((prev) => !prev)}
                 >
@@ -856,7 +1022,7 @@ function TimelineDockBody({
                   />
                 </button>
                 <div
-                  className="relative h-5 min-w-0 flex-1"
+                    className="relative flex h-[28px] min-w-0 flex-1 items-center"
                   data-timeline-scale=""
                   onDoubleClick={resetView}
                 >
@@ -873,7 +1039,7 @@ function TimelineDockBody({
                         {major ? (
                           <span
                             className={cn(
-                              "absolute top-0 whitespace-nowrap font-mono text-[11px] leading-[14px] tabular-nums",
+                              "absolute top-1 whitespace-nowrap font-mono text-[11px] leading-[14px] tabular-nums",
                               edge === "mid" && "-translate-x-1/2",
                               edge === "end" && "-translate-x-full",
                             )}
@@ -890,7 +1056,7 @@ function TimelineDockBody({
                           className="absolute w-px -translate-x-1/2 bg-[color:var(--sp-tick)]"
                           style={{
                             left: trackMarkerLeft(q, LANE_PAD_PX),
-                            top: major ? 14 : 16,
+                            top: major ? 18 : 20,
                             height: major ? 6 : 4,
                           }}
                         />
@@ -902,14 +1068,118 @@ function TimelineDockBody({
               {elementsOpen ? (
                 <div
                   className="flex items-start gap-2 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
-                  style={{ maxHeight: lanesMaxPx }}
+                  style={{
+                    maxHeight: lanesMaxPx,
+                    marginLeft: -ROW_EDGE,
+                    width: `calc(100% + ${ROW_EDGE}px)`,
+                  }}
                 >
                   <div
-                    ref={rowsRef}
                     className="flex shrink-0 flex-col gap-1"
-                    style={{ width: INSPECTOR }}
+                    style={{ width: INSPECTOR + ROW_EDGE }}
                   >
-                    {rowOrder.map((index, visual) => {
+                    {units.map((ids) => {
+                      const indices = ids.flatMap((id) => {
+                        const index = segments.findIndex(
+                          (segment, i) => segmentId(segment, i) === id,
+                        );
+                        return index < 0 ? [] : [index];
+                      });
+                      const membership = clipGroups.find(
+                        (group) =>
+                          ids.length > 1 && ids.every((id) => group.keys.includes(id)),
+                      );
+                      const groupOpen =
+                        membership == null || !foldedGroups.has(membership.id);
+                      let spanMs = 0;
+                      if (membership) {
+                        let start = Infinity;
+                        let end = -Infinity;
+                        for (const index of indices) {
+                          const clip = layout[index];
+                          if (!clip) continue;
+                          start = Math.min(start, clip.start);
+                          end = Math.max(end, clip.end);
+                        }
+                        spanMs = Number.isFinite(start) ? Math.max(0, end - start) : 0;
+                      }
+                      return (
+                        <div
+                          key={membership?.id ?? ids[0]}
+                          className="flex flex-col gap-1"
+                        >
+                          {membership ? (
+                            <div
+                              className={cn(
+                                "flex h-[28px] cursor-pointer items-center gap-2 pl-[6px]",
+                                TIMELINE_ROW_HOVER,
+                                sameLaneHover(laneHover, { kind: "group", id: membership.id }) &&
+                                  "bg-[color:var(--sp-fill-hover)]",
+                              )}
+                              onClick={() => toggleGroup(membership.id)}
+                              onPointerEnter={() => hoverLane({ kind: "group", id: membership.id })}
+                              onPointerLeave={() => hoverLane(null)}
+                              onContextMenu={(event) => {
+                                const lead = indices[0];
+                                if (lead == null) return;
+                                openRowMenu(event, lead, indices);
+                              }}
+                            >
+                              <span className="flex min-w-0 flex-1 items-center">
+                                {renaming === membership.id ? (
+                                  <span
+                                    className="min-w-0"
+                                    onClick={(event) => event.stopPropagation()}
+                                  >
+                                    <NameField
+                                      value={membership.name}
+                                      onCancel={() => setRenaming(null)}
+                                      onCommit={(value) =>
+                                        commitGroupName(membership.id, value)
+                                      }
+                                    />
+                                  </span>
+                                ) : (
+                                  <span
+                                    className="min-w-0"
+                                    onClick={(event) => event.stopPropagation()}
+                                    onDoubleClick={() => setRenaming(membership.id)}
+                                  >
+                                    <RowLabel
+                                      className="min-w-0"
+                                      label={membership.name}
+                                      locale={locale}
+                                      tone="main"
+                                    />
+                                  </span>
+                                )}
+                              </span>
+                              <ReadOnlyField
+                                ariaLabel={`${membership.name} (${unit})`}
+                                label={String(Math.round(spanMs))}
+                                unit={unit}
+                              />
+                              <button
+                                type="button"
+                                aria-expanded={groupOpen}
+                                aria-label={tx(
+                                  groupOpen
+                                    ? PANEL_COPY.collapse(membership.name)
+                                    : PANEL_COPY.expand(membership.name),
+                                  locale,
+                                )}
+                                className="inline-flex size-5 shrink-0 items-center justify-center outline-none"
+                              >
+                                <SfSymbol
+                                  name="chevron-up"
+                                  className={cn("size-5", !groupOpen && "rotate-180")}
+                                  style={{ color: MUTED }}
+                                />
+                              </button>
+                            </div>
+                          ) : null}
+                          {groupOpen
+                            ? indices.map((index) => {
                       const segment = segments[index];
                       const clip = layout[index];
                       if (!segment || !clip) return null;
@@ -925,7 +1195,6 @@ function TimelineDockBody({
                           ? segment.stagger
                           : undefined;
                       const linesOpen = stagger != null && !collapsed.has(index);
-                      const childClass = "flex h-[28px] items-center gap-2 pl-7";
                       const lineField = (
                         <NumberField
                           ariaLabel={`${segment.caption} (${unit})`}
@@ -937,59 +1206,82 @@ function TimelineDockBody({
                           value={Math.round(segment.value)}
                         />
                       );
+                      const sid = segmentId(segment, index);
+                      const membership = clipGroups.find((group) => group.keys.includes(sid));
+                      const childClass = cn(
+                        "flex h-[28px] items-center gap-2",
+                        TIMELINE_ROW_HOVER,
+                        membership ? NEST_PAD[2] : NEST_PAD[1],
+                      );
                       return (
                         <div
-                          key={segmentId(segment, index)}
+                          key={sid}
                           className="flex flex-col gap-1"
                         >
-                          <div className="group/el flex h-[28px] items-center gap-2">
+                          <div
+                            className={cn(
+                              "flex h-[28px] items-center gap-2",
+                              TIMELINE_ROW_HOVER,
+                              membership ? NEST_PAD[1] : NEST_PAD[0],
+                              stagger && "cursor-pointer",
+                              sameLaneHover(laneHover, { kind: "phase", index }) &&
+                                "bg-[color:var(--sp-fill-hover)]",
+                            )}
+                            onClick={stagger ? () => toggleLines(index) : undefined}
+                            onPointerEnter={() => hoverLane({ kind: "phase", index })}
+                            onPointerLeave={() => hoverLane(null)}
+                            onContextMenu={(event) => openRowMenu(event, index, [index])}
+                          >
                             <span className="flex min-w-0 flex-1 items-center">
-                              {rowOrder.length > 1 ? (
+                              {renaming === `phase:${sid}` ? (
                                 <span
-                                  role="button"
-                                  tabIndex={0}
-                                  aria-grabbed={dragVisual === visual}
-                                  aria-label={tx(PANEL_COPY.drag, locale)}
-                                  className={cn(
-                                    "inline-flex h-5 shrink-0 cursor-grab items-center justify-center overflow-hidden touch-none active:cursor-grabbing",
-                                    !reduceMotion &&
-                                      "transition-[width,margin,opacity,transform]",
-                                    dragVisual === visual
-                                      ? "w-5 mr-1 scale-100 opacity-100"
-                                      : "w-5 mr-1 scale-100 opacity-100 fine-hover:mr-0 fine-hover:w-0 fine-hover:scale-95 fine-hover:opacity-0 fine-hover:group-hover/el:mr-1 fine-hover:group-hover/el:w-5 fine-hover:group-hover/el:scale-100 fine-hover:group-hover/el:opacity-100",
-                                  )}
-                                  style={
-                                    reduceMotion
-                                      ? undefined
-                                      : {
-                                          transitionDuration: `${CHEVRON_MS}ms`,
-                                          transitionTimingFunction: EASE_OUT,
-                                        }
-                                  }
-                                  onPointerDown={(event) =>
-                                    onGripPointerDown(event, visual)
-                                  }
+                                  className="min-w-0"
+                                  onClick={(event) => event.stopPropagation()}
                                 >
-                                  <SfSymbol
-                                    name="grip-vertical"
-                                    className="size-5"
-                                    style={{ color: MUTED }}
+                                  <NameField
+                                    value={phaseName(index)}
+                                    onCancel={() => setRenaming(null)}
+                                    onCommit={(value) => commitGroupName(`phase:${sid}`, value)}
                                   />
                                 </span>
-                              ) : null}
-                              <RowLabel
-                                className="min-w-0"
-                                label={segment.caption}
-                                locale={locale}
-                                tone="main"
-                                modified={phaseModified}
-                                onResetValue={
-                                  phaseModified
-                                    ? () => resetPhase(index)
-                                    : undefined
-                                }
-                              />
+                              ) : (
+                                <span
+                                  className="min-w-0"
+                                  onClick={
+                                    stagger
+                                      ? (event) => event.stopPropagation()
+                                      : undefined
+                                  }
+                                  onDoubleClick={
+                                    stagger
+                                      ? () => setRenaming(`phase:${sid}`)
+                                      : undefined
+                                  }
+                                >
+                                  <RowLabel
+                                    className="min-w-0"
+                                    label={phaseName(index)}
+                                    locale={locale}
+                                    tone={membership && !stagger ? "label" : "main"}
+                                    modified={phaseModified}
+                                    onResetValue={
+                                      phaseModified
+                                        ? () => resetPhase(index)
+                                        : undefined
+                                    }
+                                  />
+                                </span>
+                              )}
                             </span>
+                            {stagger ? (
+                              <ReadOnlyField
+                                ariaLabel={`${segment.caption} (${unit})`}
+                                label={String(Math.round(clip.duration))}
+                                unit={unit}
+                              />
+                            ) : (
+                              lineField
+                            )}
                             {stagger ? (
                               <button
                                 type="button"
@@ -1000,7 +1292,6 @@ function TimelineDockBody({
                                     : PANEL_COPY.expand(segment.caption),
                                   locale,
                                 )}
-                                onClick={() => toggleLines(index)}
                                 className="inline-flex size-5 shrink-0 items-center justify-center outline-none"
                               >
                                 <SfSymbol
@@ -1013,28 +1304,20 @@ function TimelineDockBody({
                                 />
                               </button>
                             ) : null}
-                            {onEditCurve ? (
-                              <FieldButton
-                                label={tx(PANEL_COPY.editCurve, locale)}
-                                onClick={() => onEditCurve(index)}
-                              >
-                                <SfSymbol name="spline" className="size-5" />
-                              </FieldButton>
-                            ) : null}
-                            {stagger ? (
-                              <ReadOnlyField
-                                ariaLabel={`${segment.caption} (${unit})`}
-                                label={String(Math.round(clip.duration))}
-                                unit={unit}
-                              />
-                            ) : (
-                              lineField
-                            )}
                           </div>
                           {stagger && linesOpen ? (
                             <>
                               {Array.from({ length: stagger.count }, (_, k) => (
-                                <div key={k} className={childClass}>
+                                <div
+                                  key={k}
+                                  className={cn(
+                                    childClass,
+                                    sameLaneHover(laneHover, { kind: "line", index, line: k }) &&
+                                      "bg-[color:var(--sp-fill-hover)]",
+                                  )}
+                                  onPointerEnter={() => hoverLane({ kind: "line", index, line: k })}
+                                  onPointerLeave={() => hoverLane(null)}
+                                >
                                   <span
                                     className="min-w-0 flex-1 truncate text-[15px] leading-[20px]"
                                     style={{ color: MUTED }}
@@ -1044,25 +1327,12 @@ function TimelineDockBody({
                                   {lineField}
                                 </div>
                               ))}
-                              <div className={childClass}>
-                                <RowLabel
-                                  className="min-w-0 flex-1"
-                                  label={tx(PANEL_COPY.staggerStep, locale)}
-                                  locale={locale}
-                                  tone="main"
-                                />
-                                <NumberField
-                                  ariaLabel={`${segment.caption}: ${tx(PANEL_COPY.staggerStep, locale)} (${unit})`}
-                                  max={stagger.stepMax}
-                                  min={0}
-                                  onCommit={(next) => applyStep(index, next)}
-                                  step={step}
-                                  unit={unit}
-                                  value={Math.round(stagger.step)}
-                                />
-                              </div>
                             </>
                           ) : null}
+                        </div>
+                      );
+                            })
+                            : null}
                         </div>
                       );
                     })}
@@ -1090,7 +1360,20 @@ function TimelineDockBody({
                       defaults={defaultLayout}
                       onResetPhase={resetPhase}
                       collapsed={collapsed}
-                      stepRows
+                      onEditCurve={onEditCurve}
+                      curveOptions={curveOptions}
+                      curveSections={curveSections}
+                      curveValue={curveValue}
+                      onPickCurve={onPickCurve}
+                      clipGroups={clipGroups}
+                      groupLeads={groupLeads}
+                      foldedGroups={foldedGroups}
+                      onMakeStep={makeClipStep}
+                      onGroup={groupClips}
+                      onUngroup={ungroupClips}
+                      laneHover={laneHover}
+                      onLaneHover={hoverLane}
+                      openMenuRef={openClipMenu}
                     />
                     <div
                       aria-hidden
@@ -1142,6 +1425,8 @@ function TimelineTargets({
     };
   }, [targets]);
 
+  const curveLibrary = useCurveLibrary(panelId);
+
   if (!active) return null;
 
   function switchTo(id: string) {
@@ -1160,6 +1445,22 @@ function TimelineTargets({
     locale,
     active.defaultSettings,
   );
+  const curveExtras = savedCurveExtras(curveLibrary.curves);
+  const curveSections = easingPresetSections(
+    {
+      css: tx(PANEL_COPY.curveGroupCss, locale),
+      out: tx(PANEL_COPY.curveGroupOut, locale),
+      inOut: tx(PANEL_COPY.curveGroupInOut, locale),
+      scene: tx(PANEL_COPY.curveGroupScene, locale),
+      saved: tx(PANEL_COPY.curveGroupSaved, locale),
+    },
+    [],
+    curveLibrary.curves,
+  );
+  const curveOptions = curveSections.flatMap((section) => section.options);
+  const easingRecord = (
+    active.settings as { easings?: Record<string, CubicBezier> }
+  ).easings;
   const editCurve =
     active.onEditCurve ??
     (active.easingIds && panelId
@@ -1176,10 +1477,44 @@ function TimelineTargets({
       {...props}
       panelId={panelId}
       locale={locale}
-      onChange={(next) =>
-        active.onSettingsChange(patchPlayerClips(active.player, next))
-      }
+      onChange={(next) => {
+        const patch = patchPlayerClips<any>(active.player, next);
+        if (!recordPanelChange(panelId, patch)) active.onSettingsChange(patch);
+      }}
       onEditCurve={editCurve}
+      curveOptions={active.easingIds ? curveOptions : undefined}
+      curveSections={active.easingIds ? curveSections : undefined}
+      curveValue={
+        active.easingIds
+          ? (phase) => {
+              const id = active.easingIds?.[phase];
+              const easing = id ? easingRecord?.[id] : undefined;
+              if (!id || !easing) return;
+              return matchEasingPreset(easing, curveExtras);
+            }
+          : undefined
+      }
+      onPickCurve={
+        active.easingIds
+          ? (indices, presetId) => {
+              const raw = easingForPreset(presetId, curveExtras);
+              const parsed = raw ? parseBezierInput(raw) : null;
+              if (!parsed) return;
+              const next = { ...easingRecord };
+              let wrote = false;
+              for (const index of indices) {
+                const id = active.easingIds?.[index];
+                if (!id) continue;
+                next[id] = parsed;
+                wrote = true;
+              }
+              if (wrote) {
+                const patch = { easings: next } as Partial<typeof active.settings>;
+                if (!recordPanelChange(panelId, patch)) active.onSettingsChange(patch);
+              }
+            }
+          : undefined
+      }
       targetOptions={targets.map((target) => ({
         id: targetId(target),
         label: tx(target.player.label, locale),
@@ -1246,4 +1581,39 @@ export function timelinePropsFromPlayer<TSettings>(
             segments: playerSegments(player, defaultSettings, locale),
           },
   };
+}
+
+function NameField({
+  value,
+  onCommit,
+  onCancel,
+}: {
+  value: string;
+  onCommit: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const skip = useRef(false);
+  return (
+    <input
+      autoFocus
+      defaultValue={value}
+      aria-label={value}
+      className="h-5 min-w-0 flex-1 bg-transparent text-[15px] leading-[20px] text-[color:var(--sp-muted)] outline-none"
+      onPointerDown={(event) => event.stopPropagation()}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          event.stopPropagation();
+          skip.current = true;
+          onCancel();
+        } else if (event.key === "Enter") {
+          event.preventDefault();
+          onCommit(event.currentTarget.value);
+        }
+      }}
+      onBlur={(event) => {
+        if (!skip.current) onCommit(event.currentTarget.value);
+      }}
+    />
+  );
 }

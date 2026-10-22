@@ -43,7 +43,7 @@ export function App() {
           const bars = [...(barsRef.current?.children ?? [])] as HTMLElement[];
           const total = Math.max(1, s.reelTotalMs);
           const [inClip, barsClip] = layoutClips([
-            { duration: s.reelInMs },
+            { duration: s.reelInMs, start: s.reelInStartMs },
             {
               duration: staggerSpan(s.reelBarsMs, { count: s.columns, step: s.reelBarsStepMs }),
               start: s.reelBarsStartMs,

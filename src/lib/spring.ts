@@ -2,6 +2,64 @@
 
 export type SpringConfig = { stiffness: number; damping: number; mass: number };
 
+export type SpringPreset = SpringConfig & {
+  id: string;
+  ru: string;
+  en: string;
+};
+
+/** Templates in the spring dropdown. A curve that matches none of them is «Своя». */
+export const SPRING_PRESET_GROUPS: {
+  key: "smooth" | "snappy" | "overshoot";
+  presets: readonly SpringPreset[];
+}[] = [
+  {
+    key: "smooth",
+    presets: [
+      { id: "gentle", ru: "Мягкая", en: "Gentle", stiffness: 120, damping: 22, mass: 1 },
+      { id: "smooth", ru: "Плавная", en: "Smooth", stiffness: 170, damping: 26, mass: 1 },
+    ],
+  },
+  {
+    key: "snappy",
+    presets: [
+      { id: "snappy", ru: "Быстрая", en: "Snappy", stiffness: 400, damping: 36, mass: 1 },
+      { id: "stiff", ru: "Жёсткая", en: "Stiff", stiffness: 700, damping: 48, mass: 1 },
+    ],
+  },
+  {
+    key: "overshoot",
+    presets: [
+      { id: "bounce", ru: "Упругая", en: "Bouncy", stiffness: 280, damping: 12, mass: 1 },
+      { id: "wobble", ru: "Качели", en: "Wobble", stiffness: 180, damping: 8, mass: 1 },
+    ],
+  },
+];
+
+export function springPresetById(id: string): SpringPreset | undefined {
+  for (const group of SPRING_PRESET_GROUPS) {
+    const found = group.presets.find((preset) => preset.id === id);
+    if (found) return found;
+  }
+  return undefined;
+}
+
+export function matchSpringPreset(value: SpringConfig): string {
+  const near = (a: number, b: number) => Math.abs(a - b) < 0.05;
+  for (const group of SPRING_PRESET_GROUPS) {
+    for (const preset of group.presets) {
+      if (
+        near(preset.stiffness, value.stiffness) &&
+        near(preset.damping, value.damping) &&
+        near(preset.mass, value.mass)
+      ) {
+        return preset.id;
+      }
+    }
+  }
+  return "custom";
+}
+
 /** Settled = within 0.1% of the target. */
 export const SPRING_REST = 0.001;
 const MAX_MS = 10_000;

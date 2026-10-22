@@ -213,7 +213,14 @@ export const P = defineParams({
     label: L("Появление", "Appear"),
     total: { key: "reelTotalMs", default: 1400 },
     phases: [
-      { key: "reelInMs", default: 500, caption: L("карточка", "card"), kind: "phase", max: 2000 },
+      {
+        key: "reelInMs",
+        default: 500,
+        caption: L("карточка", "card"),
+        kind: "phase",
+        max: 2000,
+        start: { key: "reelInStartMs", default: 0 },
+      },
       {
         key: "reelBarsMs",
         default: 300,

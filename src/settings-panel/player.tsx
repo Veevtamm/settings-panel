@@ -378,6 +378,7 @@ export function PlayerTrack({
       aria-valuemin={0}
       aria-valuemax={1}
       aria-valuenow={Number(state.q.toFixed(3))}
+      aria-valuetext={`${momentMs(total, state.q)} ${unit}`}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -426,6 +427,19 @@ export function PlayerTrack({
         className="pointer-events-none absolute inset-y-0 z-20 w-[2px] -translate-x-1/2 bg-[color:var(--sp-knob-off)]"
         style={{ left: trackMarkerLeft(timeToQ(state.q * total)) }}
       />
+      <span
+        aria-hidden
+        className="pointer-events-none absolute top-1/2 z-20 whitespace-nowrap font-mono text-[12px] leading-none tabular-nums text-[color:var(--sp-fg)]"
+        style={{
+          left: trackMarkerLeft(timeToQ(state.q * total)),
+          transform:
+            timeToQ(state.q * total) > 0.85
+              ? "translate(calc(-100% - 6px), -50%)"
+              : "translate(6px, -50%)",
+        }}
+      >
+        {momentMs(total, state.q)} {unit}
+      </span>
       {state.pins.map((pin) => {
         const pinLabel = `${momentMs(total, pin)} ${unit}`;
         return (

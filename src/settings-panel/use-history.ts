@@ -26,6 +26,28 @@ const LIMIT = 100;
 const TYPING =
   "input:not([type=range]):not([type=checkbox]):not([type=radio]), textarea, select, [contenteditable=true]";
 
+type SettingsRecorder = (patch: object, label?: string) => void;
+const recorders = new Map<string, SettingsRecorder>();
+
+/** Panel registers its session history so the timeline writes into the same stack. */
+export function bindSettingsHistory(panelId: string, record: SettingsRecorder) {
+  recorders.set(panelId, record);
+  return () => {
+    if (recorders.get(panelId) === record) recorders.delete(panelId);
+  };
+}
+
+/** Record and apply when this panel's history is mounted. Otherwise the caller applies. */
+export function recordPanelChange(
+  panelId: string | undefined,
+  patch: object,
+): boolean {
+  const record = panelId ? recorders.get(panelId) : undefined;
+  if (!record) return false;
+  record(patch);
+  return true;
+}
+
 function sameKeys(a: object, b: object) {
   const ak = Object.keys(a);
   const bk = Object.keys(b);

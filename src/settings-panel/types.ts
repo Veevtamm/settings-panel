@@ -352,7 +352,7 @@ export type TimelineTarget<TSettings = any> = {
   settings: TSettings;
   defaultSettings?: TSettings;
   onSettingsChange: (patch: Partial<TSettings>) => void;
-  /** Phase index → `EasingTarget.id`; curve 28 opens that Bezier in the panel. */
+  /** Phase index → `EasingTarget.id`. The timeline menu assigns a template or a saved curve onto it. */
   easingIds?: readonly (string | undefined)[];
   /** Custom curve handler; wins over `easingIds`. */
   onEditCurve?: (phase: number) => void;

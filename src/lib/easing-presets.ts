@@ -59,22 +59,67 @@ export const EASING_PRESET_LIST: EasingPresetId[] = [
 ];
 
 export const EASING_PRESET_GROUPS: {
-  title: string;
+  key: "css" | "out" | "inOut";
   ids: Exclude<EasingPresetId, "custom">[];
 }[] = [
   {
-    title: "CSS",
+    key: "css",
     ids: ["linear", "ease", "ease-in", "ease-out", "ease-in-out"],
   },
   {
-    title: "Out",
+    key: "out",
     ids: ["easeOutQuad", "easeOutCubic", "easeOutQuart", "easeOutExpo"],
   },
   {
-    title: "In Out",
+    key: "inOut",
     ids: ["easeInOutQuart", "easeInOutExpo", "easeInOutBack"],
   },
 ];
+
+/** Built-in groups, then scene extras and saved curves when those lists are not empty. */
+export function easingPresetSections(
+  titles: { css: string; out: string; inOut: string; scene: string; saved: string },
+  scene: readonly ExtraEasingPreset[] = [],
+  saved: readonly { id: string; label: string }[] = [],
+): { title: string; options: { id: string; label: string }[] }[] {
+  const sections: { title: string; options: { id: string; label: string }[] }[] = [
+    {
+      title: titles.css,
+      options: EASING_PRESET_GROUPS[0].ids.map((id) => ({
+        id,
+        label: EASING_PRESET_LABELS[id],
+      })),
+    },
+    {
+      title: titles.out,
+      options: EASING_PRESET_GROUPS[1].ids.map((id) => ({
+        id,
+        label: EASING_PRESET_LABELS[id],
+      })),
+    },
+    {
+      title: titles.inOut,
+      options: EASING_PRESET_GROUPS[2].ids.map((id) => ({
+        id,
+        label: EASING_PRESET_LABELS[id],
+      })),
+    },
+  ];
+  const sceneOptions = extraEasingPresets(scene).map((extra) => ({
+    id: extra.id,
+    label: extra.label,
+  }));
+  if (sceneOptions.length > 0) {
+    sections.push({ title: titles.scene, options: sceneOptions });
+  }
+  if (saved.length > 0) {
+    sections.push({
+      title: titles.saved,
+      options: saved.map((curve) => ({ id: curve.id, label: curve.label })),
+    });
+  }
+  return sections;
+}
 
 export function extraEasingPresets(
   extras: readonly ExtraEasingPreset[] = [],

@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
-import { placeSelectOverlay } from "../lib/select-overlay";
+import { SELECT_LIST_MAX_PX, placeSelectOverlay } from "../lib/select-overlay";
 import { SfSymbol } from "../sf-symbol";
 import { cn } from "../lib/utils";
 import {
@@ -14,6 +14,36 @@ import {
 } from "./chrome";
 import { SectionCollapse } from "./row";
 
+function selectBlocks(
+  options: readonly { id: string; label: string }[],
+  value: string,
+  groups?: readonly { title: string; ids: readonly string[] }[],
+) {
+  const byId = new Map(options.map((option) => [option.id, option]));
+  const visible = (id: string) => {
+    if (id === value) return;
+    return byId.get(id);
+  };
+  if (!groups?.length) {
+    const items = options.filter((option) => option.id !== value);
+    return items.length > 0 ? [{ title: undefined, items }] : [];
+  }
+  const grouped = new Set(groups.flatMap((group) => group.ids));
+  const blocks: { title?: string; items: { id: string; label: string }[] }[] = [];
+  const leading = options.filter(
+    (option) => option.id !== value && !grouped.has(option.id),
+  );
+  if (leading.length > 0) blocks.push({ items: leading });
+  for (const group of groups) {
+    const items = group.ids.flatMap((id) => {
+      const option = visible(id);
+      return option ? [option] : [];
+    });
+    if (items.length > 0) blocks.push({ title: group.title, items });
+  }
+  return blocks;
+}
+
 /** Figma bordered select — selected row + open options */
 export function PanelSelectList({
   value,
@@ -23,6 +53,7 @@ export function PanelSelectList({
   reduceMotion,
   className,
   optionIcon,
+  groups,
   width,
   overlay = true,
 }: {
@@ -34,6 +65,8 @@ export function PanelSelectList({
   className?: string;
   /** Icon before the label — in the trigger and in every option row. */
   optionIcon?: (id: string) => ReactNode;
+  /** Captions inside the open list. Ids missing from `options` are skipped. */
+  groups?: readonly { title: string; ids: readonly string[] }[];
   /** Fixed trigger width (px). Omit = size from className (Preset fills leftover). */
   width?: number;
   /**
@@ -217,7 +250,7 @@ export function PanelSelectList({
           role="listbox"
           aria-label={ariaLabel}
           style={{
-            maxHeight: overlay && box ? box.listMaxPx : 192,
+            maxHeight: overlay && box ? box.listMaxPx : SELECT_LIST_MAX_PX,
             ...(fadeMask
               ? {
                   maskImage: fadeMask,
@@ -226,11 +259,17 @@ export function PanelSelectList({
               : undefined),
           }}
         >
-          {options
-            .filter((option) => option.id !== value)
-            .map((option) => (
-              <li key={option.id}>
+          {selectBlocks(options, value, groups).map((block) => (
+            <li
+              key={block.title ?? block.items[0]?.id ?? "options"}
+              className={cn(
+                "flex flex-col gap-2",
+                block.title && "border-t border-[color:var(--sp-section-line)] pt-1.5",
+              )}
+            >
+              {block.items.map((option) => (
                 <button
+                  key={option.id}
                   type="button"
                   role="option"
                   aria-selected={false}
@@ -247,8 +286,9 @@ export function PanelSelectList({
                   {optionIcon?.(option.id)}
                   <span className="truncate">{option.label}</span>
                 </button>
-              </li>
-            ))}
+              ))}
+            </li>
+          ))}
         </ul>
       </SectionCollapse>
     </div>

@@ -1,5 +1,5 @@
-/** Open list cap — `max-h-48` on `PanelSelectList`. */
-export const SELECT_LIST_MAX_PX = 192;
+/** Open list cap. Grouped presets (three captions + rows) need to clear 192. */
+export const SELECT_LIST_MAX_PX = 280;
 const VIEW_INSET = 8;
 
 export type SelectOverlaySide = "below" | "above";

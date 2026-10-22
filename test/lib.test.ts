@@ -9,11 +9,17 @@ import { hexWithAlpha, normalizeHex } from "../src/lib/hex";
 import {
   captionsAtQ,
   fitClipsToTotal,
+  evenClipStarts,
   layoutClips,
   resolveTotal,
+  shiftClipGroup,
+  spaceClipStarts,
   staggerSpan,
   waapiSpan,
 } from "../src/lib/player-clips";
+import { appendSavedCurve, parseSavedCurves } from "../src/lib/curve-library";
+import { easingPresetSections, matchEasingPreset } from "../src/lib/easing-presets";
+import { matchSpringPreset, springPresetById } from "../src/lib/spring";
 import { parseSkipCells, serializeSkipCells } from "../src/lib/skip-cells";
 
 describe("evalNumberExpression", () => {
@@ -83,6 +89,49 @@ describe("player clips", () => {
     expect(resolveTotal(900, laid, 0, true)).toBe(900);
   });
 
+  it("shifts a selected group by one delta and stops at the ends", () => {
+    const laid = layoutClips([
+      { duration: 100, start: 40 },
+      { duration: 100, start: 240 },
+      { duration: 80, start: 10 },
+    ]);
+    const origins = new Map([
+      [0, 40],
+      [1, 240],
+    ]);
+    expect(shiftClipGroup(laid, origins, 50, 1000).map((clip) => clip.start)).toEqual([
+      90, 290, 10,
+    ]);
+    expect(shiftClipGroup(laid, origins, -100, 1000).map((clip) => clip.start)).toEqual([
+      0, 200, 10,
+    ]);
+    expect(shiftClipGroup(laid, origins, 800, 400).map((clip) => clip.start)).toEqual([
+      100, 300, 10,
+    ]);
+  });
+
+  it("spaces a selection by the outer gap, or by the first duration when stacked", () => {
+    const spread = layoutClips([
+      { duration: 100, start: 0 },
+      { duration: 100, start: 100 },
+      { duration: 100, start: 400 },
+    ]);
+    expect(evenClipStarts(spread, [0, 1, 2], 10, 2000).map((clip) => clip.start)).toEqual([
+      0, 200, 400,
+    ]);
+    const stacked = layoutClips([
+      { duration: 100, start: 0 },
+      { duration: 80, start: 0 },
+      { duration: 80, start: 0 },
+    ]);
+    expect(evenClipStarts(stacked, [0, 1, 2], 10, 2000).map((clip) => clip.start)).toEqual([
+      0, 100, 200,
+    ]);
+    expect(spaceClipStarts(spread, [0, 1, 2], 50, 2000).map((clip) => clip.start)).toEqual([
+      0, 50, 100,
+    ]);
+  });
+
   it("trims clips to the timeline", () => {
     const laid = layoutClips([{ duration: 800, start: 400 }]);
     const [clip] = fitClipsToTotal(laid, 1000, 10);
@@ -123,5 +172,53 @@ describe("cubic bezier", () => {
     const curve = { x1: 0.22, y1: 1, x2: 0.36, y2: 1 };
     expect(formatBezierInput(curve)).toBe("0.22, 1, 0.36, 1");
     expect(parseBezierInput("0.22, 1, 0.36, 1")).toEqual(curve);
+  });
+});
+
+describe("saved curves", () => {
+  it("keeps a named curve and matches it back", () => {
+    const curve = { x1: 0.6, y1: 0, x2: 0, y2: 1 };
+    const saved = appendSavedCurve([], "Dive", curve);
+    expect(saved).toHaveLength(1);
+    expect(saved[0]?.label).toBe("Dive");
+    expect(parseSavedCurves(saved)).toEqual(saved);
+    expect(appendSavedCurve(saved, "   ", curve)).toEqual(saved);
+    expect(
+      matchEasingPreset(curve, [
+        { id: saved[0]!.id, label: "Dive", easing: saved[0]!.easing },
+      ]),
+    ).toBe(saved[0]?.id);
+  });
+});
+
+describe("preset groups", () => {
+  it("splits curves into css, out, in-out, then scene and saved", () => {
+    const sections = easingPresetSections(
+      { css: "CSS", out: "Out", inOut: "In Out", scene: "Scene", saved: "Saved" },
+      [{ id: "diveIn", label: "Dive In", easing: "cubic-bezier(0.6, 0, 0, 1)" }],
+      [{ id: "c1", label: "Мягкая" }],
+    );
+    expect(sections.map((section) => section.title)).toEqual([
+      "CSS",
+      "Out",
+      "In Out",
+      "Scene",
+      "Saved",
+    ]);
+    expect(sections[0]?.options.map((option) => option.id)).toContain("linear");
+    expect(sections[4]?.options).toEqual([{ id: "c1", label: "Мягкая" }]);
+  });
+
+  it("matches a spring template and leaves a tuned one custom", () => {
+    const smooth = springPresetById("smooth");
+    expect(smooth).toBeDefined();
+    expect(
+      matchSpringPreset({
+        stiffness: smooth!.stiffness,
+        damping: smooth!.damping,
+        mass: smooth!.mass,
+      }),
+    ).toBe("smooth");
+    expect(matchSpringPreset({ stiffness: 170, damping: 12, mass: 1 })).toBe("custom");
   });
 });

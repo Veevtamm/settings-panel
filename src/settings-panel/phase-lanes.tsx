@@ -2,15 +2,23 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
-import { TOTAL_AUTO, staggerSpan, type LaidClip } from "../lib/player-clips";
+import {
+  shiftClipGroup,
+  TOTAL_AUTO,
+  staggerSpan,
+  type LaidClip,
+} from "../lib/player-clips";
 import { clampNumber, cn } from "../lib/utils";
-import { bindPointerDrag, pickerChrome } from "./chrome";
+import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { bindPointerDrag, fieldValueSans, GLASS, pickerChrome } from "./chrome";
+import { NumberField } from "./fields";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { snapStep } from "./number";
 import {
@@ -32,15 +40,72 @@ const DRAG_EXIT_PX = 24;
 
 type LaneDrag =
   | { type: "in" | "out"; i: number }
-  | { type: "body"; i: number; grab: number }
-  | { type: "press"; i: number; grab: number }
+  | { type: "body"; i: number; grab: number; origins: ReadonlyMap<number, number> }
+  | { type: "press"; i: number; grab: number; origins: ReadonlyMap<number, number> }
+  /** Drag the group's span bar: one delta for every member, durations stay. */
+  | { type: "group"; i: number; grab: number; origins: ReadonlyMap<number, number> }
   /** E1: line `k` ≥ 1 of a staggered phase — dragging it changes the step. */
   | { type: "step"; i: number; k: number; grab: number };
+
+/** Inspector row and its bar share one hover. */
+export type LaneHover =
+  | { kind: "group"; id: string }
+  | { kind: "phase"; index: number }
+  | { kind: "line"; index: number; line: number };
+
+export function sameLaneHover(a: LaneHover | null, b: LaneHover | null) {
+  if (a === b) return true;
+  if (a == null || b == null || a.kind !== b.kind) return false;
+  if (a.kind === "group" && b.kind === "group") return a.id === b.id;
+  if (a.kind === "phase" && b.kind === "phase") return a.index === b.index;
+  return a.kind === "line" && b.kind === "line" && a.index === b.index && a.line === b.line;
+}
+
+export type ClipMenuRequest = {
+  phase: number;
+  indices: number[];
+  x: number;
+  y: number;
+  theme: string;
+  font: string;
+};
+
+/** Theme and font from the row that was right-clicked, for the clip menu portal. */
+export function clipMenuFromPointer(
+  event: { clientX: number; clientY: number; currentTarget: Element },
+  phase: number,
+  indices: number[],
+): ClipMenuRequest {
+  const el = event.currentTarget;
+  return {
+    phase,
+    indices,
+    x: event.clientX,
+    y: event.clientY,
+    theme: el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ?? "dark",
+    font: closestPanelFont(el),
+  };
+}
+
+/** Shift adds a clip or removes it on a second click. ⌘ does the same. Ctrl does too, except on macOS, where Ctrl-click is the context menu. */
+function clipToggleModifier(event: {
+  shiftKey: boolean;
+  metaKey: boolean;
+  ctrlKey: boolean;
+}) {
+  if (event.shiftKey || event.metaKey) return true;
+  const mac =
+    typeof navigator !== "undefined" &&
+    /Mac|iPhone|iPad/.test(navigator.platform);
+  return !mac && event.ctrlKey;
+}
 
 /**
  * Элементы — one lane per clip (chrome Field 28). Caption + duration sit left
  * in the field, not in the clip. Body drag slides the clip and shows start/end
- * badges; in/out handles trim one edge. Double-click the lane (the whole
+ * badges; in/out handles trim one edge. Shift-click adds a clip or removes
+ * it on a second click (⌘, and Ctrl off macOS, do the same); dragging a selected clip moves the
+ * whole group by the same delta. Double-click the lane (the whole
  * field, not just the clip) = solo. A staggered phase adds one lane per line
  * under its own (E1); a moved clip leaves a dashed ghost at its default (C2).
  */
@@ -63,6 +128,20 @@ export function PhaseLanes({
   onResetPhase,
   collapsed,
   stepRows = false,
+  onEditCurve,
+  curveOptions,
+  curveSections,
+  curveValue,
+  onPickCurve,
+  clipGroups,
+  groupLeads,
+  foldedGroups,
+  onMakeStep,
+  onGroup,
+  onUngroup,
+  laneHover = null,
+  onLaneHover,
+  openMenuRef,
 }: {
   ariaLabel: string;
   segments: readonly PlayerSegment[];
@@ -90,6 +169,31 @@ export function PhaseLanes({
   collapsed?: ReadonlySet<number>;
   /** Empty lane under the lines, level with the inspector's «Шаг» row. */
   stepRows?: boolean;
+  /** Right-click opens the Bezier window. Skipped when `onPickCurve` assigns from the list. */
+  onEditCurve?: (phase: number) => void;
+  /** Templates and saved curves. With `onPickCurve`, the menu picks one instead of opening the editor. */
+  curveOptions?: readonly { id: string; label: string }[];
+  curveSections?: readonly {
+    title: string;
+    options: readonly { id: string; label: string }[];
+  }[];
+  /** Matched preset id for a phase, or `"custom"`. */
+  curveValue?: (phase: number) => string | undefined;
+  onPickCurve?: (indices: number[], presetId: string) => void;
+  /** User groups of phase ids. Right-click on a multi-selection can make or clear one. */
+  clipGroups?: readonly { id: string; name: string; keys: readonly string[] }[];
+  /** Phase index that draws the group span bar, level with the inspector header. */
+  groupLeads?: ReadonlySet<number>;
+  /** Folded user groups: only the span bar stays. */
+  foldedGroups?: ReadonlySet<string>;
+  onMakeStep?: (indices: number[], gap: number) => void;
+  onGroup?: (indices: number[]) => void;
+  onUngroup?: (indices: number[]) => void;
+  /** Hover shared with the inspector row for the same phase, line, or group. */
+  laneHover?: LaneHover | null;
+  onLaneHover?: (next: LaneHover | null) => void;
+  /** Inspector rows open the same menu as the bars. */
+  openMenuRef?: { current: ((menu: ClipMenuRequest) => void) | null };
 }) {
   const state = usePlayerState(controller);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -109,6 +213,45 @@ export function PhaseLanes({
     theme: string;
     font: string;
   } | null>(null);
+  const [clipMenu, setClipMenu] = useState<{
+    i: number;
+    indices: number[];
+    x: number;
+    y: number;
+    theme: string;
+    font: string;
+  } | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
+
+  useEffect(() => {
+    if (!openMenuRef) return;
+    openMenuRef.current = (menu) => {
+      setSelected(new Set(menu.indices));
+      setClipMenu({
+        i: menu.phase,
+        indices: menu.indices,
+        x: menu.x,
+        y: menu.y,
+        theme: menu.theme,
+        font: menu.font,
+      });
+    };
+    return () => {
+      openMenuRef.current = null;
+    };
+  }, [openMenuRef]);
+
+  useEffect(() => {
+    if (selected.size === 0) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      const tag = (event.target as HTMLElement | null)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+      setSelected(new Set());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selected]);
   const layout = layoutOf(segments);
   const rows = (
     rowOrder ?? segments.map((_, index) => index)
@@ -278,16 +421,39 @@ export function PhaseLanes({
     controller.pause();
   }
 
+  function originsFor(indices: Iterable<number>) {
+    const origins = new Map<number, number>();
+    for (const index of indices) {
+      const clip = layout[index];
+      if (clip) origins.set(index, clip.start);
+    }
+    return origins;
+  }
+
   function onBarDown(i: number, event: ReactPointerEvent<HTMLDivElement>) {
     if (event.button !== 0) return;
     if ((event.target as HTMLElement).closest("[data-phase-bar]")) return;
+    if (clipToggleModifier(event)) {
+      event.preventDefault();
+      event.stopPropagation();
+      setSelected((prev) => {
+        const next = new Set(prev);
+        if (next.has(i)) next.delete(i);
+        else next.add(i);
+        return next;
+      });
+      return;
+    }
     event.preventDefault();
     releaseSoloIfOther(i);
+    const group = selected.has(i) && selected.size > 1 ? selected : new Set([i]);
+    if (group.size === 1) setSelected(group);
     pointer0.current = { x: event.clientX, moved: false };
     const next: LaneDrag = {
       type: "press",
       i,
       grab: tFromClientX(i, event.clientX) - layout[i].start,
+      origins: originsFor(group),
     };
     dragRef.current = next;
     setDrag(next);
@@ -344,13 +510,54 @@ export function PhaseLanes({
       showEdgeHints(current.i, [clip.start + current.k * next]);
       return;
     }
+    if (current.type === "group") {
+      if (!pointer0.current.moved) return;
+      const span0 = Math.min(...current.origins.values());
+      const shifted = shiftClipGroup(
+        layout,
+        current.origins,
+        snapStep(t - current.grab - span0, step),
+        safeScale,
+      );
+      onChange(emitClips(shifted, stretch ? TOTAL_AUTO : total, segments));
+      const start = Math.min(
+        ...shifted.flatMap((item, index) =>
+          current.origins.has(index) ? [item.start] : [],
+        ),
+      );
+      const end = Math.max(
+        ...shifted.flatMap((item, index) =>
+          current.origins.has(index) ? [item.end] : [],
+        ),
+      );
+      showEdgeHints(current.i, [start, end]);
+      return;
+    }
     if (current.type === "press") {
       if (!pointer0.current.moved) return;
-      const next: LaneDrag = { type: "body", i: current.i, grab: current.grab };
+      const next: LaneDrag = {
+        type: "body",
+        i: current.i,
+        grab: current.grab,
+        origins: current.origins,
+      };
       dragRef.current = next;
       setDrag(next);
     }
     if (current.type === "press" || current.type === "body") {
+      if (current.origins.size > 1) {
+        const origin = current.origins.get(current.i) ?? clip.start;
+        const shifted = shiftClipGroup(
+          layout,
+          current.origins,
+          snapStep(t - current.grab - origin, step),
+          safeScale,
+        );
+        onChange(emitClips(shifted, stretch ? TOTAL_AUTO : total, segments));
+        const moved = shifted[current.i];
+        if (moved) showEdgeHints(current.i, [moved.start, moved.end]);
+        return;
+      }
       const start = clampNumber(
         t - current.grab,
         0,
@@ -383,7 +590,7 @@ export function PhaseLanes({
     const kind =
       drag?.type === "in" || drag?.type === "out" || drag?.type === "step"
         ? "ew"
-        : drag?.type === "body"
+        : drag?.type === "body" || drag?.type === "group"
           ? "grab"
           : null;
     const html = document.documentElement;
@@ -429,6 +636,7 @@ export function PhaseLanes({
     const id = `${i}:${k}`;
     const lit =
       hoverLine === id ||
+      (laneHover?.kind === "line" && laneHover.index === i && laneHover.line === k) ||
       (drag?.type === "step" && drag.i === i && drag.k === k);
     const start = clip.start + k * stagger.step;
     const name = `${stagger.caption} ${k + 1}`;
@@ -438,10 +646,16 @@ export function PhaseLanes({
         role="group"
         aria-label={`${name} ${Math.round(start)}${unit ? ` ${unit}` : ""}`}
         onPointerEnter={() => {
-          if (dragRef.current === null) setHoverLine(id);
+          if (dragRef.current === null) {
+            setHoverLine(id);
+            onLaneHover?.({ kind: "line", index: i, line: k });
+          }
         }}
         onPointerLeave={() => {
-          if (dragRef.current === null) setHoverLine(null);
+          if (dragRef.current === null) {
+            setHoverLine(null);
+            onLaneHover?.(null);
+          }
         }}
         onPointerDown={() => releaseSoloIfOther(i)}
         onDoubleClick={() => toggleSolo(i)}
@@ -527,9 +741,16 @@ export function PhaseLanes({
         const clip = layout[i];
         const segment = segments[i];
         if (!clip || !segment) return null;
-        const active = hover === i || drag?.i === i;
+        const active =
+          hover === i ||
+          (laneHover?.kind === "phase" && laneHover.index === i) ||
+          drag?.i === i;
         const solo = state.solo?.phase === i;
-        const lit = active || solo;
+        const picked = selected.has(i);
+        const groupDrag =
+          (drag?.type === "body" || drag?.type === "press") &&
+          drag.origins.has(i);
+        const lit = active || solo || groupDrag;
         const startQ = timeToViewQ(clip.start);
         const spanQ = clip.duration / viewSpan;
         const stagger = segment.stagger;
@@ -537,6 +758,11 @@ export function PhaseLanes({
           stagger != null && stagger.count > 1 && !collapsed?.has(i)
             ? stagger.count
             : 0;
+        const userGroup = clipGroups?.find((group) =>
+          group.keys.includes(segmentKey(segment, i)),
+        );
+        const groupFolded = userGroup != null && foldedGroups?.has(userGroup.id);
+        if (groupFolded && !groupLeads?.has(i)) return null;
         const base = onResetPhase ? defaults?.[i] : undefined;
         const moved =
           base != null &&
@@ -547,6 +773,131 @@ export function PhaseLanes({
             key={segment.id ?? `${segment.caption}-${i}`}
             className="flex flex-col gap-1"
           >
+            {groupLeads?.has(i) && userGroup ? (
+              <GroupSpanLane
+                name={userGroup.name}
+                start={Math.min(
+                  ...rows.flatMap((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index))
+                      ? [layout[index]?.start ?? Infinity]
+                      : [],
+                  ),
+                )}
+                end={Math.max(
+                  ...rows.flatMap((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index))
+                      ? [layout[index]?.end ?? -Infinity]
+                      : [],
+                  ),
+                )}
+                viewSpan={viewSpan}
+                timeToViewQ={timeToViewQ}
+                picked={rows
+                  .filter((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index)),
+                  )
+                  .every((index) => selected.has(index))}
+                unit={unit}
+                laneRef={
+                  groupFolded
+                    ? (el) => {
+                        laneRefs.current[i] = el;
+                      }
+                    : undefined
+                }
+                hot={laneHover?.kind === "group" && laneHover.id === userGroup.id}
+                onPointerEnter={() => {
+                  if (dragRef.current === null) {
+                    onLaneHover?.({ kind: "group", id: userGroup.id });
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (dragRef.current === null) onLaneHover?.(null);
+                }}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  const memberIndices = rows.filter((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index)),
+                  );
+                  const origins = originsFor(memberIndices);
+                  const span0 = Math.min(...origins.values());
+                  setSelected(new Set(memberIndices));
+                  releaseSoloIfOther(i);
+                  pointer0.current = { x: event.clientX, moved: false };
+                  const next: LaneDrag = {
+                    type: "group",
+                    i,
+                    grab: tFromClientX(i, event.clientX) - span0,
+                    origins,
+                  };
+                  dragRef.current = next;
+                  setDrag(next);
+                  armDrag(event.pointerId);
+                }}
+                onContextMenu={(event) => {
+                  if (!onEditCurve && !onPickCurve && !onMakeStep && !onGroup) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const memberIndices = rows.filter((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index)),
+                  );
+                  setSelected(new Set(memberIndices));
+                  const el = event.currentTarget;
+                  setClipMenu({
+                    i,
+                    indices: memberIndices,
+                    x: event.clientX,
+                    y: event.clientY,
+                    theme:
+                      el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
+                      "dark",
+                    font: closestPanelFont(el),
+                  });
+                }}
+              />
+            ) : null}
+            {groupFolded ? null : stagger != null && stagger.count > 1 ? (
+              <GroupSpanLane
+                name={segment.caption}
+                start={clip.start}
+                end={clip.end}
+                viewSpan={viewSpan}
+                timeToViewQ={timeToViewQ}
+                picked={picked}
+                unit={unit}
+                laneRef={(el) => {
+                  laneRefs.current[i] = el;
+                }}
+                hot={lit}
+                onPointerEnter={() => {
+                  if (dragRef.current === null) {
+                    onLaneHover?.({ kind: "phase", index: i });
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (dragRef.current === null) onLaneHover?.(null);
+                }}
+                onPointerDown={(event) => onBarDown(i, event)}
+                onContextMenu={(event) => {
+                  if (!onEditCurve && !onPickCurve && !onMakeStep && !onGroup) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setSelected(new Set([i]));
+                  const el = event.currentTarget;
+                  setClipMenu({
+                    i,
+                    indices: [i],
+                    x: event.clientX,
+                    y: event.clientY,
+                    theme:
+                      el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
+                      "dark",
+                    font: closestPanelFont(el),
+                  });
+                }}
+              />
+            ) : groupFolded ? null : (
             <div
               ref={(el) => {
                 laneRefs.current[i] = el;
@@ -555,19 +906,24 @@ export function PhaseLanes({
                 if (dragRef.current !== null) return;
                 setHover(i);
                 setNearEdge(edgeNear(i, event.clientX));
+                onLaneHover?.({ kind: "phase", index: i });
               }}
               onPointerMove={onHoverMove}
               onPointerLeave={() => {
                 if (dragRef.current !== null) return;
                 setHover(null);
                 setNearEdge(null);
+                onLaneHover?.(null);
               }}
               role="button"
               tabIndex={0}
               aria-pressed={solo}
               aria-label={`${segment.caption} ${Math.round(clip.duration)}${unit ? ` ${unit}` : ""}`}
               title={tx(solo ? PANEL_COPY.clearSolo : PANEL_COPY.soloPhase, locale)}
-              onPointerDown={() => releaseSoloIfOther(i)}
+              onPointerDown={(event) => {
+                releaseSoloIfOther(i);
+                if (event.target === event.currentTarget) setSelected(new Set());
+              }}
               onDoubleClick={() => toggleSolo(i)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") {
@@ -625,13 +981,36 @@ export function PhaseLanes({
               ) : null}
               <div
                 onPointerDown={(event) => onBarDown(i, event)}
+                onContextMenu={(event) => {
+                  if (!onEditCurve && !onPickCurve && !onMakeStep && !onGroup) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const indices =
+                    selected.has(i) && selected.size > 1 ? [...selected] : [i];
+                  if (indices.length === 1) setSelected(new Set(indices));
+                  const el = event.currentTarget;
+                  setClipMenu({
+                    i,
+                    indices,
+                    x: event.clientX,
+                    y: event.clientY,
+                    theme:
+                      el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
+                      "dark",
+                    font: closestPanelFont(el),
+                  });
+                }}
+                data-selected={picked ? "" : undefined}
                 className={cn(
                   "absolute top-1/2 h-[22px] min-w-0 -translate-y-1/2 cursor-grab touch-none overflow-hidden rounded-[2px]",
                   drag?.type === "body" && drag.i === i && "cursor-grabbing",
                   ((drag?.i === i && (drag.type === "in" || drag.type === "out")) ||
                     (hover === i && nearEdge != null)) &&
                     "cursor-ew-resize",
-                  lit ? "bg-[color:var(--sp-fill-strong)]" : "bg-[color:var(--sp-fill)]",
+                  picked && "shadow-[inset_0_0_0_1px_var(--sp-line-focus)]",
+                  lit || picked
+                    ? "bg-[color:var(--sp-fill-strong)]"
+                    : "bg-[color:var(--sp-fill)]",
                 )}
                 style={{
                   left: trackMarkerLeft(startQ, LANE_PAD_PX),
@@ -642,11 +1021,43 @@ export function PhaseLanes({
                 {showHandle(i, "out") ? handleAt(i, "out") : null}
               </div>
             </div>
-            {Array.from({ length: lines }, (_, k) => lineLane(i, k))}
+            )}
+            {groupFolded
+              ? null
+              : Array.from({ length: lines }, (_, k) => lineLane(i, k))}
             {lines > 0 && stepRows ? <div aria-hidden className="h-[28px]" /> : null}
           </div>
         );
       })}
+      {clipMenu ? (
+        <ClipCurveMenu
+          x={clipMenu.x}
+          y={clipMenu.y}
+          theme={clipMenu.theme}
+          font={clipMenu.font}
+          items={clipMenuItems({
+            phase: clipMenu.i,
+            indices: clipMenu.indices,
+            segments,
+            layout,
+            ceiling: total,
+            grid: step,
+            unit,
+            groups: clipGroups,
+            locale,
+            onEditCurve,
+            curveOptions,
+            curveSections,
+            curveValue,
+            onPickCurve,
+            onMakeStep,
+            onGroup,
+            onUngroup,
+            close: () => setClipMenu(null),
+          })}
+          onClose={() => setClipMenu(null)}
+        />
+      ) : null}
       {hint
         ? createPortal(
             <>
@@ -667,5 +1078,424 @@ export function PhaseLanes({
           )
         : null}
     </div>
+  );
+}
+
+function segmentKey(segment: PlayerSegment, index: number) {
+  return segment.id ?? String(index);
+}
+
+type ClipMenuItem = {
+  icon: SfSymbolName;
+  label: string;
+  onPick?: () => void;
+  /** Template or saved curve. The list stays inside the menu. */
+  curves?: {
+    value: string;
+    valueLabel: string;
+    options: readonly { id: string; label: string }[];
+    sections?: readonly {
+      title: string;
+      options: readonly { id: string; label: string }[];
+    }[];
+    onPick: (id: string) => void;
+  };
+  /** Typed step. Commits live; Enter closes the menu. */
+  step?: {
+    value: number;
+    min: number;
+    max: number;
+    step: number;
+    unit?: string;
+    onCommit: (value: number) => void;
+  };
+};
+
+/** Current interval shown in «Сделать шаг»: line step of one stagger, or the start gap of a selection. */
+function stepMenuField(
+  indices: readonly number[],
+  segments: readonly PlayerSegment[],
+  layout: readonly LaidClip[],
+  ceiling: number,
+  grid: number,
+): { value: number; min: number; max: number; step: number } | null {
+  if (indices.length === 1) {
+    const segment = segments[indices[0]];
+    if (segment?.stagger != null && segment.stagger.count > 1) {
+      return {
+        value: segment.stagger.step,
+        min: 0,
+        max: segment.stagger.stepMax,
+        step: grid,
+      };
+    }
+  }
+  const ordered = [...new Set(indices)].filter((index) => layout[index] != null);
+  ordered.sort((a, b) => layout[a].start - layout[b].start || a - b);
+  if (ordered.length < 2) return null;
+  const span = layout[ordered[ordered.length - 1]].start - layout[ordered[0]].start;
+  const gaps = ordered.length - 1;
+  const value =
+    span > grid / 2
+      ? span / gaps
+      : layout[ordered[0]].duration;
+  return {
+    value: Math.round(value),
+    min: 0,
+    max: Math.max(grid, ceiling),
+    step: grid,
+  };
+}
+
+function clipMenuItems({
+  phase,
+  indices,
+  segments,
+  layout,
+  ceiling,
+  grid,
+  unit,
+  groups,
+  locale,
+  onEditCurve,
+  curveOptions,
+  curveSections,
+  curveValue,
+  onPickCurve,
+  onMakeStep,
+  onGroup,
+  onUngroup,
+  close,
+}: {
+  phase: number;
+  indices: readonly number[];
+  segments: readonly PlayerSegment[];
+  layout: readonly LaidClip[];
+  ceiling: number;
+  grid: number;
+  unit?: string;
+  groups?: readonly { keys: readonly string[] }[];
+  locale: PanelLocale;
+  onEditCurve?: (phase: number) => void;
+  curveOptions?: readonly { id: string; label: string }[];
+  curveSections?: readonly {
+    title: string;
+    options: readonly { id: string; label: string }[];
+  }[];
+  curveValue?: (phase: number) => string | undefined;
+  onPickCurve?: (indices: number[], presetId: string) => void;
+  onMakeStep?: (indices: number[], gap: number) => void;
+  onGroup?: (indices: number[]) => void;
+  onUngroup?: (indices: number[]) => void;
+  close: () => void;
+}): ClipMenuItem[] {
+  const ids = indices.map((index) =>
+    segments[index] ? segmentKey(segments[index], index) : String(index),
+  );
+  const group = groups?.find((item) => ids.every((id) => item.keys.includes(id)));
+  const whole =
+    group != null && group.keys.length === ids.length && ids.length >= 2;
+  const items: ClipMenuItem[] = [];
+  const curveId = curveValue?.(phase);
+  if (onPickCurve && curveOptions && curveOptions.length > 0 && curveId != null) {
+    const current = curveOptions.find((option) => option.id === curveId);
+    items.push({
+      icon: "spline",
+      label: tx(PANEL_COPY.editCurve, locale),
+      curves: {
+        value: curveId,
+        valueLabel: current?.label ?? tx(PANEL_COPY.customCurve, locale),
+        options: curveOptions,
+        sections: curveSections,
+        onPick: (id) => onPickCurve([...indices], id),
+      },
+    });
+  } else if (onEditCurve) {
+    items.push({
+      icon: "spline",
+      label: tx(PANEL_COPY.editCurve, locale),
+      onPick: () => {
+        close();
+        onEditCurve(phase);
+      },
+    });
+  }
+  const stepField = stepMenuField(indices, segments, layout, ceiling, grid);
+  if (stepField && onMakeStep) {
+    items.push({
+      icon: "align-horizontal-space-around",
+      label: tx(PANEL_COPY.makeStep, locale),
+      step: {
+        ...stepField,
+        unit,
+        onCommit: (value) => onMakeStep([...indices], value),
+      },
+    });
+  }
+  if (ids.length >= 2 && onGroup && !whole) {
+    items.push({
+      icon: "folder",
+      label: tx(PANEL_COPY.groupClips, locale),
+      onPick: () => {
+        close();
+        onGroup([...indices]);
+      },
+    });
+  }
+  if (group && onUngroup && ids.length >= 2) {
+    items.push({
+      icon: "x",
+      label: tx(PANEL_COPY.ungroupClips, locale),
+      onPick: () => {
+        close();
+        onUngroup([...indices]);
+      },
+    });
+  }
+  return items;
+}
+
+/** Parent bar of a user group: the union of its clips, same lane as the inspector header. */
+function GroupSpanLane({
+  name,
+  start,
+  end,
+  viewSpan,
+  timeToViewQ,
+  picked,
+  unit,
+  laneRef,
+  hot = false,
+  onPointerEnter,
+  onPointerLeave,
+  onPointerDown,
+  onContextMenu,
+}: {
+  name: string;
+  start: number;
+  end: number;
+  viewSpan: number;
+  timeToViewQ: (t: number) => number;
+  picked: boolean;
+  unit?: string;
+  laneRef?: (el: HTMLDivElement | null) => void;
+  hot?: boolean;
+  onPointerEnter?: () => void;
+  onPointerLeave?: () => void;
+  onPointerDown: (event: ReactPointerEvent<HTMLDivElement>) => void;
+  onContextMenu: (event: React.MouseEvent<HTMLDivElement>) => void;
+}) {
+  const duration = Math.max(0, end - start);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  return (
+    <div
+      ref={laneRef}
+      role="group"
+      aria-label={`${name} ${Math.round(duration)}${unit ? ` ${unit}` : ""}`}
+      onPointerEnter={onPointerEnter}
+      onPointerLeave={onPointerLeave}
+      className={cn(
+        "h-[28px] w-full select-none",
+        pickerChrome,
+        hot && "after:border-[color:var(--sp-line-strong)]",
+      )}
+    >
+      <div
+        onPointerDown={onPointerDown}
+        onContextMenu={onContextMenu}
+        data-selected={picked ? "" : undefined}
+        className={cn(
+          "absolute top-1/2 h-[22px] min-w-0 -translate-y-1/2 cursor-grab touch-none rounded-[2px]",
+          picked && "shadow-[inset_0_0_0_1px_var(--sp-line-focus)]",
+          picked || hot ? "bg-[color:var(--sp-fill-strong)]" : "bg-[color:var(--sp-fill)]",
+        )}
+        style={{
+          left: trackMarkerLeft(timeToViewQ(start), LANE_PAD_PX),
+          width: `calc((100% - ${LANE_PAD_PX * 2}px) * ${Math.max(duration / viewSpan, 0)})`,
+        }}
+      />
+    </div>
+  );
+}
+
+/** Right-click menu on a clip bar. */
+function ClipCurveMenu({
+  x,
+  y,
+  theme,
+  font,
+  items,
+  onClose,
+}: {
+  x: number;
+  y: number;
+  theme: string;
+  font: string;
+  items: readonly ClipMenuItem[];
+  onClose: () => void;
+}) {
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState({ left: x, top: y });
+  const [curvesOpen, setCurvesOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    const menu = menuRef.current;
+    if (!menu) return;
+    const rect = menu.getBoundingClientRect();
+    const pad = 8;
+    let left = x;
+    let top = y;
+    if (left + rect.width > window.innerWidth - pad) {
+      left = window.innerWidth - pad - rect.width;
+    }
+    if (top + rect.height > window.innerHeight - pad) top = y - rect.height;
+    setPos({
+      left: Math.max(pad, left),
+      top: Math.max(pad, top),
+    });
+  }, [x, y]);
+
+  useEffect(() => {
+    const onDown = (event: PointerEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      onClose();
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    const onContext = (event: MouseEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) {
+        event.preventDefault();
+        return;
+      }
+      onClose();
+    };
+    window.addEventListener("pointerdown", onDown);
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("contextmenu", onContext);
+    window.addEventListener("scroll", onClose, true);
+    return () => {
+      window.removeEventListener("pointerdown", onDown);
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("contextmenu", onContext);
+      window.removeEventListener("scroll", onClose, true);
+    };
+  }, [onClose]);
+
+  if (items.length === 0) return null;
+  return createPortal(
+    <div
+      ref={menuRef}
+      role="menu"
+      data-settings-panel=""
+      data-panel-theme={theme}
+      data-panel-font={font}
+      className="fixed z-[130] box-content flex w-max flex-col rounded-lg border border-[color:var(--sp-line)] p-1 font-sans backdrop-blur-[8px]"
+      style={{ left: pos.left, top: pos.top, background: GLASS }}
+    >
+      {items.map((item, index) =>
+        item.curves ? (
+          <div key={item.label} className="flex flex-col">
+            <button
+              type="button"
+              aria-expanded={curvesOpen}
+              onClick={() => setCurvesOpen((open) => !open)}
+              className={cn(
+                "flex h-7 items-center gap-2 rounded px-1.5 text-left outline-none",
+                fieldValueSans,
+                "text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",
+              )}
+            >
+              <SfSymbol name={item.icon} className="size-5 shrink-0" />
+              <span className="whitespace-nowrap">{item.label}</span>
+              <span className="ml-auto whitespace-nowrap pl-3 pr-1 text-[color:var(--sp-fg)]">
+                {item.curves.valueLabel}
+              </span>
+            </button>
+            {curvesOpen ? (
+              <div className="max-h-48 overflow-y-auto">
+                {(item.curves.sections ?? [{ title: "", options: item.curves.options }]).map(
+                  (section) => (
+                    <div
+                      key={section.title || "curves"}
+                      className={cn(
+                        "flex flex-col",
+                        section.title && "mt-1 border-t border-[color:var(--sp-section-line)] pt-1",
+                      )}
+                    >
+                      {section.options.map((option) => (
+                        <button
+                          key={option.id}
+                          type="button"
+                          role="menuitem"
+                          aria-checked={option.id === item.curves?.value}
+                          onClick={() => {
+                            item.curves?.onPick(option.id);
+                            onClose();
+                          }}
+                          className={cn(
+                            "flex h-7 w-full items-center rounded px-1.5 text-left outline-none",
+                            fieldValueSans,
+                            option.id === item.curves?.value
+                              ? "text-[color:var(--sp-fg)]"
+                              : "text-[color:var(--sp-muted)]",
+                            "transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",
+                          )}
+                        >
+                          <span className="whitespace-nowrap pl-7">{option.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  ),
+                )}
+              </div>
+            ) : null}
+          </div>
+        ) : item.step ? (
+          <div
+            key={item.label}
+            role="group"
+            aria-label={item.label}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") onClose();
+            }}
+            className={cn(
+              "flex h-7 items-center gap-2 rounded px-1.5",
+              fieldValueSans,
+              "text-[color:var(--sp-muted)]",
+            )}
+          >
+            <SfSymbol name={item.icon} className="size-5 shrink-0" />
+            <span className="min-w-0 flex-1 pr-1 whitespace-nowrap">{item.label}</span>
+            <NumberField
+              ariaLabel={item.label}
+              max={item.step.max}
+              min={item.step.min}
+              onCommit={item.step.onCommit}
+              step={item.step.step}
+              unit={item.step.unit}
+              value={item.step.value}
+            />
+          </div>
+        ) : (
+        <button
+          key={item.label}
+          type="button"
+          role="menuitem"
+          autoFocus={index === 0}
+          onClick={item.onPick}
+          className={cn(
+            "flex h-7 items-center gap-2 rounded px-1.5 text-left outline-none",
+            fieldValueSans,
+            "text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)] focus-visible:bg-[color:var(--sp-fill-hover)] focus-visible:text-[color:var(--sp-fg)]",
+          )}
+        >
+          <SfSymbol name={item.icon} className="size-5 shrink-0" />
+          <span className="pr-1 whitespace-nowrap">{item.label}</span>
+        </button>
+        ),
+      )}
+    </div>,
+    document.body,
   );
 }

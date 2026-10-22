@@ -16,9 +16,11 @@ import {
   parseBezierInput,
   type CubicBezier,
 } from "../lib/cubic-bezier";
+import { savedCurveExtras } from "../lib/curve-library";
 import {
+  EASING_PRESET_LABELS,
   easingForPreset,
-  easingPresetOptions,
+  easingPresetSections,
   matchEasingPreset,
 } from "../lib/easing-presets";
 import {
@@ -68,6 +70,7 @@ import {
   dockBarButtonClass,
   SUBSECTION_HEADER_PX,
   fieldChrome,
+  fieldValueSans,
   pickActive,
   pickEase,
   pickIdle,
@@ -153,12 +156,18 @@ import {
   labelsByKey,
 } from "./change-model";
 import { useCopyFlash } from "./use-copy-flash";
-import { useSettingsHistory } from "./use-history";
+import { bindSettingsHistory, useSettingsHistory } from "./use-history";
 import { usePanelSnapshots } from "./use-snapshots";
 import { useSettingsTransfer } from "./use-transfer";
 import { SettingsTransferMenu } from "./transfer-menu";
 import { SpringEditor } from "./spring-editor";
-import type { SpringConfig } from "../lib/spring";
+import { useCurveLibrary } from "./use-curve-library";
+import {
+  SPRING_PRESET_GROUPS,
+  matchSpringPreset,
+  springPresetById,
+  type SpringConfig,
+} from "../lib/spring";
 import type { SpringTarget } from "./types";
 
 const NO_SPRING_TARGETS: readonly SpringTarget[] = [];
@@ -244,6 +253,13 @@ export function SettingsPanelImpl<TSettings>({
     enabled: undoShortcut && chromeVisible,
   });
   const onSettingsChange = (patch: Partial<TSettings>) => history.record(patch);
+  const recordRef = useRef(history.record);
+  recordRef.current = history.record;
+  useEffect(() => {
+    return bindSettingsHistory(panelId, (patch, label) =>
+      recordRef.current(patch as Partial<TSettings>, label),
+    );
+  }, [panelId]);
 
   const [panelOpen, setPanelOpen] = useState(false);
   const panelOpenRef = useRef(false);
@@ -253,6 +269,8 @@ export function SettingsPanelImpl<TSettings>({
   const [bezierOpen, setBezierOpen] = useState(false);
   const [axisOpen, setAxisOpen] = useState(false);
   const [springOpen, setSpringOpen] = useState(false);
+  const curveLibrary = useCurveLibrary(panelId);
+  const [curveName, setCurveName] = useState("");
   const [activeSpringId, setActiveSpringId] = useState(
     () => springTargets[0]?.id ?? "",
   );
@@ -654,8 +672,26 @@ export function SettingsPanelImpl<TSettings>({
     liveEasings?.[activeEasingId] ??
     liveEasings?.[visibleEasingTargets[0]?.id ?? ""] ??
     ({ x1: 0.22, y1: 1, x2: 0.36, y2: 1 } satisfies CubicBezier);
-  const easingPreset = matchEasingPreset(activeEasing, easingPresetExtras);
-  const presetOptions = easingPresetOptions(easingPresetExtras);
+  const curveExtras = [
+    ...easingPresetExtras,
+    ...savedCurveExtras(curveLibrary.curves),
+  ];
+  const easingPreset = matchEasingPreset(activeEasing, curveExtras);
+  const curveSections = easingPresetSections(
+    {
+      css: tx(PANEL_COPY.curveGroupCss, locale),
+      out: tx(PANEL_COPY.curveGroupOut, locale),
+      inOut: tx(PANEL_COPY.curveGroupInOut, locale),
+      scene: tx(PANEL_COPY.curveGroupScene, locale),
+      saved: tx(PANEL_COPY.curveGroupSaved, locale),
+    },
+    easingPresetExtras,
+    curveLibrary.curves,
+  );
+  const presetOptions = [
+    { id: "custom", label: EASING_PRESET_LABELS.custom },
+    ...curveSections.flatMap((section) => section.options),
+  ];
   const hasEasingTargets = easingTargets.length > 0;
 
   const allSectionIds = [
@@ -1523,18 +1559,60 @@ export function SettingsPanelImpl<TSettings>({
             <PanelSelectList
               value={easingPreset}
               options={presetOptions}
+              groups={curveSections.map((section) => ({
+                title: section.title,
+                ids: section.options.map((option) => option.id),
+              }))}
               ariaLabel={tx(PANEL_COPY.bezierPreset, locale)}
               reduceMotion={reduceMotion}
               optionIcon={(id) => (
-                <PresetCurveIcon id={id} extras={easingPresetExtras} />
+                <PresetCurveIcon id={id} extras={curveExtras} />
               )}
               onChange={(presetId) => {
                 if (presetId === "custom") return;
-                const easing = easingForPreset(presetId, easingPresetExtras);
+                const easing = easingForPreset(presetId, curveExtras);
                 const parsed = easing ? parseBezierInput(easing) : null;
                 if (parsed) patchEasing(parsed);
               }}
             />
+            {easingPreset === "custom" ? (
+              <div className="flex h-7 items-center gap-2">
+                <input
+                  value={curveName}
+                  aria-label={tx(PANEL_COPY.curveName, locale)}
+                  placeholder={tx(PANEL_COPY.curveName, locale)}
+                  onChange={(event) => setCurveName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter") return;
+                    event.preventDefault();
+                    curveLibrary.save(curveName, activeEasing);
+                    setCurveName("");
+                  }}
+                  className={cn(
+                    "h-[28px] min-w-0 flex-1 rounded px-1.5 outline-none",
+                    fieldChrome,
+                    fieldValueSans,
+                  )}
+                  style={{ background: FIELD, color: "var(--sp-fg)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    curveLibrary.save(curveName, activeEasing);
+                    setCurveName("");
+                  }}
+                  className={cn(
+                    "flex h-[28px] w-[86px] shrink-0 items-center justify-center rounded px-1.5 outline-none",
+                    fieldValueSans,
+                    fieldChrome,
+                    "fine-hover:hover:bg-[color:var(--sp-fill-hover)]",
+                  )}
+                  style={{ background: FIELD, color: MUTED }}
+                >
+                  {tx(PANEL_COPY.saveCurve, locale)}
+                </button>
+              </div>
+            ) : null}
           </div>
         )}
       </EasingPlayheadGate>
@@ -2561,6 +2639,40 @@ export function SettingsPanelImpl<TSettings>({
                       accent={panelTheme === "light" ? "#1a1a1a" : "#ffffff"}
                       locale={locale}
                       reduceMotion={reduceMotion}
+                    />
+                    <PanelSelectList
+                      value={matchSpringPreset(activeSpring)}
+                      options={[
+                        { id: "custom", label: tx(PANEL_COPY.customCurve, locale) },
+                        ...SPRING_PRESET_GROUPS.flatMap((group) =>
+                          group.presets.map((preset) => ({
+                            id: preset.id,
+                            label: locale === "en" ? preset.en : preset.ru,
+                          })),
+                        ),
+                      ]}
+                      groups={SPRING_PRESET_GROUPS.map((group) => ({
+                        title: tx(
+                          group.key === "smooth"
+                            ? PANEL_COPY.springGroupSmooth
+                            : group.key === "snappy"
+                              ? PANEL_COPY.springGroupSnappy
+                              : PANEL_COPY.springGroupOvershoot,
+                          locale,
+                        ),
+                        ids: group.presets.map((preset) => preset.id),
+                      }))}
+                      ariaLabel={tx(PANEL_COPY.springPreset, locale)}
+                      reduceMotion={reduceMotion}
+                      onChange={(id) => {
+                        const preset = springPresetById(id);
+                        if (!preset) return;
+                        patchSpring({
+                          stiffness: preset.stiffness,
+                          damping: preset.damping,
+                          mass: preset.mass,
+                        });
+                      }}
                     />
                   </div>
                 </ChromeViewSection>
