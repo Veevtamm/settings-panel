@@ -1,11 +1,12 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import type { SfSymbolName } from "../sf-symbol";
 import { SettingColor } from "./color";
 import { SettingEnumDropdown, SettingText, SettingToggle } from "./fields";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { SettingNumber, SettingPair, SettingRange } from "./number";
+import { PanelRowList } from "./panel-row-list";
 import {
   SettingAnchor,
   SettingFrameOrient,
@@ -194,6 +195,10 @@ export function SectionRows<TSettings>({
   locale,
   rowIndex,
   onEditEasing,
+  panelId,
+  sectionKey,
+  theme,
+  font,
 }: {
   section: SettingsSection<TSettings>;
   settings: TSettings;
@@ -213,6 +218,10 @@ export function SectionRows<TSettings>({
   ) => ResetDotProps;
   rowIndex: Map<keyof TSettings, IndexedRow<TSettings>>;
   onEditEasing?: (easingId: string) => void;
+  panelId?: string;
+  sectionKey?: string;
+  theme?: string;
+  font?: string;
 }) {
   type Row = {
     after?: keyof TSettings;
@@ -695,10 +704,10 @@ export function SectionRows<TSettings>({
   }
 
   const unused = new Set(rows);
-  const out: ReactNode[] = [];
+  const out: { id: string; node: ReactNode }[] = [];
   const emit = (row: Row, parent: SectionRowKind | null) => {
     unused.delete(row);
-    out.push(<Fragment key={row.id}>{row.node}</Fragment>);
+    out.push({ id: row.id, node: row.node });
     const preferred = followerKinds(row.kind, parent);
     const kinds = [
       ...preferred,
@@ -720,5 +729,13 @@ export function SectionRows<TSettings>({
       emit(row, null);
     }
   }
-  return out;
+  return (
+    <PanelRowList
+      font={font}
+      panelId={panelId}
+      rows={out}
+      sectionKey={sectionKey}
+      theme={theme}
+    />
+  );
 }

@@ -9,11 +9,11 @@ Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens s
 ## Features
 
 - Dock Bar — a horizontal glass bar of buttons (gear opens Panel Settings as its own window; scene panel and timeline close each other; spring, Bezier and axis; search, Reset, Copy), top center by default; drag it to any corner or to bottom center. Hover a button for a short name, like the macOS Dock.
-- Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves
+- Schema-driven rows: numbers, toggles, colors, enums, pairs, ranges, player, easing curves. A row highlights on hover and can be dragged to reorder it inside its subsection; the row follows the pointer.
 - Spring window (`springTargets`): stiffness, damping and mass with expandable scrub sliders, a response graph and the settle time; drag the window from the top edge; `springLinearEasing` turns a spring into a CSS `linear()` curve
 - Click the changes badge to see only changed rows; ⌘Z / ⇧⌘Z undo and redo panel edits
 - Share settings as a link (`?settings=`) or save / open them as a `.json` file with presets
-- Bottom animation timeline (`SettingsTimeline`): stays open together with the panel window; several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
+- Bottom animation timeline (`SettingsTimeline`): stays open together with the panel window; several animations on one dock, Auto total, hug transport, its own timeline button in the bar next to the gear, inspector 328, ruler zoom, a dashed ghost of the default clip (click to reset), staggered phases as child lines with a shared step, drag a row to reorder it or pull it out of a group, `hideBelow` / `enabled`, Moment HUD, phases in ms or `vh`
 - Shared custom widgets: chips, skip cells, shuffle replay, stroke join, axis curve editor (`AxisCurveEditor` — **Точки** stepper 2–12 under the plot)
 - Russian and English UI
 - Dark and light themes

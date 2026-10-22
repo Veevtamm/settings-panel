@@ -3,8 +3,10 @@
 import {
   Fragment,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -32,6 +34,12 @@ import {
   easingPresetSections,
   matchEasingPreset,
 } from "../lib/easing-presets";
+import {
+  applyTreeDrop,
+  sameTimelineTree,
+  treeDropSlot,
+  type TreeDropRow,
+} from "../lib/timeline-tree";
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { SfSymbol } from "../sf-symbol";
@@ -40,8 +48,10 @@ import {
   DEFAULT_DOCK_CORNER,
   DIM,
   DOCK_BAR_H,
+  DOCK_DRAG_PX,
   DOCK_INSET,
   GAP_IN,
+  bindPointerDrag,
   GLASS,
   MUTED,
   PANEL_EXIT_MS,
@@ -88,7 +98,7 @@ const INSPECTOR = 328;
 /** Hover pill starts 6px left of the column so the label sits 12px from the glass edge. */
 const ROW_EDGE = 6;
 const inspectorBleed = { width: INSPECTOR + ROW_EDGE, marginLeft: -ROW_EDGE };
-/** Inspector field row. No grip. Hover fills the row with `fill-hover` (raised), radius 4. */
+/** Inspector field row. No grip: the row itself drags. Hover fills it with `fill-hover`. */
 const TIMELINE_ROW_HOVER =
   "rounded-[4px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)]";
 /** One nest step past the 6px row padding. */
@@ -258,6 +268,25 @@ function freshGroupName(groups: readonly { name: string }[], locale: PanelLocale
   let n = 2;
   while (taken.has(`${base} ${n}`)) n += 1;
   return `${base} ${n}`;
+}
+
+function readInspectorRows(root: HTMLElement): TreeDropRow[] {
+  return [...root.querySelectorAll<HTMLElement>("[data-tl-slot]")].flatMap((node) => {
+    const id = node.dataset.tlId ?? "";
+    if (!id) return [];
+    const box = node.getBoundingClientRect();
+    const keys = node.dataset.tlKeys?.split(",").filter(Boolean);
+    return [
+      {
+        kind: node.dataset.tlKind === "group" ? "group" : "phase",
+        id,
+        parentGroupId: node.dataset.tlParent || null,
+        top: box.top,
+        bottom: box.bottom,
+        keys,
+      } satisfies TreeDropRow,
+    ];
+  });
 }
 
 function writeTimelineOrder(
@@ -562,9 +591,26 @@ function TimelineDockBody({
   const [groupFile, setGroupFile] = useState<GroupFile>(() =>
     panelId ? readGroupFile(panelId, controller.id) : emptyGroupFile(),
   );
+  const orderRef = useRef(orderIds);
+  orderRef.current = orderIds;
+  const groupsRef = useRef(groupFile.groups);
+  groupsRef.current = groupFile.groups;
   const [renaming, setRenaming] = useState<string | null>(null);
   const [foldedGroups, setFoldedGroups] = useState<ReadonlySet<string>>(() => new Set());
   const [laneHover, setLaneHover] = useState<LaneHover | null>(null);
+  const [dropLine, setDropLine] = useState<{ top: number; left: number } | null>(null);
+  const [lift, setLift] = useState<{
+    className: string;
+    html: string;
+    width: number;
+    height: number;
+  } | null>(null);
+  const inspectorRef = useRef<HTMLDivElement>(null);
+  const liftRef = useRef<HTMLDivElement>(null);
+  const liftRowRef = useRef<HTMLElement | null>(null);
+  const liftPlaceRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(
+    null,
+  );
   const openClipMenu = useRef<((menu: ClipMenuRequest) => void) | null>(null);
   function hoverLane(next: LaneHover | null) {
     setLaneHover((prev) => (sameLaneHover(prev, next) ? prev : next));
@@ -856,6 +902,122 @@ function TimelineDockBody({
     });
   }
 
+  function placeLift(x: number, y: number) {
+    const place = liftPlaceRef.current;
+    if (!place) return;
+    place.x = x;
+    place.y = y;
+    const node = liftRef.current;
+    if (!node) return;
+    node.style.left = `${x - place.offsetX}px`;
+    node.style.top = `${y - place.offsetY}px`;
+  }
+
+  useLayoutEffect(() => {
+    const place = liftPlaceRef.current;
+    if (!lift || !place) return;
+    placeLift(place.x, place.y);
+  }, [lift]);
+
+  function clearLift() {
+    const row = liftRowRef.current;
+    if (row) delete row.dataset.tlLift;
+    liftRowRef.current = null;
+    liftPlaceRef.current = null;
+    setLift(null);
+  }
+
+  function armRowDrag(event: ReactPointerEvent<HTMLElement>, ids: readonly string[]) {
+    if (event.button !== 0 || ids.length === 0) return;
+    const target = event.target;
+    if (
+      target instanceof Element &&
+      target.closest("input, textarea, button, a, label, [data-no-row-drag]")
+    ) {
+      return;
+    }
+    event.stopPropagation();
+    const row = event.currentTarget;
+    const pointerId = event.pointerId;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let moved = false;
+    let slot: { parentGroupId: string | null; index: number } | null = null;
+    bindPointerDrag(pointerId, {
+      onMove(ev) {
+        if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DOCK_DRAG_PX) {
+          return;
+        }
+        const root = inspectorRef.current;
+        if (!root) return;
+        if (!moved) {
+          moved = true;
+          document.documentElement.dataset.phaseDrag = "grab";
+          const rect = row.getBoundingClientRect();
+          liftPlaceRef.current = {
+            x: ev.clientX,
+            y: ev.clientY,
+            offsetX: ev.clientX - rect.left,
+            offsetY: ev.clientY - rect.top,
+          };
+          liftRowRef.current = row;
+          row.dataset.tlLift = "";
+          setLift({
+            className: row.className,
+            html: row.innerHTML,
+            width: rect.width,
+            height: rect.height,
+          });
+        } else {
+          placeLift(ev.clientX, ev.clientY);
+        }
+        const scroller = root.parentElement;
+        if (scroller) {
+          const view = scroller.getBoundingClientRect();
+          if (ev.clientY < view.top + 24) scroller.scrollTop -= 12;
+          else if (ev.clientY > view.bottom - 24) scroller.scrollTop += 12;
+        }
+        const rect = root.getBoundingClientRect();
+        const hit = treeDropSlot(readInspectorRows(root), ids, {
+          x: ev.clientX,
+          y: ev.clientY,
+          listLeft: rect.left,
+        });
+        const next =
+          hit == null
+            ? null
+            : applyTreeDrop(orderRef.current, groupsRef.current, ids, hit);
+        const changes =
+          hit != null &&
+          next != null &&
+          !sameTimelineTree(orderRef.current, groupsRef.current, next);
+        slot = changes && hit ? { parentGroupId: hit.parentGroupId, index: hit.index } : null;
+        setDropLine(
+          changes && hit
+            ? { top: hit.lineY - rect.top, left: hit.depth === 0 ? 6 : 18 }
+            : null,
+        );
+      },
+      onEnd() {
+        delete document.documentElement.dataset.phaseDrag;
+        setDropLine(null);
+        clearLift();
+        if (!moved || !slot) return;
+        const next = applyTreeDrop(orderRef.current, groupsRef.current, ids, slot);
+        if (sameTimelineTree(orderRef.current, groupsRef.current, next)) return;
+        setOrderIds(next.order);
+        setGroupFile((prev) => ({ ...prev, groups: next.groups }));
+        if (panelId) writeTimelineOrder(panelId, controller.id, next.order);
+        const suppress = (click: MouseEvent) => {
+          click.preventDefault();
+          click.stopPropagation();
+        };
+        window.addEventListener("click", suppress, true);
+        window.setTimeout(() => window.removeEventListener("click", suppress, true), 0);
+      },
+    });
+  }
+
   const totalModified = defaults != null && defaults.total !== total;
 
   const phasesTitle = tx(PANEL_COPY.phases, locale);
@@ -889,6 +1051,7 @@ function TimelineDockBody({
   const totalTitle = totalLabel ?? tx(PANEL_COPY.animationTime, locale);
 
   return (
+      <>
         <div
           ref={scaleRootRef}
           data-settings-panel=""
@@ -1075,9 +1238,17 @@ function TimelineDockBody({
                   }}
                 >
                   <div
-                    className="flex shrink-0 flex-col gap-1"
+                    ref={inspectorRef}
+                    className="relative flex shrink-0 flex-col gap-1"
                     style={{ width: INSPECTOR + ROW_EDGE }}
                   >
+                    {dropLine ? (
+                      <div
+                        aria-hidden
+                        className="pointer-events-none absolute z-30 h-[2px] -translate-y-1/2 rounded-full bg-[color:var(--sp-fg)]"
+                        style={{ top: dropLine.top, left: dropLine.left, right: 8 }}
+                      />
+                    ) : null}
                     {units.map((ids) => {
                       const indices = ids.flatMap((id) => {
                         const index = segments.findIndex(
@@ -1116,6 +1287,11 @@ function TimelineDockBody({
                                 sameLaneHover(laneHover, { kind: "group", id: membership.id }) &&
                                   "bg-[color:var(--sp-fill-hover)]",
                               )}
+                              data-tl-slot=""
+                              data-tl-kind="group"
+                              data-tl-id={membership.id}
+                              data-tl-keys={ids.join(",")}
+                              onPointerDown={(event) => armRowDrag(event, ids)}
                               onClick={() => toggleGroup(membership.id)}
                               onPointerEnter={() => hoverLane({ kind: "group", id: membership.id })}
                               onPointerLeave={() => hoverLane(null)}
@@ -1217,6 +1393,10 @@ function TimelineDockBody({
                         <div
                           key={sid}
                           className="flex flex-col gap-1"
+                          data-tl-slot=""
+                          data-tl-kind="phase"
+                          data-tl-id={sid}
+                          data-tl-parent={membership?.id ?? ""}
                         >
                           <div
                             className={cn(
@@ -1227,6 +1407,7 @@ function TimelineDockBody({
                               sameLaneHover(laneHover, { kind: "phase", index }) &&
                                 "bg-[color:var(--sp-fill-hover)]",
                             )}
+                            onPointerDown={(event) => armRowDrag(event, [sid])}
                             onClick={stagger ? () => toggleLines(index) : undefined}
                             onPointerEnter={() => hoverLane({ kind: "phase", index })}
                             onPointerLeave={() => hoverLane(null)}
@@ -1315,6 +1496,7 @@ function TimelineDockBody({
                                     sameLaneHover(laneHover, { kind: "line", index, line: k }) &&
                                       "bg-[color:var(--sp-fill-hover)]",
                                   )}
+                                  onPointerDown={(event) => armRowDrag(event, [sid])}
                                   onPointerEnter={() => hoverLane({ kind: "line", index, line: k })}
                                   onPointerLeave={() => hoverLane(null)}
                                 >
@@ -1390,6 +1572,28 @@ function TimelineDockBody({
             </div>
           </div>
         </div>
+        {lift
+          ? createPortal(
+              <div
+                ref={liftRef}
+                data-settings-panel=""
+                data-panel-theme={theme}
+                data-panel-font={font}
+                className={cn(
+                  lift.className,
+                  "pointer-events-none fixed z-[260] origin-top-left scale-[1.03] border border-[color:var(--sp-line)] shadow-[0_8px_24px_rgba(0,0,0,0.28)]",
+                )}
+                style={{
+                  width: lift.width,
+                  height: lift.height,
+                  background: "var(--sp-field)",
+                }}
+                dangerouslySetInnerHTML={{ __html: lift.html }}
+              />,
+              document.body,
+            )
+          : null}
+      </>
   );
 }
 

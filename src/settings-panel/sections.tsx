@@ -65,13 +65,13 @@ export function SectionBlock({
   return (
     <section
       className={cn(
-        "flex w-full shrink-0 flex-col overflow-hidden p-2",
+        "flex w-full shrink-0 flex-col overflow-hidden py-2 pl-[6px] pr-2",
         open && "gap-4",
       )}
     >
       <div
         className={cn(
-          "flex w-full items-center justify-between gap-2",
+          "flex w-full items-center justify-between gap-2 pl-[6px]",
           onClose ? "h-7" : "h-5",
         )}
       >
@@ -431,7 +431,7 @@ export function SubsectionBlock({
           : undefined
       }
     >
-      <div className="group/sub flex h-5 w-full items-center gap-1.5">
+      <div className="group/sub flex h-5 w-full items-center gap-1.5 pl-[6px]">
         <span
           className={cn(
             "inline-flex min-w-0 flex-1 items-center",

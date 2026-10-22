@@ -281,6 +281,14 @@ export function RowLabel({
   );
 }
 
+/**
+ * Hover fill on a scene row. Section padding is 6px on the left, and this
+ * adds 6px more, so the pill starts 6px from the glass and the label sits
+ * at 12px. The right edge stays the section's 8px — fields are not inset.
+ */
+export const ROW_HOVER =
+  "rounded-[4px] pl-[6px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)]";
+
 export function SettingRow({
   label,
   children,

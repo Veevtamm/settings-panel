@@ -221,6 +221,15 @@ html[data-phase-drag="ew"] * {
 html[data-phase-drag="grab"],
 html[data-phase-drag="grab"] * {
   cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/** Inspector row lifted into the cursor clone: the hole keeps the row's place. */
+[data-tl-lift] {
+  background: var(--sp-fill-hover);
+}
+[data-tl-lift] > * {
+  visibility: hidden;
 }
 
 html[data-panel-reorder],

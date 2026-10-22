@@ -2058,6 +2058,10 @@ export function SettingsPanelImpl<TSettings>({
                     onEditEasing={(easingId) =>
                       focusPanel(panelId, { easingId })
                     }
+                    panelId={panelId}
+                    sectionKey={subsectionId}
+                    theme={panelTheme}
+                    font={panelFont}
                   />
                 ) : null}
               </div>
@@ -2175,7 +2179,7 @@ export function SettingsPanelImpl<TSettings>({
               return shell(
           <section
             data-panel-move=""
-            className="flex w-full shrink-0 p-2"
+            className="flex w-full shrink-0 py-2 pl-3 pr-2"
           >
             <div
               className="flex h-[28px] min-w-0 w-full items-center justify-between gap-4"
