@@ -287,7 +287,7 @@ export function RowLabel({
  * at 12px. The right edge stays the section's 8px — fields are not inset.
  */
 export const ROW_HOVER =
-  "rounded-[4px] pl-[6px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)]";
+  "rounded-[4px] pl-[6px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-row-hover)]";
 
 export function SettingRow({
   label,

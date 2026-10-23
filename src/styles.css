@@ -1,6 +1,7 @@
 /* Panel gray ladder (Figma Tools → Panel / Primitive):
    glass · surface · raised · line · line-2 · dim · text-2 · text · contrast.
-   All tokens are solid aliases onto the ladder; alpha lives only in glass. */
+   Solid aliases onto the ladder. Alpha: glass, and the row hover wash
+   (`--sp-row-hover`) so the plate doesn't cut a hard edge into the frost. */
 [data-settings-panel],
 [data-panel-theme] {
   --sp-glass: rgba(12, 12, 12, 0.72);
@@ -18,6 +19,7 @@
   --sp-section-line: #616161; /* dim — hairline between sections; `line` vanishes on glass */
   --sp-fill: #303030; /* line */
   --sp-fill-hover: #242424; /* raised */
+  --sp-row-hover: rgba(255, 255, 255, 0.08);
   --sp-fill-strong: #3d3d3d; /* line-2 */
   --sp-dock-fill: #303030; /* line — On chip vs dark glass */
   --sp-dock-fill-hover: #3d3d3d; /* line-2 */
@@ -53,6 +55,7 @@
   --sp-section-line: #a9a9a9; /* dim — hairline between sections; `line` vanishes on glass */
   --sp-fill: #dadada; /* line */
   --sp-fill-hover: #e9e9e9; /* raised */
+  --sp-row-hover: rgba(0, 0, 0, 0.06);
   --sp-fill-strong: #cbcbcb; /* line-2 */
   /* line (#dadada) ≈ frosted glass on a dark page — dock On uses dim */
   --sp-dock-fill: #a9a9a9; /* dim */
@@ -226,7 +229,7 @@ html[data-phase-drag="grab"] * {
 
 /** Inspector row lifted into the cursor clone: the hole keeps the row's place. */
 [data-tl-lift] {
-  background: var(--sp-fill-hover);
+  background: var(--sp-row-hover);
 }
 [data-tl-lift] > * {
   visibility: hidden;

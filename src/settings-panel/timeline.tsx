@@ -98,9 +98,9 @@ const INSPECTOR = 328;
 /** Hover pill starts 6px left of the column so the label sits 12px from the glass edge. */
 const ROW_EDGE = 6;
 const inspectorBleed = { width: INSPECTOR + ROW_EDGE, marginLeft: -ROW_EDGE };
-/** Inspector field row. No grip: the row itself drags. Hover fills it with `fill-hover`. */
+/** Inspector field row. No grip: the row itself drags. Hover fills it with `row-hover`. */
 const TIMELINE_ROW_HOVER =
-  "rounded-[4px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)]";
+  "rounded-[4px] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-row-hover)]";
 /** One nest step past the 6px row padding. */
 const NEST_PAD = ["pl-[6px]", "pl-[18px]", "pl-[30px]"] as const;
 /** Cap so an ultrawide does not stretch clips across the whole screen. */
@@ -1285,7 +1285,7 @@ function TimelineDockBody({
                                 "flex h-[28px] cursor-pointer items-center gap-2 pl-[6px]",
                                 TIMELINE_ROW_HOVER,
                                 sameLaneHover(laneHover, { kind: "group", id: membership.id }) &&
-                                  "bg-[color:var(--sp-fill-hover)]",
+                                  "bg-[color:var(--sp-row-hover)]",
                               )}
                               data-tl-slot=""
                               data-tl-kind="group"
@@ -1405,7 +1405,7 @@ function TimelineDockBody({
                               membership ? NEST_PAD[1] : NEST_PAD[0],
                               stagger && "cursor-pointer",
                               sameLaneHover(laneHover, { kind: "phase", index }) &&
-                                "bg-[color:var(--sp-fill-hover)]",
+                                "bg-[color:var(--sp-row-hover)]",
                             )}
                             onPointerDown={(event) => armRowDrag(event, [sid])}
                             onClick={stagger ? () => toggleLines(index) : undefined}
@@ -1494,7 +1494,7 @@ function TimelineDockBody({
                                   className={cn(
                                     childClass,
                                     sameLaneHover(laneHover, { kind: "line", index, line: k }) &&
-                                      "bg-[color:var(--sp-fill-hover)]",
+                                      "bg-[color:var(--sp-row-hover)]",
                                   )}
                                   onPointerDown={(event) => armRowDrag(event, [sid])}
                                   onPointerEnter={() => hoverLane({ kind: "line", index, line: k })}
