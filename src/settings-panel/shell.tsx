@@ -1900,7 +1900,7 @@ export function SettingsPanelImpl<TSettings>({
                   onReset();
                 }}
               >
-                <SfSymbol name="eraser" className="size-5" />
+                <SfSymbol name="trash-2" className="size-5" />
               </button>
               {defaultSettings != null ? (
                 <DockBadgeAnchor>
