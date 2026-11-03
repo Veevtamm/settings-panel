@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
   type PointerEvent as ReactPointerEvent,
+  type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -43,7 +44,7 @@ import {
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { SfSymbol } from "../sf-symbol";
-import { RowLabel, useDeferredMount } from "./row";
+import { RowLabel, SectionCollapse, useDeferredMount } from "./row";
 import {
   DEFAULT_DOCK_CORNER,
   DIM,
@@ -59,6 +60,7 @@ import {
   type DockCorner,
 } from "./chrome";
 import { panelPopClassName, panelPopStyle } from "./motion-ui";
+import { isPanelInstant } from "./panel-instant";
 import {
   AutoNumberField,
   NumberField,
@@ -273,7 +275,7 @@ function freshGroupName(groups: readonly { name: string }[], locale: PanelLocale
 function readInspectorRows(root: HTMLElement): TreeDropRow[] {
   return [...root.querySelectorAll<HTMLElement>("[data-tl-slot]")].flatMap((node) => {
     const id = node.dataset.tlId ?? "";
-    if (!id) return [];
+    if (!id || node.closest("[data-collapsed]")) return [];
     const box = node.getBoundingClientRect();
     const keys = node.dataset.tlKeys?.split(",").filter(Boolean);
     return [
@@ -464,9 +466,14 @@ function TimelineDock(props: TimelineDockProps) {
   const dockCorner = useDockSlot(panelId, layoutPanelId, dockCornerProp);
   const open = usePlayerOpen(controller);
   const reduceMotion = usePrefersReducedMotion();
+  const instant = isPanelInstant();
   const dockBtnRef = useRef<HTMLDivElement>(null);
   const [hydrated, setHydrated] = useState(false);
-  const surfaceMounted = useDeferredMount(open, reduceMotion, PANEL_EXIT_MS);
+  const surfaceMounted = useDeferredMount(
+    open,
+    reduceMotion || instant,
+    instant || reduceMotion ? 0 : PANEL_EXIT_MS,
+  );
   useEffect(() => {
     setHydrated(true);
   }, []);
@@ -517,6 +524,28 @@ function TimelineDock(props: TimelineDockProps) {
   );
 }
 
+function FoldBody({
+  fold,
+  open,
+  reduceMotion,
+  className,
+  children,
+}: {
+  fold: boolean;
+  open: boolean;
+  reduceMotion: boolean;
+  className?: string;
+  children: ReactNode;
+}) {
+  const body = <div className={className}>{children}</div>;
+  if (!fold) return body;
+  return (
+    <SectionCollapse open={open} reduceMotion={reduceMotion}>
+      {body}
+    </SectionCollapse>
+  );
+}
+
 function TimelineDockBody({
   panelId,
   label,
@@ -551,6 +580,7 @@ function TimelineDockBody({
   open: boolean;
   reduceMotion: boolean;
 }) {
+  const instant = isPanelInstant();
   const state = usePlayerState(controller);
   const layout = layoutClips(inputsOf(segments));
   const defaultLayout = defaults
@@ -1065,7 +1095,7 @@ function TimelineDockBody({
             panelPopClassName({
               open,
               fromBottom: true,
-              skip: reduceMotion,
+              skip: reduceMotion || instant,
             }),
           )}
           aria-hidden={!open}
@@ -1079,7 +1109,7 @@ function TimelineDockBody({
             maxWidth: TIMELINE_WIDTH_MAX,
             maxHeight: viewportH - DOCK_INSET * 2,
             marginInline: "auto",
-            ...panelPopStyle({ open, skip: reduceMotion }),
+            ...panelPopStyle({ open, skip: reduceMotion || instant }),
           }}
         >
           <div className="flex flex-col gap-2 py-2 pl-3 pr-2">
@@ -1160,7 +1190,7 @@ function TimelineDockBody({
                 />
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -1228,7 +1258,8 @@ function TimelineDockBody({
                   })}
                 </div>
               </div>
-              {elementsOpen ? (
+              <SectionCollapse open={elementsOpen} reduceMotion={reduceMotion}>
+                <div className="pt-2">
                 <div
                   className="flex items-start gap-2 overflow-y-auto overscroll-y-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                   style={{
@@ -1277,7 +1308,7 @@ function TimelineDockBody({
                       return (
                         <div
                           key={membership?.id ?? ids[0]}
-                          className="flex flex-col gap-1"
+                          className="flex flex-col"
                         >
                           {membership ? (
                             <div
@@ -1354,8 +1385,13 @@ function TimelineDockBody({
                               </button>
                             </div>
                           ) : null}
-                          {groupOpen
-                            ? indices.map((index) => {
+                          <FoldBody
+                            fold={membership != null}
+                            open={groupOpen}
+                            reduceMotion={reduceMotion}
+                            className={cn("flex flex-col", membership && "pt-1")}
+                          >
+                            {indices.map((index, memberIndex) => {
                       const segment = segments[index];
                       const clip = layout[index];
                       if (!segment || !clip) return null;
@@ -1392,7 +1428,7 @@ function TimelineDockBody({
                       return (
                         <div
                           key={sid}
-                          className="flex flex-col gap-1"
+                          className={cn("flex flex-col", memberIndex > 0 && "pt-1")}
                           data-tl-slot=""
                           data-tl-kind="phase"
                           data-tl-id={sid}
@@ -1486,8 +1522,9 @@ function TimelineDockBody({
                               </button>
                             ) : null}
                           </div>
-                          {stagger && linesOpen ? (
-                            <>
+                          {stagger ? (
+                            <SectionCollapse open={linesOpen} reduceMotion={reduceMotion}>
+                              <div className="flex flex-col gap-1 pt-1">
                               {Array.from({ length: stagger.count }, (_, k) => (
                                 <div
                                   key={k}
@@ -1509,12 +1546,13 @@ function TimelineDockBody({
                                   {lineField}
                                 </div>
                               ))}
-                            </>
+                              </div>
+                            </SectionCollapse>
                           ) : null}
                         </div>
                       );
-                            })
-                            : null}
+                            })}
+                          </FoldBody>
                         </div>
                       );
                     })}
@@ -1567,7 +1605,8 @@ function TimelineDockBody({
                     />
                   </div>
                 </div>
-              ) : null}
+                </div>
+              </SectionCollapse>
             </div>
             </div>
           </div>

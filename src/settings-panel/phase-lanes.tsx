@@ -15,10 +15,12 @@ import {
   staggerSpan,
   type LaidClip,
 } from "../lib/player-clips";
+import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { clampNumber, cn } from "../lib/utils";
 import { SfSymbol, type SfSymbolName } from "../sf-symbol";
 import { bindPointerDrag, fieldValueSans, GLASS, pickerChrome } from "./chrome";
 import { NumberField } from "./fields";
+import { SectionCollapse } from "./row";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { snapStep } from "./number";
 import {
@@ -198,6 +200,7 @@ export function PhaseLanes({
   const state = usePlayerState(controller);
   const rootRef = useRef<HTMLDivElement>(null);
   const laneRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const laneOwners = useRef<Array<"phase" | "group" | undefined>>([]);
   const dragRef = useRef<LaneDrag | null>(null);
   const stopDragListen = useRef<(() => void) | null>(null);
   const pointer0 = useRef({ x: 0, moved: false });
@@ -222,6 +225,9 @@ export function PhaseLanes({
     font: string;
   } | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<number>>(() => new Set());
+  const reduceMotion = usePrefersReducedMotion();
+  const foldedRef = useRef(foldedGroups);
+  foldedRef.current = foldedGroups;
 
   useEffect(() => {
     if (!openMenuRef) return;
@@ -260,6 +266,21 @@ export function PhaseLanes({
   const windowEnd = viewEnd ?? total;
   const viewSpan = Math.max(windowEnd - viewStart, 1);
   const safeScale = total > 0 ? total : 1;
+
+  function claimLane(index: number, owner: "phase" | "group", groupId?: string) {
+    return (el: HTMLDivElement | null) => {
+      if (owner === "phase" && groupId != null && foldedRef.current?.has(groupId)) return;
+      if (el) {
+        laneRefs.current[index] = el;
+        laneOwners.current[index] = owner;
+        return;
+      }
+      if (laneOwners.current[index] === owner) {
+        laneRefs.current[index] = null;
+        laneOwners.current[index] = undefined;
+      }
+    };
+  }
 
   function tFromClientX(i: number, clientX: number) {
     const el = laneRefs.current[i];
@@ -733,11 +754,11 @@ export function PhaseLanes({
   return (
     <div
       ref={rootRef}
-      className="flex w-full flex-col gap-1 overflow-hidden"
+      className="flex w-full flex-col overflow-hidden"
       role="group"
       aria-label={ariaLabel}
     >
-      {rows.map((i) => {
+      {rows.map((i, rowIndex) => {
         const clip = layout[i];
         const segment = segments[i];
         if (!clip || !segment) return null;
@@ -755,109 +776,22 @@ export function PhaseLanes({
         const spanQ = clip.duration / viewSpan;
         const stagger = segment.stagger;
         const lines =
-          stagger != null && stagger.count > 1 && !collapsed?.has(i)
-            ? stagger.count
-            : 0;
+          stagger != null && stagger.count > 1 ? stagger.count : 0;
+        const linesOpen = lines > 0 && !collapsed?.has(i);
         const userGroup = clipGroups?.find((group) =>
           group.keys.includes(segmentKey(segment, i)),
         );
         const groupFolded = userGroup != null && foldedGroups?.has(userGroup.id);
-        if (groupFolded && !groupLeads?.has(i)) return null;
+        const groupLead = Boolean(userGroup && groupLeads?.has(i));
+        const groupMember = Boolean(userGroup) && !groupLead;
         const base = onResetPhase ? defaults?.[i] : undefined;
         const moved =
           base != null &&
           (Math.abs(base.start - clip.start) > 0.5 ||
             Math.abs(base.duration - clip.duration) > 0.5);
-        return (
-          <div
-            key={segment.id ?? `${segment.caption}-${i}`}
-            className="flex flex-col gap-1"
-          >
-            {groupLeads?.has(i) && userGroup ? (
-              <GroupSpanLane
-                name={userGroup.name}
-                start={Math.min(
-                  ...rows.flatMap((index) =>
-                    userGroup.keys.includes(segmentKey(segments[index], index))
-                      ? [layout[index]?.start ?? Infinity]
-                      : [],
-                  ),
-                )}
-                end={Math.max(
-                  ...rows.flatMap((index) =>
-                    userGroup.keys.includes(segmentKey(segments[index], index))
-                      ? [layout[index]?.end ?? -Infinity]
-                      : [],
-                  ),
-                )}
-                viewSpan={viewSpan}
-                timeToViewQ={timeToViewQ}
-                picked={rows
-                  .filter((index) =>
-                    userGroup.keys.includes(segmentKey(segments[index], index)),
-                  )
-                  .every((index) => selected.has(index))}
-                unit={unit}
-                laneRef={
-                  groupFolded
-                    ? (el) => {
-                        laneRefs.current[i] = el;
-                      }
-                    : undefined
-                }
-                hot={laneHover?.kind === "group" && laneHover.id === userGroup.id}
-                onPointerEnter={() => {
-                  if (dragRef.current === null) {
-                    onLaneHover?.({ kind: "group", id: userGroup.id });
-                  }
-                }}
-                onPointerLeave={() => {
-                  if (dragRef.current === null) onLaneHover?.(null);
-                }}
-                onPointerDown={(event) => {
-                  if (event.button !== 0) return;
-                  event.preventDefault();
-                  const memberIndices = rows.filter((index) =>
-                    userGroup.keys.includes(segmentKey(segments[index], index)),
-                  );
-                  const origins = originsFor(memberIndices);
-                  const span0 = Math.min(...origins.values());
-                  setSelected(new Set(memberIndices));
-                  releaseSoloIfOther(i);
-                  pointer0.current = { x: event.clientX, moved: false };
-                  const next: LaneDrag = {
-                    type: "group",
-                    i,
-                    grab: tFromClientX(i, event.clientX) - span0,
-                    origins,
-                  };
-                  dragRef.current = next;
-                  setDrag(next);
-                  armDrag(event.pointerId);
-                }}
-                onContextMenu={(event) => {
-                  if (!onEditCurve && !onPickCurve && !onMakeStep && !onGroup) return;
-                  event.preventDefault();
-                  event.stopPropagation();
-                  const memberIndices = rows.filter((index) =>
-                    userGroup.keys.includes(segmentKey(segments[index], index)),
-                  );
-                  setSelected(new Set(memberIndices));
-                  const el = event.currentTarget;
-                  setClipMenu({
-                    i,
-                    indices: memberIndices,
-                    x: event.clientX,
-                    y: event.clientY,
-                    theme:
-                      el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
-                      "dark",
-                    font: closestPanelFont(el),
-                  });
-                }}
-              />
-            ) : null}
-            {groupFolded ? null : stagger != null && stagger.count > 1 ? (
+        const phase = (
+          <>
+            {stagger != null && stagger.count > 1 ? (
               <GroupSpanLane
                 name={segment.caption}
                 start={clip.start}
@@ -866,9 +800,7 @@ export function PhaseLanes({
                 timeToViewQ={timeToViewQ}
                 picked={picked}
                 unit={unit}
-                laneRef={(el) => {
-                  laneRefs.current[i] = el;
-                }}
+                laneRef={claimLane(i, "phase", userGroup?.id)}
                 hot={lit}
                 onPointerEnter={() => {
                   if (dragRef.current === null) {
@@ -897,11 +829,9 @@ export function PhaseLanes({
                   });
                 }}
               />
-            ) : groupFolded ? null : (
+            ) : (
             <div
-              ref={(el) => {
-                laneRefs.current[i] = el;
-              }}
+              ref={claimLane(i, "phase", userGroup?.id)}
               onPointerEnter={(event) => {
                 if (dragRef.current !== null) return;
                 setHover(i);
@@ -1022,10 +952,110 @@ export function PhaseLanes({
               </div>
             </div>
             )}
-            {groupFolded
-              ? null
-              : Array.from({ length: lines }, (_, k) => lineLane(i, k))}
-            {lines > 0 && stepRows ? <div aria-hidden className="h-[28px]" /> : null}
+            {lines > 0 ? (
+              <SectionCollapse open={linesOpen} reduceMotion={reduceMotion}>
+                <div className="flex flex-col gap-1 pt-1">
+                  {Array.from({ length: lines }, (_, k) => lineLane(i, k))}
+                  {stepRows ? <div aria-hidden className="h-[28px]" /> : null}
+                </div>
+              </SectionCollapse>
+            ) : null}
+          </>
+        );
+        return (
+          <div
+            key={segment.id ?? `${segment.caption}-${i}`}
+            className={cn("flex flex-col", !groupMember && rowIndex > 0 && "pt-1")}
+          >
+            {groupLeads?.has(i) && userGroup ? (
+              <GroupSpanLane
+                name={userGroup.name}
+                start={Math.min(
+                  ...rows.flatMap((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index))
+                      ? [layout[index]?.start ?? Infinity]
+                      : [],
+                  ),
+                )}
+                end={Math.max(
+                  ...rows.flatMap((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index))
+                      ? [layout[index]?.end ?? -Infinity]
+                      : [],
+                  ),
+                )}
+                viewSpan={viewSpan}
+                timeToViewQ={timeToViewQ}
+                picked={rows
+                  .filter((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index)),
+                  )
+                  .every((index) => selected.has(index))}
+                unit={unit}
+                laneRef={groupFolded ? claimLane(i, "group", userGroup.id) : undefined}
+                hot={laneHover?.kind === "group" && laneHover.id === userGroup.id}
+                onPointerEnter={() => {
+                  if (dragRef.current === null) {
+                    onLaneHover?.({ kind: "group", id: userGroup.id });
+                  }
+                }}
+                onPointerLeave={() => {
+                  if (dragRef.current === null) onLaneHover?.(null);
+                }}
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  const memberIndices = rows.filter((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index)),
+                  );
+                  const origins = originsFor(memberIndices);
+                  const span0 = Math.min(...origins.values());
+                  setSelected(new Set(memberIndices));
+                  releaseSoloIfOther(i);
+                  pointer0.current = { x: event.clientX, moved: false };
+                  const next: LaneDrag = {
+                    type: "group",
+                    i,
+                    grab: tFromClientX(i, event.clientX) - span0,
+                    origins,
+                  };
+                  dragRef.current = next;
+                  setDrag(next);
+                  armDrag(event.pointerId);
+                }}
+                onContextMenu={(event) => {
+                  if (!onEditCurve && !onPickCurve && !onMakeStep && !onGroup) return;
+                  event.preventDefault();
+                  event.stopPropagation();
+                  const memberIndices = rows.filter((index) =>
+                    userGroup.keys.includes(segmentKey(segments[index], index)),
+                  );
+                  setSelected(new Set(memberIndices));
+                  const el = event.currentTarget;
+                  setClipMenu({
+                    i,
+                    indices: memberIndices,
+                    x: event.clientX,
+                    y: event.clientY,
+                    theme:
+                      el.closest("[data-panel-theme]")?.getAttribute("data-panel-theme") ??
+                      "dark",
+                    font: closestPanelFont(el),
+                  });
+                }}
+              />
+            ) : null}
+            {groupLead ? (
+              <SectionCollapse open={!groupFolded} reduceMotion={reduceMotion}>
+                <div className="pt-1">{phase}</div>
+              </SectionCollapse>
+            ) : groupMember ? (
+              <SectionCollapse open={!groupFolded} reduceMotion={reduceMotion}>
+                <div className={cn("flex flex-col", rowIndex > 0 && "pt-1")}>{phase}</div>
+              </SectionCollapse>
+            ) : (
+              phase
+            )}
           </div>
         );
       })}

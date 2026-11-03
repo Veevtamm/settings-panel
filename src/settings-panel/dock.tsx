@@ -17,7 +17,7 @@ import {
   EASE_OUT,
   FIELD,
   GLASS,
-  HINT_DELAY_MS,
+  DOCK_TIP_DELAY_MS,
   HINT_POP_MS,
   HINT_SESSION_MS,
   ICON,
@@ -261,7 +261,11 @@ function dockTipLabel(el: HTMLElement): string | null {
   return null;
 }
 
-/** Name chip on Dock Bar hover (`data-dock-tip`). Fine pointer; delay like ⓘ. */
+/**
+ * Name chip on Dock Bar hover (`data-dock-tip`). Fine pointer.
+ * First chip waits `DOCK_TIP_DELAY_MS`. While one is open, the next button
+ * shows at once. After the chip hides, `HINT_SESSION_MS` keeps that skip.
+ */
 export function DockBarTips({
   barRef,
   side,
@@ -353,14 +357,15 @@ export function DockBarTips({
       }
       if (btnRef.current === btn && tipRef.current) return;
       window.clearTimeout(delayRef.current);
-      const skipWait = Date.now() < dockTipSessionUntil;
+      const skipWait =
+        tipRef.current != null || Date.now() < dockTipSessionUntil;
       if (skipWait) {
         placeNow(btn, true);
         return;
       }
       delayRef.current = window.setTimeout(
         () => placeNow(btn, false),
-        HINT_DELAY_MS,
+        DOCK_TIP_DELAY_MS,
       );
     };
 
@@ -494,7 +499,7 @@ export function DockToast({
       role="status"
       aria-live="polite"
       className={cn(
-        "pointer-events-none absolute left-1/2 z-20 flex h-8 items-center gap-3 whitespace-nowrap rounded-lg border border-[color:var(--sp-line)] px-3 backdrop-blur-[8px]",
+        "pointer-events-none absolute left-1/2 z-20 flex items-center gap-2 whitespace-nowrap rounded border border-[color:var(--sp-fg)] px-1 py-1.5",
         below ? "top-full mt-2" : "bottom-full mb-2",
       )}
       style={{
@@ -506,16 +511,16 @@ export function DockToast({
         transitionTimingFunction: EASE_OUT,
       }}
     >
-      <span className={cn(fieldValueSans, "text-[color:var(--sp-fg)]")}>
+      <span className="font-sans text-[12px] leading-none text-[color:var(--sp-fg)]">
         {text}
       </span>
       {detail ? (
-        <span className="font-mono text-[14px] leading-[18px] tabular-nums text-[color:var(--sp-fg)]">
+        <span className="font-mono text-[12px] leading-none tabular-nums text-[color:var(--sp-fg)]">
           {detail}
         </span>
       ) : null}
       {hint ? (
-        <span className="font-mono text-[14px] leading-[18px] text-[color:var(--sp-muted)]">
+        <span className="font-mono text-[12px] leading-none text-[color:var(--sp-muted)]">
           {hint}
         </span>
       ) : null}

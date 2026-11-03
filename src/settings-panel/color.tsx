@@ -190,19 +190,17 @@ export function ColorPickerFlyout({
       data-panel-font={font}
       className={cn(
         "fixed z-[110] flex flex-col gap-2 rounded-lg border border-[color:var(--sp-line)] p-2 backdrop-blur-[8px]",
+        !reduceMotion && "transition-[opacity,transform]",
         reduceMotion
           ? open
             ? "opacity-100"
             : "pointer-events-none opacity-0"
-          : cn(
-              "transition-[opacity,transform] will-change-[opacity,transform]",
-              open
-                ? "translate-y-0 scale-100 opacity-100"
-                : cn(
-                    "pointer-events-none scale-[0.98] opacity-0",
-                    side === "below" ? "-translate-y-1.5" : "translate-y-1.5",
-                  ),
-            ),
+          : open
+            ? "opacity-100"
+            : cn(
+                "pointer-events-none scale-[0.98] opacity-0",
+                side === "below" ? "-translate-y-1.5" : "translate-y-1.5",
+              ),
       )}
       style={{
         left,

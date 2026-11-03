@@ -75,6 +75,13 @@ export const PANEL_COPY = {
   dockShowAll: L("Все параметры", "All parameters"),
   language: L("Язык", "Language"),
   theme: L("Тема", "Theme"),
+  panelStyle: L("Стиль", "Style"),
+  panelStyleClassic: L("Старый", "Old"),
+  panelStyleNew: L("Новый", "New"),
+  panelStyleInfo: L(
+    "Старый — текущая панель. Новый — чёрные ряды. В опубликованной сборке таймлайн остаётся прежним.",
+    "Old is the current panel. New is the black rows. The published build keeps the current timeline.",
+  ),
   panelFont: L("Шрифт", "Font"),
   panelFontInfo: L(
     "Семейство интерфейса панели, не сцены. Geist уже в проекте; остальные — шрифты системы, без отдельных файлов.",

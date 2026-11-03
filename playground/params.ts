@@ -4,6 +4,7 @@ import { defineParams, param, type SettingsOf } from "../src/settings-panel/para
 import type { CubicBezier } from "../src/lib/cubic-bezier";
 import type { SpringConfig } from "../src/lib/spring";
 import type { AxisHandle, AxisPoint } from "../src/lib/axis-curve";
+import { BAR_TIME_DEFAULTS } from "./bar-times";
 
 /** Settings the playground stage actually reads. */
 export const P = defineParams({
@@ -209,6 +210,8 @@ export const P = defineParams({
   skipCells: param.value({ default: "", layer: "grid" }),
   strokeJoin: param.value({ default: "miter", layer: "color" }),
   barGaps: param.value({ default: "8", layer: "layout" }),
+  /** Per-bar start and duration. The shared stagger keys stay for the current panel. */
+  barTimes: param.value({ default: BAR_TIME_DEFAULTS, layer: "timings" }),
   reel: param.player({
     label: L("Появление", "Appear"),
     total: { key: "reelTotalMs", default: 1400 },

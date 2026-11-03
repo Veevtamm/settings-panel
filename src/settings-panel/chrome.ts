@@ -264,10 +264,11 @@ export function clampDockPos(
   barW: number,
   vw?: number,
   vh?: number,
+  barH = DOCK_BAR_H,
 ) {
   const size = viewportSize(vw, vh);
   const maxX = Math.max(DOCK_INSET, size.vw - barW - DOCK_INSET);
-  const maxY = Math.max(DOCK_INSET, size.vh - DOCK_BAR_H - DOCK_INSET);
+  const maxY = Math.max(DOCK_INSET, size.vh - barH - DOCK_INSET);
   return {
     x: Math.min(maxX, Math.max(DOCK_INSET, x)),
     y: Math.min(maxY, Math.max(DOCK_INSET, y)),
@@ -279,11 +280,12 @@ export function dockPosForCorner(
   barW: number,
   vw?: number,
   vh?: number,
+  barH = DOCK_BAR_H,
 ) {
   const size = viewportSize(vw, vh);
   const right = Math.max(DOCK_INSET, size.vw - barW - DOCK_INSET);
   const center = Math.max(DOCK_INSET, Math.round((size.vw - barW) / 2));
-  const bottom = Math.max(DOCK_INSET, size.vh - DOCK_BAR_H - DOCK_INSET);
+  const bottom = Math.max(DOCK_INSET, size.vh - barH - DOCK_INSET);
   const x = corner.endsWith("right")
     ? right
     : corner.endsWith("center")
@@ -302,16 +304,17 @@ export function nearestDockCorner(
   barW: number,
   vw?: number,
   vh?: number,
+  barH = DOCK_BAR_H,
 ): DockCorner {
   const size = viewportSize(vw, vh);
   const cx = x + barW / 2;
-  const cy = y + DOCK_BAR_H / 2;
+  const cy = y + barH / 2;
   let best: DockCorner = DEFAULT_DOCK_CORNER;
   let bestDist = Number.POSITIVE_INFINITY;
   for (const corner of DOCK_CORNERS) {
-    const slot = dockPosForCorner(corner, barW, size.vw, size.vh);
+    const slot = dockPosForCorner(corner, barW, size.vw, size.vh, barH);
     const dx = cx - (slot.x + barW / 2);
-    const dy = cy - (slot.y + DOCK_BAR_H / 2);
+    const dy = cy - (slot.y + barH / 2);
     const dist = dx * dx + dy * dy;
     if (dist < bestDist) {
       bestDist = dist;
@@ -331,9 +334,13 @@ export const PANEL_EXIT_MS = 160;
 export const SECTION_MS = 200;
 /** Chevron / small icon rotate — shorter than section body. */
 export const CHEVRON_MS = 150;
+/** Hover reveal of a control that is already on screen. Not a section open. */
+export const HOVER_REVEAL_MS = 100;
 export const HINT_DELAY_MS = 120;
 export const HINT_POP_MS = 140;
 export const HINT_SESSION_MS = 600;
+/** Dock name chip. Long enough that a pass across the bar does not flash a label. ⓘ stays on `HINT_DELAY_MS`. */
+export const DOCK_TIP_DELAY_MS = 500;
 export const COPY_DONE_MS = 1400;
 export const SUBSECTION_DRAG_PX = 6;
 export const SUBSECTION_HEADER_PX = 16;

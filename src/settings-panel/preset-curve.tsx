@@ -28,14 +28,16 @@ export const PRESET_CURVE_D: Record<string, string> = {
 export function PresetCurveIcon({
   id,
   extras = [],
+  strokeWidth = 1.5,
 }: {
   id: string;
   extras?: readonly ExtraEasingPreset[];
+  strokeWidth?: number;
 }) {
   const stroke = {
     fill: "none" as const,
     stroke: "currentColor",
-    strokeWidth: 1.5,
+    strokeWidth,
     strokeLinecap: "round" as const,
     strokeLinejoin: "round" as const,
   };
@@ -50,6 +52,7 @@ export function PresetCurveIcon({
           name="function-square"
           className="pointer-events-none absolute size-5"
           style={{ left: -2, top: -3 }}
+          strokeWidth={strokeWidth}
         />
       </span>
     );

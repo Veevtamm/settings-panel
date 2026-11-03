@@ -126,6 +126,9 @@ export function FieldButton({
         "group/field-btn flex size-[28px] shrink-0 items-center justify-center rounded outline-none",
         fieldChrome,
         pickEase,
+        "transition-[background-color,border-color,color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
+        "motion-reduce:transition-none",
+        "active:scale-[0.97]",
         active || expanded
           ? cn(pickActive, "border-[color:var(--sp-line-strong)]")
           : "bg-[color:var(--sp-field)] text-[color:var(--sp-muted)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",

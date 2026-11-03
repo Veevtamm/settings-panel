@@ -31,4 +31,16 @@ describe("parsePanelSettingsObject", () => {
       undefined,
     );
   });
+
+  it("reads style new and ignores unknown values", () => {
+    expect(
+      parsePanelSettingsObject(JSON.stringify({ style: "new" })).style,
+    ).toBe("new");
+    expect(
+      parsePanelSettingsObject(JSON.stringify({ style: "classic" })).style,
+    ).toBe("classic");
+    expect(
+      parsePanelSettingsObject(JSON.stringify({ style: "plain" })).style,
+    ).toBe(undefined);
+  });
 });

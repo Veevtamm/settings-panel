@@ -1,4 +1,6 @@
 node_modules
+# Licensed local faces. Not part of the package.
+playground/fonts/*.woff2
 .DS_Store
 *.tsbuildinfo
 npm-debug.log*

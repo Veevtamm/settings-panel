@@ -26,6 +26,14 @@ export function isPanelFont(value: unknown): value is PanelFont {
   );
 }
 
+/** Panel chrome. Omit = the current panel. Scene Reset does not clear it. */
+export const PANEL_STYLES = ["classic", "new"] as const;
+export type PanelStyle = (typeof PANEL_STYLES)[number];
+
+export function isPanelStyle(value: unknown): value is PanelStyle {
+  return value === "classic" || value === "new";
+}
+
 export type { PanelLocale };
 
 export const CHROME_WINDOW_IDS = ["settings", "spring", "bezier", "axis"] as const;
@@ -98,6 +106,12 @@ export type PanelSettingsFile = {
   locale?: PanelLocale;
   /** UI typeface of the panel chrome. Omit = geist. Reset does not clear. */
   font?: PanelFont;
+  /**
+   * Panel chrome. Omit = classic.
+   * The playground swaps `/` and `/new`. A production build of the new
+   * style keeps `SettingsTimeline`. Scene Reset does not clear.
+   */
+  style?: PanelStyle;
   /** Panel Settings: edit-sections mode (grip, pin, icon picker). */
   reorderSections?: boolean;
   /** Section ids including Panel Settings. */
@@ -166,6 +180,7 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     if (rec.theme === "light" || rec.theme === "dark") next.theme = rec.theme;
     if (rec.locale === "ru" || rec.locale === "en") next.locale = rec.locale;
     if (isPanelFont(rec.font)) next.font = rec.font;
+    if (isPanelStyle(rec.style)) next.style = rec.style;
     if (typeof rec.reorderSections === "boolean") {
       next.reorderSections = rec.reorderSections;
     }
@@ -234,6 +249,7 @@ export function pickPanelLayout(file: PanelSettingsFile): PanelSettingsFile {
   if (file.theme) next.theme = file.theme;
   if (file.locale) next.locale = file.locale;
   if (file.font) next.font = file.font;
+  if (file.style) next.style = file.style;
   return next;
 }
 
@@ -348,6 +364,18 @@ export function writePanelFont(panelId: string, font: PanelFont) {
   writePanelSettings(panelId, { font });
 }
 
+export function readPanelStyle(
+  panelId: string,
+  legacyPanelIds: readonly string[] = [],
+): PanelStyle {
+  const stored = readPanelSettings(panelId, legacyPanelIds).style;
+  return isPanelStyle(stored) ? stored : "classic";
+}
+
+export function writePanelStyle(panelId: string, style: PanelStyle) {
+  writePanelSettings(panelId, { style });
+}
+
 export function closestPanelFont(el: Element | null): PanelFont {
   const raw = el?.closest("[data-panel-font]")?.getAttribute("data-panel-font");
   return isPanelFont(raw) ? raw : "geist";
@@ -403,6 +431,17 @@ export function usePanelFont(
     (onChange) => subscribePanelTheme(panelId, onChange),
     () => readPanelFont(panelId, legacyPanelIds),
     () => "geist",
+  );
+}
+
+export function usePanelStyle(
+  panelId: string,
+  legacyPanelIds: readonly string[] = [],
+): PanelStyle {
+  return useSyncExternalStore(
+    (onChange) => subscribePanelTheme(panelId, onChange),
+    () => readPanelStyle(panelId, legacyPanelIds),
+    () => "classic",
   );
 }
 

@@ -83,7 +83,12 @@ type SfSymbolProps = {
   className?: string;
 } & Omit<SVGProps<SVGSVGElement>, "children" | "viewBox" | "xmlns" | "fill">;
 
-export function SfSymbol({ name, className, ...props }: SfSymbolProps) {
+export function SfSymbol({
+  name,
+  className,
+  strokeWidth = 1.5,
+  ...props
+}: SfSymbolProps) {
   const lucide = resolvePanelIcon(name);
   const inner = lucide ? LUCIDE_GLYPHS[lucide] : undefined;
 
@@ -102,7 +107,7 @@ export function SfSymbol({ name, className, ...props }: SfSymbolProps) {
           stroke="currentColor"
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth={1.5}
+          strokeWidth={strokeWidth}
           transform="translate(2 2) scale(0.66666667)"
           dangerouslySetInnerHTML={{ __html: inner }}
         />

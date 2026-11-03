@@ -30,8 +30,10 @@ import {
   readPanelSettings,
   writePanelLocale,
   writePanelFont,
+  writePanelStyle,
   writePanelSettings,
   writePanelTheme,
+  usePanelStyle,
   type PanelFocusDetail,
   type ChromeWindowId,
   type PanelFont,
@@ -124,6 +126,7 @@ import {
   panelPopClassName,
   panelPopStyle,
 } from "./motion-ui";
+import { beginPanelInstant } from "./panel-instant";
 import {
   nextPanelIcons,
   panelIconIsModified,
@@ -347,6 +350,7 @@ export function SettingsPanelImpl<TSettings>({
   const dockActionsVisible =
     panelOpen && (defaultSettings == null || changedCount > 0);
   const layoutStoreId = layoutPanelId ?? panelId;
+  const panelStyle = usePanelStyle(layoutStoreId);
   const barRef = useRef<HTMLDivElement>(null);
   const [barW, setBarW] = useState(
     () => readLastDockBarW(layoutStoreId) ?? DOCK_BAR_H,
@@ -589,23 +593,23 @@ export function SettingsPanelImpl<TSettings>({
   );
   const bezierMounted = useDeferredMount(
     bezierOpen,
-    reduceMotion,
-    reduceMotion ? 0 : PANEL_EXIT_MS,
+    skipPanelMotion,
+    skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
   const axisMounted = useDeferredMount(
     axisOpen,
-    reduceMotion,
-    reduceMotion ? 0 : PANEL_EXIT_MS,
+    skipPanelMotion,
+    skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
   const springMounted = useDeferredMount(
     springOpen,
-    reduceMotion,
-    reduceMotion ? 0 : PANEL_EXIT_MS,
+    skipPanelMotion,
+    skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
   const settingsMounted = useDeferredMount(
     settingsOpen,
-    reduceMotion,
-    reduceMotion ? 0 : PANEL_EXIT_MS,
+    skipPanelMotion,
+    skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
 
   const groupsForPanel = useMemo(
@@ -1399,6 +1403,8 @@ export function SettingsPanelImpl<TSettings>({
         return;
       }
       event.preventDefault();
+      beginPanelInstant();
+      setPanelInstant(true);
       const hide = !dockHiddenRef.current;
       dockHiddenRef.current = hide;
       if (hide) {
@@ -2409,18 +2415,6 @@ export function SettingsPanelImpl<TSettings>({
               />
               <button
                 type="button"
-                data-panel-resize="x"
-                aria-label={tx(PANEL_COPY.resizePanelWidth, locale)}
-                className={cn(
-                  "absolute z-[3] touch-none",
-                  dockRight ? "left-0" : "right-0",
-                  "top-2 bottom-2",
-                )}
-                style={{ width: PANEL_RESIZE_HIT }}
-                onPointerDown={startPanelResize("x")}
-              />
-              <button
-                type="button"
                 data-panel-resize="y"
                 aria-label={tx(PANEL_COPY.resizePanelHeight, locale)}
                 className={cn(
@@ -2469,7 +2463,7 @@ export function SettingsPanelImpl<TSettings>({
                 bottom={dockedWindowBottom}
                 fromBottom={dockBottom}
                 origin={dockedOrigin}
-                skip={reduceMotion}
+                skip={skipPanelMotion}
                 theme={panelTheme}
                 font={panelFont}
                 width={frameW}
@@ -2507,6 +2501,19 @@ export function SettingsPanelImpl<TSettings>({
                         persistPanelTheme(dark ? "dark" : "light")
                       }
                       value={panelTheme === "dark"}
+                    />
+                    <SettingToggle
+                      label={tx(PANEL_COPY.panelStyle, locale)}
+                      info={tx(PANEL_COPY.panelStyleInfo, locale)}
+                      locale={locale}
+                      control="segment"
+                      controlWidth={148}
+                      offLabel={tx(PANEL_COPY.panelStyleClassic, locale)}
+                      onLabel={tx(PANEL_COPY.panelStyleNew, locale)}
+                      onChange={(next) =>
+                        writePanelStyle(layoutStoreId, next ? "new" : "classic")
+                      }
+                      value={panelStyle === "new"}
                     />
                     {panelFontRow ? (
                     <SettingEnumDropdown
@@ -2603,7 +2610,7 @@ export function SettingsPanelImpl<TSettings>({
                 bottom={dockedWindowBottom}
                 fromBottom={dockBottom}
                 origin={dockedOrigin}
-                skip={reduceMotion}
+                skip={skipPanelMotion}
                 theme={panelTheme}
                 font={panelFont}
                 width={frameW}
@@ -2696,7 +2703,7 @@ export function SettingsPanelImpl<TSettings>({
                 bottom={dockedWindowBottom}
                 fromBottom={dockBottom}
                 origin={dockedOrigin}
-                skip={reduceMotion}
+                skip={skipPanelMotion}
                 theme={panelTheme}
                 font={panelFont}
                 width={frameW}
@@ -2737,7 +2744,7 @@ export function SettingsPanelImpl<TSettings>({
                 bottom={dockedWindowBottom}
                 fromBottom={dockBottom}
                 origin={dockedOrigin}
-                skip={reduceMotion}
+                skip={skipPanelMotion}
                 theme={panelTheme}
                 font={panelFont}
                 width={frameW}

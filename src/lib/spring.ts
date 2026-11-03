@@ -94,14 +94,20 @@ export function springSettleMs(config: SpringConfig) {
   return last + 1;
 }
 
-/** CSS `linear()` easing over `springSettleMs` — pair with that duration. */
-export function springLinearEasing(config: SpringConfig, points = 48) {
-  const duration = springSettleMs(config) / 1000;
+/** One settle pass, then the CSS `linear()` that spans it. */
+export function springCssTransition(config: SpringConfig, points = 48) {
+  const settleMs = springSettleMs(config);
+  const duration = settleMs / 1000;
   const stops = Array.from({ length: points + 1 }, (_, i) =>
     Number(springValue(config, (duration * i) / points).toFixed(4)),
   );
   stops[points] = 1;
-  return `linear(${stops.join(", ")})`;
+  return { settleMs, easing: `linear(${stops.join(", ")})` };
+}
+
+/** CSS `linear()` easing over `springSettleMs` — pair with that duration. */
+export function springLinearEasing(config: SpringConfig, points = 48) {
+  return springCssTransition(config, points).easing;
 }
 
 export function formatSpring({ stiffness, damping, mass }: SpringConfig) {

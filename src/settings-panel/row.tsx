@@ -72,6 +72,7 @@ export function SectionCollapse({
               transitionTimingFunction: EASE_OUT,
             }
       }
+      data-collapsed={open ? undefined : ""}
       inert={open ? undefined : true}
     >
       <div className="min-h-0 overflow-hidden">

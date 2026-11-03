@@ -11,6 +11,7 @@ import { SfSymbol } from "../sf-symbol";
 import {
   EASE_OUT,
   FIELD,
+  HOVER_REVEAL_MS,
   MUTED,
   SECTION_MS,
   SCRUB_DRAG_H,
@@ -778,7 +779,7 @@ export function SettingNumber({
             onClick={() => setScrubOpen((open) => !open)}
             className={cn(
               "absolute top-0 right-full mr-1",
-              !reduceMotion && "transition-opacity",
+              !reduceMotion && "transition-[opacity,transform]",
               scrubOpen
                 ? "opacity-100"
                 : "opacity-100 fine-hover:pointer-events-none fine-hover:opacity-0 fine-hover:group-hover:pointer-events-auto fine-hover:group-hover:opacity-100",
@@ -787,7 +788,7 @@ export function SettingNumber({
               reduceMotion
                 ? undefined
                 : {
-                    transitionDuration: `${SECTION_MS}ms`,
+                    transitionDuration: `${HOVER_REVEAL_MS}ms`,
                     transitionTimingFunction: EASE_OUT,
                   }
             }

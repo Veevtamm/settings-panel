@@ -1,6 +1,6 @@
 {
   "name": "@veevtamm/settings-panel",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "Scene settings panel for Next.js + Tailwind 4 sites",
   "license": "MIT",

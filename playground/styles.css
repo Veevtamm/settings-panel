@@ -11,7 +11,48 @@
   --font-mono: "Geist Mono", ui-monospace, monospace;
 }
 
+@font-face {
+  font-family: "ABC Areal Variable";
+  src: url("./fonts/ABCArealVariable.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);
+}
+
+/* Clickable chrome reads as a pointer. A utility cursor on the same node
+   (grab, resize, text) still wins, because utilities sit above this layer. */
+@layer base {
+  [data-chrome] button:not(:disabled),
+  [data-chrome] a[href] {
+    cursor: pointer;
+  }
+
+  [data-chrome] button:disabled {
+    cursor: default;
+  }
+
+  [data-chrome] input,
+  [data-chrome] textarea {
+    cursor: text;
+  }
+}
+
+/* Dark theme is the light chrome with black and white swapped. */
+html[data-theme="dark"] [data-chrome] {
+  filter: invert(1);
+}
+
+/* Toast is authored in the Figma colors (black, white type, white stroke).
+   The dark theme inverts the dock, so invert the toast back. */
+html[data-theme="dark"] [data-chrome] [data-toast] {
+  filter: invert(1);
+}
+
+html[data-theme="dark"] [data-chrome] [data-truecolor] {
+  filter: invert(1);
 }
