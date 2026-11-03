@@ -29,7 +29,7 @@ The package lives on GitHub, not npm.
 npm install github:Veevtamm/settings-panel
 ```
 
-To pin a version, add a tag: `github:Veevtamm/settings-panel#v0.3.0`. What changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
+To pin a version, add a tag: `github:Veevtamm/settings-panel#v0.3.1`. What changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
 
 Peer dependencies: `react` 19, `react-dom` 19, `clsx`, `tailwind-merge`. Load Geist in the app layout (panel default). Panel Settings can switch the chrome to the system UI font.
 

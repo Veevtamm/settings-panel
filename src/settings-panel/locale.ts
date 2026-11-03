@@ -79,8 +79,8 @@ export const PANEL_COPY = {
   panelStyleClassic: L("Старый", "Old"),
   panelStyleNew: L("Новый", "New"),
   panelStyleInfo: L(
-    "Старый — текущая панель. Новый — чёрные ряды. В опубликованной сборке таймлайн остаётся прежним.",
-    "Old is the current panel. New is the black rows. The published build keeps the current timeline.",
+    "Новый — интерфейс /new: свой бар и ряды. Пресеты и шрифт там нет.",
+    "New is the /new interface: its own dock and rows. No presets and no font row.",
   ),
   panelFont: L("Шрифт", "Font"),
   panelFontInfo: L(

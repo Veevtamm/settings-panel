@@ -1,12 +1,18 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.0"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.1"`. Without `#tag` npm takes `main`.
+
+## 0.3.1
+
+### Changed
+
+- **Style switch** shows the `/new` interface: its dock, sections and rows. It does not recolor the old panel. Presets, the font row and the old dock stay on **Старый**.
 
 ## 0.3.0
 
 ### Added
 
-- **Style switch.** Panel Settings has a segment **Стиль**: Старый | Новый (`style` in `${panelId}:panel-settings`, omit = old). The playground swaps the current panel and `/new`. Scene Reset does not clear it. A production build of the new style keeps `SettingsTimeline`. The draft timeline stays on the dev server.
+- **Style switch.** Panel Settings **Стиль**: Старый | Новый (`style` in `${panelId}:panel-settings`, omit = old). New shows the `/new` interface — its dock, sections and rows. Features absent there (presets, font, the old dock) stay absent. Scene Reset does not clear it.
 - `besidePanelId` — while that window is open, this docked scene window sits one panel width aside. Its float is stored on `panelId`, so dragging it does not move the other window.
 - Lucide `lock` (Tools `651:7145`), `log-in` (`467:4635`), `log-out` (`467:4638`), `folder-tree` (`468:5636`), `app-window-mac` (`468:4738`) in the panel glyph set.
 - `hideDock` — scene window without a Dock Bar (second panel on a shared site bar).
