@@ -344,6 +344,8 @@ function PhotoRow() {
   );
 }
 
+const ADD_CAPTION = "absolute top-[calc(50%+14px)] left-1/2 w-max -translate-x-1/2 text-center text-[11px] leading-4";
+
 function AddPhoto({ empty = false, progress, index, total }: { empty?: boolean; progress?: number; index?: number; total?: number }) {
   const loading = progress != null;
   const caption = index != null && total != null ? `${index} из ${total}` : `${progress}%`;
@@ -360,14 +362,14 @@ function AddPhoto({ empty = false, progress, index, total }: { empty?: boolean; 
           <span className="absolute top-1/2 left-1/2 h-1 w-[calc(100%-16px)] max-w-40 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-current/20" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={index != null && total != null ? `Загрузка, ${caption}` : "Загрузка"}>
             <span className="block h-full bg-current" style={{ width: `${progress}%` }} />
           </span>
-          <span className="absolute top-[calc(50%+14px)] left-1/2 w-max max-w-[calc(100%-8px)] -translate-x-1/2 text-center text-[11px] leading-4">{caption}</span>
+          <span className={`${ADD_CAPTION} max-w-[calc(100%-8px)]`}>{caption}</span>
         </>
       ) : (
         <>
           <svg viewBox="0 0 16 16" className="absolute top-1/2 left-1/2 size-4 -translate-x-1/2 -translate-y-1/2" aria-hidden>
             <path fill="currentColor" d="M7 3h2v10H7zM3 7h10v2H3z" />
           </svg>
-          {empty ? <span className="absolute top-[calc(50%+14px)] left-1/2 w-max max-w-[calc(100%-16px)] -translate-x-1/2 text-center text-[14px] leading-4">Перетащите медиа или нажмите</span> : null}
+          {empty ? <span className={`${ADD_CAPTION} max-w-[calc(100%-16px)] opacity-50`}>Перетащите медиа или нажмите</span> : null}
         </>
       )}
     </button>

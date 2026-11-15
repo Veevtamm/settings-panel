@@ -1,6 +1,12 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.2"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.5"`. Without `#tag` npm takes `main`.
+
+## 0.3.5
+
+### Playground
+
+- The empty «Добавить медиа» hint uses the same 11/16 and the same line as «2 из 8», at 50% opacity.
 
 ## 0.3.2
 
