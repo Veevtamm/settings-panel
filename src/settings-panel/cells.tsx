@@ -8,7 +8,7 @@ import {
 import { cn } from "../lib/utils";
 import { FIELD, MUTED } from "./chrome";
 import { RowLabel, SettingRow } from "./row";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import type { ResetDotProps } from "./types";
 
 /**
@@ -96,7 +96,7 @@ export function SettingSkipReplay({
         className="inline-flex size-[28px] shrink-0 items-center justify-center rounded border border-[color:var(--sp-line-mid)] outline-none transition-[border-color,background-color,transform] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:border-[color:var(--sp-line-strong)] fine-hover:hover:bg-[color:var(--sp-fill-hover)] focus-visible:border-[color:var(--sp-line-focus)] focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-mid)] active:scale-[0.97]"
         style={{ background: FIELD, color: MUTED }}
       >
-        <SfSymbol name="rotate-ccw" className="size-5" />
+        <PanelIcon name="rotate-ccw" className="size-5" />
       </button>
     </SettingRow>
   );

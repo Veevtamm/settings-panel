@@ -12,7 +12,7 @@ import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { cn } from "../lib/utils";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import {
   EASE_OUT,
   FIELD,
@@ -119,7 +119,7 @@ export function DockFoldButton({
       onClick={onToggle}
       className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
     >
-      <SfSymbol
+      <PanelIcon
         name={
           collapse
             ? "list-chevrons-down-up"
@@ -177,7 +177,7 @@ export function DockSearchField({
         className={dockBarButtonClass(open)}
         onClick={() => (open ? onClose() : onOpen())}
       >
-        <SfSymbol name="search" className="size-5" />
+        <PanelIcon name="search" className="size-5" />
       </button>
       <div
         className={cn(
@@ -240,7 +240,7 @@ export function DockSearchField({
           )}
           onClick={onClose}
         >
-          <SfSymbol name="x" className="size-5" />
+          <PanelIcon name="x" className="size-5" />
         </button>
       </div>
     </div>

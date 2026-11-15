@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
 import { cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { GLASS, fieldValueSans, pickEase, pickIdle, pickerChrome } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 
@@ -80,7 +80,7 @@ export function SettingsTransferMenu({
   }, [open]);
 
   const item = (
-    icon: SfSymbolName,
+    icon: PanelIconName,
     label: string,
     onClick: () => void,
     hint?: string,
@@ -98,7 +98,7 @@ export function SettingsTransferMenu({
         "text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)] focus-visible:text-[color:var(--sp-fg)]",
       )}
     >
-      <SfSymbol name={icon} className="size-5 shrink-0" />
+      <PanelIcon name={icon} className="size-5 shrink-0" />
       <span className="flex-1 truncate">{label}</span>
       {hint ? (
         <span className="font-mono text-[12px] text-[color:var(--sp-muted)] opacity-60">
@@ -124,7 +124,7 @@ export function SettingsTransferMenu({
           pickIdle,
         )}
       >
-        <SfSymbol name={done ? "check" : "link"} className="size-5" />
+        <PanelIcon name={done ? "check" : "link"} className="size-5" />
       </button>
       <input
         ref={fileRef}

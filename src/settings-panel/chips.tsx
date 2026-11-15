@@ -6,7 +6,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import { clampNumber, cn } from "../lib/utils";
 import { FIELD, MUTED, fieldChrome, pointerHeld } from "./chrome";
 import { SettingRow } from "./row";
@@ -205,7 +205,7 @@ export function SettingChips({
               "focus-visible:border-[color:var(--sp-line-focus)] focus-visible:outline-none",
             )}
           >
-            <SfSymbol name="plus" className="size-5" />
+            <PanelIcon name="plus" className="size-5" />
           </button>
         ) : null}
       </div>

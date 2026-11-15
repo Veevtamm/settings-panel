@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { FRAME_ORIENTS, type FrameOrient } from "../lib/frame-orient";
 import type { ExtraEasingPreset } from "../lib/easing-presets";
-import type { SfSymbolName } from "../sf-symbol";
+import type { PanelIconName } from "../panel-icon";
 import type { Copy, PanelLocale } from "./locale";
 export type { Copy, ExtraEasingPreset, PanelLocale };
 
@@ -26,9 +26,9 @@ export type ResetDotProps = {
   modified?: boolean;
   onResetValue?: () => void;
   info?: string;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Edit-sections mode: click the row glyph to pick another. */
-  onIconChange?: (name: SfSymbolName) => void;
+  onIconChange?: (name: PanelIconName) => void;
   locale?: PanelLocale;
 };
 
@@ -38,7 +38,7 @@ export type NumberSetting<TSettings> = {
   /** ⓘ next to the label: hover tooltip explaining the parameter. */
   info?: Copy;
   /** Optional Lucide glyph before the label (Figma row Icon + Glyph). */
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Default scrub track end. Track grows if the typed value is higher. */
   max: number;
   min: number;
@@ -74,7 +74,7 @@ export type ColorSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Field 86 + `%` to the right of hex. Swatch stays solid RGB. */
   opacityKey?: keyof TSettings;
   after?: keyof TSettings;
@@ -84,15 +84,15 @@ export type ToggleSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Label on the control when value is true */
   onLabel?: Copy;
   /** Label on the control when value is false */
   offLabel?: Copy;
   /** Segment glyph when value is true (Тема `moon`; ориентация `rectangle-horizontal`). */
-  onIcon?: SfSymbolName;
+  onIcon?: PanelIconName;
   /** Segment glyph when value is false (Тема `sun`; ориентация `rectangle-vertical`). */
-  offIcon?: SfSymbolName;
+  offIcon?: PanelIconName;
   /**
    * Omit = switch 52×28. Named pair of modes: `segment` (or `dropdown`).
    * `action` = Panel / Action 86 — one button, label flips (`offLabel` / `onLabel`).
@@ -141,7 +141,7 @@ export type AnchorSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Render this picker right under the matching toggle. */
   after?: keyof TSettings;
 } & ParamPlacement;
@@ -150,7 +150,7 @@ export type XAnchorSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Render this picker right under the matching toggle or number field. */
   after?: keyof TSettings;
 } & ParamPlacement;
@@ -159,7 +159,7 @@ export type TextAlignSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   after?: keyof TSettings;
 } & ParamPlacement;
 
@@ -167,7 +167,7 @@ export type FrameOrientSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   after?: keyof TSettings;
 } & ParamPlacement;
 
@@ -184,7 +184,7 @@ export type EnumSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   options: readonly EnumOption[];
   /** `segment` = Orient 1×3 (2–3 options). Default dropdown 176. */
   control?: "dropdown" | "segment";
@@ -201,7 +201,7 @@ export type TextSetting<TSettings> = {
   key: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /**
    * Line count. Default **3** (textarea). `1` is a single-line field, 28px,
    * same height as the other row controls.
@@ -216,7 +216,7 @@ export type RangeSetting<TSettings> = {
   toKey: keyof TSettings;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   min: number;
   max: number;
   step?: number;
@@ -243,7 +243,7 @@ export type PairField<TSettings> = {
 export type PairSetting<TSettings> = {
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   fields: readonly [PairField<TSettings>, PairField<TSettings>];
   after?: keyof TSettings;
 } & ParamPlacement;
@@ -329,7 +329,7 @@ export type PlayerController = {
 export type PlayerSetting<TSettings> = {
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Timeline length in `unit` — its own value; phases live inside it (min … total). */
   totalKey: keyof TSettings;
   /** Row label for `totalKey`. Omit = «Время анимации»; scroll pins say «Длина пина». */
@@ -393,7 +393,7 @@ export type DerivedSetting<TSettings> = {
   id: string;
   label: Copy;
   info?: Copy;
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   unit?: string;
   compute: (settings: TSettings) => number | string;
   /** Format the computed value for the field; default: numbers → up to 2 decimals trimmed, strings as-is. */
@@ -405,7 +405,7 @@ export type DerivedSetting<TSettings> = {
 export type SettingsSection<TSettings> = {
   title: Copy;
   /** Lucide glyph before the subsection title. Omit = no icon (until picked in Edit sections). */
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   /** Rows in the group body, no subsection header / collapse. */
   untitled?: boolean;
   settings?: NumberSetting<TSettings>[];
@@ -430,7 +430,7 @@ export type SettingsGroup<TSettings> = {
   id: string;
   title: Copy;
   /** Lucide glyph before the title. Omit when no glyph fits the section. */
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   sections: SettingsSection<TSettings>[];
   /** Eye next to the group chevron — boolean visibility, not a row. */
   visibilityKey?: keyof TSettings;
@@ -465,9 +465,9 @@ export type SettingsPanelProps<TSettings> = {
   curveSection?: ReactNode;
   curveSectionTitle?: Copy;
   /** Header glyph in the Axis view (default `waypoints`). */
-  curveSectionIcon?: SfSymbolName;
+  curveSectionIcon?: PanelIconName;
   /** Dock Bar scene trigger (default `sliders-horizontal`). */
-  sceneIcon?: SfSymbolName;
+  sceneIcon?: PanelIconName;
   /** Dock Bar hover chip + aria for the scene trigger (default «Панель сцены»). */
   sceneLabel?: Copy;
   /** Panel Settings **Шрифт** row. Default `true`. */

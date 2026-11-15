@@ -3,8 +3,7 @@ import { createPortal } from "react-dom";
 import { DOCK_DRAG_PX, EASE_OUT, SECTION_MS, bindPointerDrag } from "../src/settings-panel/chrome";
 import { movePanelRow, panelRowSlot, samePanelRowOrder } from "../src/lib/panel-rows";
 import { PairGlyph } from "../src/settings-panel/number";
-import { SfSymbol } from "../src/sf-symbol";
-import { PANEL_VERSION } from "../src/version";
+import { PanelIcon } from "../src/panel-icon";
 import { PageBar } from "./page-bar";
 import type { AxisHandle } from "../src/lib/axis-curve";
 import {
@@ -116,14 +115,14 @@ function ProjectRow({
           </svg>
         ) : null}
         {status === "hidden" ? (
-          <SfSymbol name="eye-off" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2" strokeWidth={1.25} />
+          <PanelIcon name="eye-off" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2" strokeWidth={1.25} />
         ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">
         <span className="text-[14px] leading-4">{title}</span>
         <span className="text-[11px] leading-3 text-white/45">{meta}</span>
       </span>
-      <SfSymbol name="chevron-right" className="size-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none" />
+      <PanelIcon name="chevron-right" className="size-4 shrink-0 opacity-0 transition-opacity duration-150 group-hover:opacity-100 motion-reduce:transition-none" />
     </div>
   );
 }
@@ -164,7 +163,7 @@ function PhotoTile({
         aria-label="Удалить"
         className="absolute top-0.5 right-0.5 flex size-4 items-center justify-center rounded-[3px] bg-black text-white opacity-0 fine-hover:hover:bg-white fine-hover:hover:text-black group-hover:opacity-100"
       >
-        <SfSymbol name="x" className="size-3" strokeWidth={1.75} />
+        <PanelIcon name="x" className="size-3" strokeWidth={1.75} />
       </button>
       {makeCover ? (
         <button
@@ -386,6 +385,106 @@ function chipClass(pressed: boolean) {
   return `flex h-6 items-center gap-1 rounded border border-white px-1.5 text-[14px] leading-4 disabled:opacity-40 ${CHIP_HOVER} ${face}`;
 }
 
+function ProjectHeader() {
+  return (
+    <div className="flex h-8 w-[284px] items-center justify-between text-black">
+      <span className="flex min-w-0 items-center gap-2">
+        <button type="button" aria-label="Назад" className="flex size-4 shrink-0 items-center justify-center">
+          <PanelIcon name="chevron-left" className="size-4" />
+        </button>
+        <span className="flex min-w-0 flex-col gap-1">
+          <span className="text-[14px] leading-4">Saint Valentine</span>
+          <span className="text-[11px] leading-3 text-black/45">на сайте · есть неопубликованное</span>
+        </span>
+      </span>
+      <button type="button" aria-label="Закрыть" className="flex size-4 shrink-0 items-center justify-center">
+        <PanelIcon name="x" className="size-4" />
+      </button>
+    </div>
+  );
+}
+
+function PasswordField() {
+  const [value, setValue] = useState("");
+  const [shown, setShown] = useState(false);
+  return (
+    <span className="flex h-8 w-[284px] items-center gap-2 rounded-lg bg-black px-2 text-white">
+      <input
+        type={shown ? "text" : "password"}
+        value={value}
+        autoComplete="current-password"
+        placeholder="Пароль"
+        aria-label="Пароль"
+        onChange={(event) => setValue(event.target.value)}
+        className={`min-w-0 flex-1 bg-transparent text-[14px] leading-4 text-white outline-none placeholder:text-white/50 ${value ? "underline decoration-1 underline-offset-[3px]" : ""}`}
+      />
+      <button
+        type="button"
+        aria-label={shown ? "Скрыть пароль" : "Показать пароль"}
+        aria-pressed={shown}
+        onClick={() => setShown((current) => !current)}
+        className="flex size-4 shrink-0 items-center justify-center"
+      >
+        <PanelIcon name={shown ? "eye-off" : "eye"} className="size-4" />
+      </button>
+    </span>
+  );
+}
+
+function CodeField() {
+  const [digits, setDigits] = useState<string[]>(() => Array(6).fill(""));
+  const cells = useRef<(HTMLInputElement | null)[]>([]);
+
+  function write(index: number, raw: string) {
+    const chars = raw.replace(/\D/g, "").slice(0, 6 - index).split("");
+    if (chars.length === 0) return;
+    setDigits((current) => {
+      const next = [...current];
+      chars.forEach((char, offset) => {
+        if (index + offset < 6) next[index + offset] = char;
+      });
+      return next;
+    });
+    cells.current[Math.min(index + chars.length, 5)]?.focus();
+  }
+
+  return (
+    <span className="flex w-[284px] gap-1">
+      {digits.map((digit, index) => (
+        <input
+          key={index}
+          ref={(node) => {
+            cells.current[index] = node;
+          }}
+          inputMode="numeric"
+          autoComplete={index === 0 ? "one-time-code" : "off"}
+          aria-label={`Цифра ${index + 1}`}
+          value={digit}
+          onChange={(event) => write(index, event.target.value)}
+          onFocus={(event) => event.currentTarget.select()}
+          onKeyDown={(event) => {
+            if (event.key === "Backspace") {
+              event.preventDefault();
+              setDigits((current) => {
+                const next = [...current];
+                if (next[index]) next[index] = "";
+                else if (index > 0) next[index - 1] = "";
+                return next;
+              });
+              if (!digit && index > 0) cells.current[index - 1]?.focus();
+            } else if (event.key === "ArrowLeft" && index > 0) {
+              cells.current[index - 1]?.focus();
+            } else if (event.key === "ArrowRight" && index < 5) {
+              cells.current[index + 1]?.focus();
+            }
+          }}
+          className={`font-areal-mono h-8 min-w-0 flex-1 rounded-lg bg-black text-center text-[14px] leading-8 text-white outline-none focus:inset-ring focus:inset-ring-white ${digit ? "underline decoration-1 underline-offset-[3px]" : ""}`}
+        />
+      ))}
+    </span>
+  );
+}
+
 function AdminButton({ children, label, fill = false }: { children: ReactNode; label?: string; fill?: boolean }) {
   const face = "border border-black text-black fine-hover:hover:bg-black fine-hover:hover:text-white";
   const box = label ? "size-8 shrink-0 justify-center" : fill ? "h-8 min-w-0 flex-1 justify-center px-2.5" : "h-8 px-2.5";
@@ -478,7 +577,7 @@ function Credit() {
             {handle}
           </span>
           <button type="button" aria-label="Удалить" onClick={() => setPresent(false)} className="flex size-4 shrink-0 items-center justify-center">
-            <SfSymbol name="x" className="size-4" strokeWidth={1.75} />
+            <PanelIcon name="x" className="size-4" strokeWidth={1.75} />
           </button>
         </span>
         <span ref={chips} className="relative flex flex-wrap items-center gap-1">
@@ -496,7 +595,7 @@ function Credit() {
                 }}
                 className="flex size-4 shrink-0 items-center justify-center"
               >
-                <SfSymbol name="x" className="size-4" strokeWidth={1.75} />
+                <PanelIcon name="x" className="size-4" strokeWidth={1.75} />
               </button>
             </span>
           ))}
@@ -577,21 +676,21 @@ function SceneDock({ state, done = false }: { state: "closed" | "open" | "search
       <DockDivider />
       <span className={`flex h-7 items-center rounded ${open ? "inset-ring inset-ring-black" : ""}`}>
         <button type="button" aria-label="Панель" aria-pressed={open} className={`flex size-7 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}>
-          <SfSymbol name="sliders-horizontal" className="size-5" />
+          <PanelIcon name="sliders-horizontal" className="size-5" />
         </button>
         {open ? (
           <>
             <button type="button" aria-label="Сброс" disabled={!done} className={`flex size-7 items-center justify-center rounded ${done ? "text-black" : "text-black/50"}`}>
-              <SfSymbol name="trash-2" className="size-5" />
+              <PanelIcon name="trash-2" className="size-5" />
             </button>
             <button type="button" aria-label="Копировать" disabled={!done} className={`flex size-7 items-center justify-center rounded ${done ? "text-black" : "text-black/50"}`}>
-              <SfSymbol name={done ? "check" : "file"} className="size-5" />
+              <PanelIcon name={done ? "check" : "file"} className="size-5" />
             </button>
             <button type="button" aria-label="Ссылка" className="flex size-7 items-center justify-center rounded">
-              <SfSymbol name={done ? "check" : "link"} className="size-5" />
+              <PanelIcon name={done ? "check" : "link"} className="size-5" />
             </button>
             <button type="button" aria-label={search ? "Закрыть поиск" : "Поиск"} aria-pressed={search} className={`flex size-7 items-center justify-center rounded ${search ? "bg-black text-white" : ""}`}>
-              <SfSymbol name="search" className="size-5" />
+              <PanelIcon name="search" className="size-5" />
             </button>
             {search ? (
               <input
@@ -799,7 +898,7 @@ function ParametersSpecimen() {
         }}
       >
         <div className="flex flex-col gap-2">
-          <Section foldId="scene" title="Сцена" action={<SfSymbol name="eye-off" className="size-5" />}>
+          <Section foldId="scene" title="Сцена" action={<PanelIcon name="eye-off" className="size-5" />}>
             <Row>
               <Name label="Фон" />
               <span className="flex items-center gap-2">
@@ -886,7 +985,7 @@ export function KitPage() {
           <Plate>
             <Section
               title="Карточка"
-              action={<SfSymbol name="eye" className="size-5" />}
+              action={<PanelIcon name="eye" className="size-5" />}
             >
               <Row>
                 <Name label="Сторона" changed={side !== 220} onReset={() => setSide(220)} />
@@ -1127,7 +1226,7 @@ export function KitPage() {
                   onClick={() => setCurveOn((value) => !value)}
                   className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${curveOn ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
                 >
-                  <SfSymbol name="spline" className="size-5" />
+                  <PanelIcon name="spline" className="size-5" />
                 </button>
               </span>
             </Row>
@@ -1154,10 +1253,10 @@ export function KitPage() {
           <Plate hug>
             <span className="flex w-[284px] items-center gap-1">
               <AdminButton label="Сбросить">
-                <SfSymbol name="trash-2" className="size-5" />
+                <PanelIcon name="trash-2" className="size-5" />
               </AdminButton>
               <AdminButton label="Сохранить">
-                <SfSymbol name="save" className="size-5" />
+                <PanelIcon name="save" className="size-5" />
               </AdminButton>
               <AdminButton fill>Опубликовать</AdminButton>
             </span>
@@ -1285,7 +1384,7 @@ export function KitPage() {
               <Name label="Кромка" />
               <span className="flex items-center gap-1 text-white">
                 {menu}
-                <SfSymbol name="chevrons-up-down" className="size-5" />
+                <PanelIcon name="chevrons-up-down" className="size-5" />
               </span>
             </Row>
             <div className="overflow-hidden rounded-lg border border-white">
@@ -1350,7 +1449,7 @@ export function KitPage() {
                 onClick={() => setSkips(Array.from({ length: 8 }, () => Math.random() < 0.35))}
                 className="flex size-6 items-center justify-center rounded text-white transition-[box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white motion-reduce:transition-none"
               >
-                <SfSymbol name="rotate-ccw" className="size-5" />
+                <PanelIcon name="rotate-ccw" className="size-5" />
               </button>
             </Row>
           </Plate>
@@ -1388,7 +1487,7 @@ export function KitPage() {
         <Card name="Пикер">
           <section className="flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
             <header className="flex h-4 items-center gap-1 px-1">
-              <SfSymbol name="palette" className="size-5" />
+              <PanelIcon name="palette" className="size-5" />
               <span className="text-[14px] leading-4">Палитра</span>
             </header>
             <ColorPicker
@@ -1405,7 +1504,7 @@ export function KitPage() {
       </Band>
 
       <Band name="Подпись">
-        <Card name="Подсказка">
+        <Card name="В виде ряда">
           <Plate>
             <Row>
               <RowHint text="Сторона минус отступы слева и справа">
@@ -1428,17 +1527,29 @@ export function KitPage() {
           </Plate>
         </Card>
 
-        <Card name="Версия">
-          <Plate>
-            <div className="flex h-4 items-center justify-between px-1 text-[14px] leading-4">
-              <span>Версия</span>
-              <span className="text-black/50">{PANEL_VERSION}</span>
-            </div>
+        <Card name="Вне ряда">
+          <Plate hug>
+            <p className="flex h-4 items-center px-1 text-[14px] leading-4 whitespace-nowrap text-black/50">
+              Сторона минус отступы слева и справа
+            </p>
           </Plate>
         </Card>
 
         <Card name="Тост">
           <Toast text="Отменено · Сторона" detail="1" />
+        </Card>
+      </Band>
+
+      <Band name="Вход">
+        <Card name="Пароль">
+          <Plate hug>
+            <PasswordField />
+          </Plate>
+        </Card>
+        <Card name="Код">
+          <Plate hug>
+            <CodeField />
+          </Plate>
         </Card>
       </Band>
       </Layer>
@@ -1473,6 +1584,11 @@ export function KitPage() {
         <Card name="Список">
           <Plate hug>
             <ProjectList />
+          </Plate>
+        </Card>
+        <Card name="Шапка">
+          <Plate hug>
+            <ProjectHeader />
           </Plate>
         </Card>
       </Band>

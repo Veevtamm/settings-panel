@@ -1,6 +1,6 @@
 {
   "name": "@veevtamm/settings-panel",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "private": true,
   "description": "Scene settings panel for Next.js + Tailwind 4 sites",
   "license": "MIT",
@@ -54,6 +54,7 @@
     "./scroll-player": "./src/lib/scroll-player.ts",
     "./playhead": "./src/lib/playhead.ts",
     "./player-clips": "./src/lib/player-clips.ts",
+    "./panel-icon": "./src/panel-icon.tsx",
     "./sf-symbol": "./src/sf-symbol.tsx",
     "./easing-curve-editor": "./src/easing-curve-editor.tsx",
     "./axis-curve": "./src/lib/axis-curve.ts",

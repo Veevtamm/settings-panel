@@ -17,7 +17,7 @@ import {
 } from "../lib/player-clips";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { clampNumber, cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { bindPointerDrag, fieldValueSans, GLASS, pickerChrome } from "./chrome";
 import { NumberField } from "./fields";
 import { SectionCollapse } from "./row";
@@ -1118,7 +1118,7 @@ function segmentKey(segment: PlayerSegment, index: number) {
 }
 
 type ClipMenuItem = {
-  icon: SfSymbolName;
+  icon: PanelIconName;
   label: string;
   onPick?: () => void;
   /** Template or saved curve. The list stays inside the menu. */
@@ -1438,7 +1438,7 @@ function ClipCurveMenu({
                 "text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)]",
               )}
             >
-              <SfSymbol name={item.icon} className="size-5 shrink-0" />
+              <PanelIcon name={item.icon} className="size-5 shrink-0" />
               <span className="whitespace-nowrap">{item.label}</span>
               <span className="ml-auto whitespace-nowrap pl-3 pr-1 text-[color:var(--sp-fg)]">
                 {item.curves.valueLabel}
@@ -1497,7 +1497,7 @@ function ClipCurveMenu({
               "text-[color:var(--sp-muted)]",
             )}
           >
-            <SfSymbol name={item.icon} className="size-5 shrink-0" />
+            <PanelIcon name={item.icon} className="size-5 shrink-0" />
             <span className="min-w-0 flex-1 pr-1 whitespace-nowrap">{item.label}</span>
             <NumberField
               ariaLabel={item.label}
@@ -1522,7 +1522,7 @@ function ClipCurveMenu({
             "text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:hover:bg-[color:var(--sp-fill-hover)] fine-hover:hover:text-[color:var(--sp-fg)] focus-visible:bg-[color:var(--sp-fill-hover)] focus-visible:text-[color:var(--sp-fg)]",
           )}
         >
-          <SfSymbol name={item.icon} className="size-5 shrink-0" />
+          <PanelIcon name={item.icon} className="size-5 shrink-0" />
           <span className="pr-1 whitespace-nowrap">{item.label}</span>
         </button>
         ),

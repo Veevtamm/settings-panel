@@ -7,7 +7,7 @@ import {
   presetCurvePath,
   type ExtraEasingPreset,
 } from "../lib/easing-presets";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 
 /** Panel / Icon 14×14 easing glyphs (`Symbol=Linear|Ease|…`). Custom bezier = 􃈟. */
 export const PRESET_CURVE_D: Record<string, string> = {
@@ -48,7 +48,7 @@ export function PresetCurveIcon({
         aria-hidden
         className="relative size-[14px] shrink-0 overflow-hidden"
       >
-        <SfSymbol
+        <PanelIcon
           name="function-square"
           className="pointer-events-none absolute size-5"
           style={{ left: -2, top: -3 }}

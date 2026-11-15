@@ -46,7 +46,7 @@ import {
 } from "../lib/timeline-tree";
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import { RowLabel, SectionCollapse, useDeferredMount } from "./row";
 import {
   DEFAULT_DOCK_CORNER,
@@ -383,7 +383,7 @@ export function TimelineToggleButton({
       onClick={onToggle}
       className={cn(dockBarButtonClass(open), className)}
     >
-      <SfSymbol name="timer" />
+      <PanelIcon name="timer" />
     </button>
   );
 }
@@ -1311,7 +1311,7 @@ function TimelineDockBody({
                   >
                     {phasesTitle}
                   </span>
-                  <SfSymbol
+                  <PanelIcon
                     name="chevron-up"
                     className={cn("size-5", !elementsOpen && "rotate-180")}
                     style={{ color: MUTED }}
@@ -1480,7 +1480,7 @@ function TimelineDockBody({
                                 )}
                                 className="inline-flex size-5 shrink-0 items-center justify-center outline-none"
                               >
-                                <SfSymbol
+                                <PanelIcon
                                   name="chevron-up"
                                   className={cn("size-5", !groupOpen && "rotate-180")}
                                   style={{ color: MUTED }}
@@ -1614,7 +1614,7 @@ function TimelineDockBody({
                                 )}
                                 className="inline-flex size-5 shrink-0 items-center justify-center outline-none"
                               >
-                                <SfSymbol
+                                <PanelIcon
                                   name="chevron-up"
                                   className={cn(
                                     "size-5",

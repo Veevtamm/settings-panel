@@ -1,4 +1,4 @@
-import { resolvePanelIcon, type SfSymbolName } from "../sf-symbol";
+import { resolvePanelIcon, type PanelIconName } from "../panel-icon";
 
 export function rowIconKey(id: string) {
   return `row:${id}`;
@@ -9,26 +9,26 @@ export function subsectionIconKey(groupId: string, titleKey: string) {
 }
 
 export function resolvedPanelIcon(
-  map: Record<string, SfSymbolName>,
+  map: Record<string, PanelIconName>,
   id: string,
-  fallback?: SfSymbolName,
-): SfSymbolName | undefined {
+  fallback?: PanelIconName,
+): PanelIconName | undefined {
   return map[id] ?? fallback;
 }
 
 export function panelIconIsModified(
-  map: Record<string, SfSymbolName>,
+  map: Record<string, PanelIconName>,
   id: string,
 ) {
   return map[id] != null;
 }
 
 export function nextPanelIcons(
-  map: Record<string, SfSymbolName>,
+  map: Record<string, PanelIconName>,
   id: string,
-  fallback: SfSymbolName | undefined,
-  next: SfSymbolName | undefined,
-): Record<string, SfSymbolName> {
+  fallback: PanelIconName | undefined,
+  next: PanelIconName | undefined,
+): Record<string, PanelIconName> {
   const resolvedNext = next ? (resolvePanelIcon(next) ?? next) : undefined;
   const resolvedFb = fallback
     ? (resolvePanelIcon(fallback) ?? fallback)

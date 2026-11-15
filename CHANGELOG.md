@@ -1,6 +1,18 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.1"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.2"`. Without `#tag` npm takes `main`.
+
+## 0.3.2
+
+### Changed
+
+- Glyphs are `PanelIcon` (`@veevtamm/settings-panel/panel-icon`). `SfSymbol` stays as an alias.
+- Axis `sharp` 1 samples a straight polyline from point to point. In the new style, **Угловая** draws those lines for the whole axis; the row is **Линия**.
+- A new-style menu picks up or down before it animates. Both sides use the same 4px move off the anchor and scale from 0.98.
+
+### Playground
+
+- Kit: project header matches the list row type and gaps. Password and code underline once a value is in. Code digits use ABC Areal Mono.
 
 ## 0.3.1
 

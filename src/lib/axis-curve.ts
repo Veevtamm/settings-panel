@@ -135,11 +135,15 @@ export function sampleAxisX(
   const t1 = pts[i + 1]![0];
   const v0 = pts[i]![1];
   const v1 = pts[i + 1]![1];
+  const straight = t1 > t0 ? (tt - t0) / (t1 - t0) : 0;
+  const line = v0 + (v1 - v0) * straight;
+  if (sharp >= 1) return line;
+
   const [c1, c2] = segmentControls(pts, handles, i);
   const [c1t, c1x] = c1;
   const [c2t, c2x] = c2;
 
-  let u = t1 > t0 ? (tt - t0) / (t1 - t0) : 0;
+  let u = straight;
   for (let it = 0; it < 6; it++) {
     const mu = 1 - u;
     const tu =
@@ -155,14 +159,13 @@ export function sampleAxisX(
     u = clampNumber(u - (tu - tt) / dtu, 0, 1);
   }
 
-  const lin = v0 + (v1 - v0) * u;
   const mu2 = 1 - u;
   const val =
     mu2 * mu2 * mu2 * v0 +
     3 * mu2 * mu2 * u * c1x +
     3 * mu2 * u * u * c2x +
     u * u * u * v1;
-  return val * (1 - sharp) + lin * sharp;
+  return val * (1 - sharp) + line * sharp;
 }
 
 export function sampleAxisPath(

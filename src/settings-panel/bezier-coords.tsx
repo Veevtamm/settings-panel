@@ -2,7 +2,7 @@
 
 import { formatBezierInput, type CubicBezier } from "../lib/cubic-bezier";
 import { cn } from "../lib/utils";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import { MUTED } from "./chrome";
 import { FieldButton, NumberInput } from "./fields";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
@@ -35,7 +35,7 @@ export function BezierCoordsRow({
           void copy(formatBezierInput(value));
         }}
       >
-        <SfSymbol name={copied ? "check" : "file"} className="size-5" />
+        <PanelIcon name={copied ? "check" : "file"} className="size-5" />
       </FieldButton>
       <div
         className={cn(

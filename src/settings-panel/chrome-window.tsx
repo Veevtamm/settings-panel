@@ -2,7 +2,7 @@
 
 import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { GLASS, ICON, MUTED, PANEL_MOVE_EDGE } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { RowLabel } from "./row";
@@ -56,7 +56,7 @@ export function ChromeViewSection({
   closeLabel,
   children,
 }: {
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   title: string;
   locale: PanelLocale;
   modified?: boolean;
@@ -70,7 +70,7 @@ export function ChromeViewSection({
       <div className="flex h-5 w-full items-center justify-between gap-2">
         <span className="inline-flex min-w-0 items-center gap-1">
           {icon ? (
-            <SfSymbol
+            <PanelIcon
               name={icon}
               className="size-5 shrink-0"
               style={{ color: ICON }}
@@ -113,7 +113,7 @@ export function ChromeViewSection({
             onClick={onClose}
             className="relative z-[3] inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
           >
-            <SfSymbol name="x" className="size-5" style={{ color: ICON }} />
+            <PanelIcon name="x" className="size-5" style={{ color: ICON }} />
           </button>
         ) : null}
       </div>

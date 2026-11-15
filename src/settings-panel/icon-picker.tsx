@@ -6,11 +6,11 @@ import { closestPanelFont, type PanelFont } from "../lib/panel-theme";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { cn } from "../lib/utils";
 import {
-  SfSymbol,
-  SF_SYMBOL_NAMES,
+  PanelIcon,
+  PANEL_ICON_NAMES,
   resolvePanelIcon,
-  type SfSymbolName,
-} from "../sf-symbol";
+  type PanelIconName,
+} from "../panel-icon";
 import {
   EASE_OUT,
   GLASS,
@@ -36,7 +36,7 @@ function pickerWidth() {
 }
 
 function pickerHeight() {
-  const rows = Math.ceil(SF_SYMBOL_NAMES.length / ICON_COLS);
+  const rows = Math.ceil(PANEL_ICON_NAMES.length / ICON_COLS);
   const gridH = Math.min(rows, ICON_GRID_MAX_ROWS) * ICON_CELL;
   return gridH + ICON_PAD * 2 + 2;
 }
@@ -58,14 +58,14 @@ function IconPickerFlyout({
 }: {
   label: string;
   left: number;
-  onPick: (name: SfSymbolName) => void;
+  onPick: (name: PanelIconName) => void;
   open: boolean;
   originX: number;
   originY: number;
   reduceMotion: boolean;
   side: "below" | "above";
   top: number;
-  value?: SfSymbolName;
+  value?: PanelIconName;
   popoverRef: RefObject<HTMLDivElement | null>;
   theme: "dark" | "light";
   font?: PanelFont;
@@ -156,7 +156,7 @@ function IconPickerFlyout({
           maxHeight: ICON_GRID_MAX_ROWS * ICON_CELL,
         }}
       >
-        {SF_SYMBOL_NAMES.map((name) => {
+        {PANEL_ICON_NAMES.map((name) => {
           const selected =
             value != null &&
             resolvePanelIcon(name) === resolvePanelIcon(value);
@@ -176,7 +176,7 @@ function IconPickerFlyout({
                 selected ? pickActive : pickIdle,
               )}
             >
-              <SfSymbol
+              <PanelIcon
                 name={name}
                 className="size-5"
                 style={{ color: ICON }}
@@ -197,8 +197,8 @@ export function SectionIconPicker({
 }: {
   label: string;
   locale: PanelLocale;
-  onChange: (name: SfSymbolName) => void;
-  value?: SfSymbolName;
+  onChange: (name: PanelIconName) => void;
+  value?: PanelIconName;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -316,7 +316,7 @@ export function SectionIconPicker({
         }}
         className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
       >
-        <SfSymbol
+        <PanelIcon
           name={value ?? "plus"}
           className="size-5"
           style={{ color: value ? ICON : MUTED }}

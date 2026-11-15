@@ -15,7 +15,7 @@ import {
 import { useCopyFlash } from "../src/settings-panel/use-copy-flash";
 import { usePrefersReducedMotion } from "../src/lib/prefers-reduced-motion";
 import type { PlayerSetting } from "../src/settings-panel/types";
-import { SfSymbol, type SfSymbolName } from "../src/sf-symbol";
+import { PanelIcon, type PanelIconName } from "../src/panel-icon";
 import { barClip, writeBarClip } from "./bar-times";
 import { P, type PlaygroundSettings as S } from "./params";
 
@@ -91,7 +91,7 @@ function IconButton({
   label: string;
   pressed?: boolean;
   onClick: () => void;
-  name: SfSymbolName;
+  name: PanelIconName;
 }) {
   return (
     <button
@@ -101,7 +101,7 @@ function IconButton({
       onClick={onClick}
       className={`flex size-6 items-center justify-center rounded ${pressed ? "bg-white text-black" : "bg-black text-white"}`}
     >
-      <SfSymbol name={name} className="size-4" strokeWidth={1.8} />
+      <PanelIcon name={name} className="size-4" strokeWidth={1.8} />
     </button>
   );
 }
@@ -479,7 +479,7 @@ export function NewTimeline({
     <section ref={rootRef} data-chrome="" className="flex w-[min(944px,calc(100vw-24px))] flex-col gap-1 rounded-2xl bg-white p-2 text-black">
       <div className="flex w-full items-center">
         <div className="flex w-60 shrink-0 items-center gap-1 px-1">
-          <SfSymbol name="contrast" className="size-4" strokeWidth={1.8} />
+          <PanelIcon name="contrast" className="size-4" strokeWidth={1.8} />
           <p className="text-[14px] leading-4">{tx(PANEL_COPY.dockTimeline, locale)}</p>
         </div>
         <div className="grid min-w-0 flex-1 grid-cols-[1fr_auto_1fr] items-center">
@@ -539,7 +539,7 @@ export function NewTimeline({
               className="flex h-4 items-center px-1 text-left text-[14px] leading-4"
             >
               <span className="min-w-0 flex-1 truncate">{tx(PANEL_COPY.phases, locale)}</span>
-              <SfSymbol name={elementsOpen ? "chevron-up" : "chevron-down"} className="size-4" strokeWidth={1.8} />
+              <PanelIcon name={elementsOpen ? "chevron-up" : "chevron-down"} className="size-4" strokeWidth={1.8} />
             </button>
             {elementsOpen ? (
               <div ref={rowListRef} className="overflow-hidden rounded-lg bg-black">

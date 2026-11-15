@@ -48,7 +48,7 @@ import {
   SCENE_PANEL_CODES,
 } from "../lib/hotkeys";
 import { cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { BezierCoordsRow } from "./bezier-coords";
 import {
   CURVE_SIZE,
@@ -307,7 +307,7 @@ export function SettingsPanelImpl<TSettings>({
     setWindowHost(document.body);
   }, []);
   const [sectionIcons, setSectionIcons] = useState<
-    Record<string, SfSymbolName>
+    Record<string, PanelIconName>
   >({});
   const legacyPanelKey = legacyPanelIds.join("\0");
 
@@ -316,7 +316,7 @@ export function SettingsPanelImpl<TSettings>({
   const dotFor = (
     key: keyof TSettings,
     info?: string,
-    icon?: SfSymbolName,
+    icon?: PanelIconName,
   ): ResetDotProps => {
     const defaults = defaultSettings;
     if (!valueReset || defaults == null) return { info, icon };
@@ -338,7 +338,7 @@ export function SettingsPanelImpl<TSettings>({
   const dotForKeys = (
     keys: readonly (keyof TSettings)[],
     info?: string,
-    icon?: SfSymbolName,
+    icon?: PanelIconName,
   ): ResetDotProps => {
     const defaults = defaultSettings;
     if (!valueReset || defaults == null) return { info, icon };
@@ -956,8 +956,8 @@ export function SettingsPanelImpl<TSettings>({
 
   const persistSectionIcon = (
     id: string,
-    fallback: SfSymbolName | undefined,
-    next: SfSymbolName | undefined,
+    fallback: PanelIconName | undefined,
+    next: PanelIconName | undefined,
   ) => {
     setSectionIcons((prev) => {
       const map = nextPanelIcons(prev, id, fallback, next);
@@ -968,7 +968,7 @@ export function SettingsPanelImpl<TSettings>({
 
   const withPanelIcon = (
     id: string,
-    fallback: SfSymbolName | undefined,
+    fallback: PanelIconName | undefined,
     dots: ResetDotProps = {},
   ): ResetDotProps => {
     const iconMod = panelIconIsModified(sectionIcons, id);
@@ -986,7 +986,7 @@ export function SettingsPanelImpl<TSettings>({
             }
           : undefined,
       onIconChange: reorderSections
-        ? (name: SfSymbolName) => persistSectionIcon(id, fallback, name)
+        ? (name: PanelIconName) => persistSectionIcon(id, fallback, name)
         : undefined,
     };
   };
@@ -994,13 +994,13 @@ export function SettingsPanelImpl<TSettings>({
   const rowDotFor = (
     key: keyof TSettings,
     info?: string,
-    icon?: SfSymbolName,
+    icon?: PanelIconName,
   ) => withPanelIcon(rowIconKey(String(key)), icon, dotFor(key, info, icon));
 
   const rowDotForKeys = (
     keys: readonly (keyof TSettings)[],
     info?: string,
-    icon?: SfSymbolName,
+    icon?: PanelIconName,
   ) =>
     withPanelIcon(
       rowIconKey(keys.map(String).join("+")),
@@ -1010,7 +1010,7 @@ export function SettingsPanelImpl<TSettings>({
 
   const sectionIconProps = (
     id: string,
-    fallback: SfSymbolName | undefined,
+    fallback: PanelIconName | undefined,
     extra?: ResetDotProps,
   ) => {
     const dots = withPanelIcon(id, fallback, extra ?? {});
@@ -1780,7 +1780,7 @@ export function SettingsPanelImpl<TSettings>({
               toggleSettings();
             }}
           >
-            <SfSymbol name="settings" className="size-5" />
+            <PanelIcon name="settings" className="size-5" />
           </button>
           <DockBarDivider />
           <DockBadgeAnchor>
@@ -1809,7 +1809,7 @@ export function SettingsPanelImpl<TSettings>({
               toggleScene();
             }}
           >
-            <SfSymbol name={sceneIcon} className="size-5" />
+            <PanelIcon name={sceneIcon} className="size-5" />
           </button>
           {changedBadge(!valueReset || panelOpen ? 0 : changedCount)}
           </DockBadgeAnchor>
@@ -1858,7 +1858,7 @@ export function SettingsPanelImpl<TSettings>({
                 toggleSpring();
               }}
             >
-              <SfSymbol name="activity" className="size-5" />
+              <PanelIcon name="activity" className="size-5" />
             </button>
           </DockBarSlot>
           <DockBarSlot
@@ -1883,7 +1883,7 @@ export function SettingsPanelImpl<TSettings>({
                 toggleBezier();
               }}
             >
-              <SfSymbol name="spline" className="size-5" />
+              <PanelIcon name="spline" className="size-5" />
             </button>
           </DockBarSlot>
           <DockBarSlot open={Boolean(curveSection)} reduceMotion={reduceMotion}>
@@ -1905,7 +1905,7 @@ export function SettingsPanelImpl<TSettings>({
                 toggleAxis();
               }}
             >
-              <SfSymbol name="waypoints" className="size-5" />
+              <PanelIcon name="waypoints" className="size-5" />
             </button>
           </DockBarSlot>
           <DockBarSlot open={Boolean(dockExtra)} reduceMotion={reduceMotion}>
@@ -1946,7 +1946,7 @@ export function SettingsPanelImpl<TSettings>({
                   onReset();
                 }}
               >
-                <SfSymbol name="trash-2" className="size-5" />
+                <PanelIcon name="trash-2" className="size-5" />
               </button>
               {defaultSettings != null ? (
                 <DockBadgeAnchor>
@@ -1961,7 +1961,7 @@ export function SettingsPanelImpl<TSettings>({
                   className={dockBarButtonClass()}
                   onClick={copyChangedSettings}
                 >
-                  <SfSymbol
+                  <PanelIcon
                     name={copiedChanges ? "check" : "file"}
                     className="size-5"
                   />
@@ -2243,7 +2243,7 @@ export function SettingsPanelImpl<TSettings>({
                   "focus-visible:ring-1 focus-visible:ring-[color:var(--sp-line-focus)]",
                 )}
               >
-                <SfSymbol name="save" className="size-5" />
+                <PanelIcon name="save" className="size-5" />
               </button>
               <RowLabel
                 label={tx(PANEL_COPY.presets, locale)}

@@ -12,7 +12,7 @@ import { closestPanelFont, type PanelFont } from "../lib/panel-theme";
 import { normalizeHex, parseRgb } from "../lib/hex";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { clampNumber, cn } from "../lib/utils";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import {
   EASE_OUT,
   FIELD,
@@ -387,7 +387,7 @@ export function ColorPickerFlyout({
                 .finally(onPickEnd);
             }}
           >
-            <SfSymbol name="pipette" className="size-5" />
+            <PanelIcon name="pipette" className="size-5" />
           </FieldButton>
         ) : null}
       </div>

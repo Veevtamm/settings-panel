@@ -121,11 +121,14 @@ export {
 export type { StrokeJoin } from "./settings-panel/stroke-join";
 export { useCopyFlash } from "./settings-panel/use-copy-flash";
 export {
-  SfSymbol,
-  isSfSymbolName,
+  PanelIcon,
+  PanelIcon as SfSymbol,
+  isPanelIconName,
+  isPanelIconName as isSfSymbolName,
   resolvePanelIcon,
-  type SfSymbolName,
-} from "./sf-symbol";
+  type PanelIconName,
+  type PanelIconName as SfSymbolName,
+} from "./panel-icon";
 export { EasingCurveEditor } from "./easing-curve-editor";
 export { AxisCurveEditor } from "./axis-curve-editor";
 export type {

@@ -7,7 +7,7 @@ import {
   type DockCorner,
 } from "../settings-panel/chrome";
 import type { PanelLocale } from "../settings-panel/locale";
-import { isSfSymbolName, resolvePanelIcon, type SfSymbolName } from "../sf-symbol";
+import { isPanelIconName, resolvePanelIcon, type PanelIconName } from "../panel-icon";
 
 export type PanelTheme = "dark" | "light";
 /** UI typeface of the panel. Geist is the consumer webfont; the rest are OS stacks, no files. */
@@ -131,7 +131,7 @@ export type PanelSettingsFile = {
   /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Scene Reset and Panel Settings «Положение» do not clear it. */
   dockSlot?: DockCorner;
   /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
-  sectionIcons?: Record<string, SfSymbolName>;
+  sectionIcons?: Record<string, PanelIconName>;
   /**
    * Last group (and named subsection `copyKey`) where a row was edited.
    * Scene Reset does not clear.
@@ -154,11 +154,11 @@ function parseLastEdited(
   return next;
 }
 
-function parseSectionIcons(raw: unknown): Record<string, SfSymbolName> | undefined {
+function parseSectionIcons(raw: unknown): Record<string, PanelIconName> | undefined {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-  const next: Record<string, SfSymbolName> = {};
+  const next: Record<string, PanelIconName> = {};
   for (const [id, name] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof name === "string" && isSfSymbolName(name)) {
+    if (typeof name === "string" && isPanelIconName(name)) {
       const lucide = resolvePanelIcon(name);
       if (lucide) next[id] = lucide;
     }

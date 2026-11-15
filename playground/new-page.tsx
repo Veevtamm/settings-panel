@@ -12,7 +12,7 @@ import {
 } from "../src/lib/easing-presets";
 import { movePanelRow, panelRowSlot, samePanelRowOrder } from "../src/lib/panel-rows";
 import { usePrefersReducedMotion } from "../src/lib/prefers-reduced-motion";
-import { SfSymbol as PanelSymbol } from "../src/sf-symbol";
+import { PanelIcon as Icon } from "../src/panel-icon";
 import type { LucideIconName } from "../src/lucide-glyphs";
 import { PageBar } from "./page-bar";
 import {
@@ -94,7 +94,7 @@ function useScrollRoot() {
   return { el, setEl };
 }
 
-function SfSymbol({
+function PanelIcon({
   name,
   className,
   strokeWidth = 1.8,
@@ -103,7 +103,7 @@ function SfSymbol({
   className?: string;
   strokeWidth?: number;
 }) {
-  return <PanelSymbol name={name} className={className} strokeWidth={strokeWidth} />;
+  return <Icon name={name} className={className} strokeWidth={strokeWidth} />;
 }
 
 export type Hsva = { h: number; s: number; v: number; a: number };
@@ -837,11 +837,11 @@ export function ParametersPanel({
     <section data-chrome="" className={`relative flex flex-col overflow-hidden rounded-2xl bg-white text-black ${className}`} style={style}>
       <header className="flex items-center justify-between px-3 pt-2 pb-0.5">
         <span className="flex h-5 min-w-0 items-center gap-1">
-          <SfSymbol name="sliders-horizontal" className="size-5" />
+          <PanelIcon name="sliders-horizontal" className="size-5" />
           <span className="text-[14px] leading-4">{title}</span>
         </span>
         <button type="button" aria-label={canCollapse ? collapseLabel : expandLabel} onClick={onToggleFold} className="flex size-5 items-center justify-center">
-          <SfSymbol name={canCollapse ? "list-chevrons-down-up" : "list-chevrons-up-down"} className="size-5" />
+          <PanelIcon name={canCollapse ? "list-chevrons-down-up" : "list-chevrons-up-down"} className="size-5" />
         </button>
       </header>
       <div
@@ -886,13 +886,13 @@ export function Section({
       <div className="relative -ml-2 flex h-4 w-[calc(100%+8px)] items-center pl-3 pr-1 text-black">
         <DragGrip className="left-0" />
         <button type="button" onClick={toggleOpen} className="flex min-w-0 flex-1 items-center gap-1 text-left">
-          {icon ? <SfSymbol name={icon} className="size-5" /> : null}
+          {icon ? <PanelIcon name={icon} className="size-5" /> : null}
           <span className="text-[14px] leading-4">{title}</span>
         </button>
         <span className="flex items-center gap-2">
           {action}
           <button type="button" aria-label={locale === "en" ? (open ? "Collapse" : "Expand") : (open ? "Свернуть" : "Развернуть")} onClick={toggleOpen}>
-            <SfSymbol name={open ? "chevron-up" : "chevron-down"} className="size-5" />
+            <PanelIcon name={open ? "chevron-up" : "chevron-down"} className="size-5" />
           </button>
         </span>
       </div>
@@ -1150,7 +1150,7 @@ export function DockButton({
         onClick={onClick}
         className={`flex size-7 items-center justify-center rounded ${disabled ? "text-black/50" : active ? "bg-black text-white" : "text-black fine-hover:hover:inset-ring fine-hover:hover:inset-ring-black"}`}
       >
-        <SfSymbol name={name} className="size-5" />
+        <PanelIcon name={name} className="size-5" />
       </button>
       {badge != null ? (
         <span className="pointer-events-none absolute top-[-7px] left-[21px] flex size-3.5 items-center justify-center rounded-full bg-black text-[10px] leading-none text-white">
@@ -1428,7 +1428,7 @@ const PICK_GLYPH: Record<string, [number, number, string]> = {
 
 export function PickGlyph({ name }: { name: string }) {
   const glyph = PICK_GLYPH[name];
-  if (!glyph) return <SfSymbol name={name as LucideIconName} className="size-5" />;
+  if (!glyph) return <PanelIcon name={name as LucideIconName} className="size-5" />;
   const [x, y, d] = glyph;
   return (
     <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
@@ -1662,11 +1662,11 @@ export function Menu({
                   />
                 </span>
               ) : (
-                <SfSymbol name="check" className={`size-5 ${(selected ? selected.includes(option) : option === value) ? "" : "opacity-0"}`} />
+                <PanelIcon name="check" className={`size-5 ${(selected ? selected.includes(option) : option === value) ? "" : "opacity-0"}`} />
               )}
               <span className="min-w-0 flex-1 text-left">{option}</span>
               {curves ? (
-                <SfSymbol name="check" className={`size-5 ${option === value ? "" : "opacity-0"}`} />
+                <PanelIcon name="check" className={`size-5 ${option === value ? "" : "opacity-0"}`} />
               ) : onRemove ? (
                 <span
                   role="button"
@@ -1677,7 +1677,7 @@ export function Menu({
                   }}
                   className="pointer-events-none flex size-4 shrink-0 items-center justify-center opacity-0 group-hover/item:pointer-events-auto group-hover/item:opacity-100"
                 >
-                  <SfSymbol name="x" className="size-4" strokeWidth={1.75} />
+                  <PanelIcon name="x" className="size-4" strokeWidth={1.75} />
                 </span>
               ) : onItemAction ? (
                 <span
@@ -1726,7 +1726,7 @@ export function Menu({
         />
       ) : onCreate ? (
         <button type="button" onClick={() => setCreating(true)} className="mt-1 flex h-6 items-center gap-1 rounded px-0.5 fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white">
-          <SfSymbol name="plus" className="size-5" />
+          <PanelIcon name="plus" className="size-5" />
           New input
         </button>
       ) : null}
@@ -1747,19 +1747,29 @@ function FloatingMenu({
 }) {
   const [box, setBox] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
   const [above, setAbove] = useState(false);
+  const [span, setSpan] = useState(0);
+  const [phase, setPhase] = useState<"measure" | "hold" | "play">("measure");
   const menuRef = useRef<HTMLDivElement>(null);
   const reduce = usePrefersReducedMotion();
   const mounted = useDeferredMount(open, reduce, PANEL_EXIT_MS);
   const [shown, setShown] = useState(false);
 
   useLayoutEffect(() => {
+    if (!mounted) {
+      setShown(false);
+      setPhase("measure");
+      setAbove(false);
+      setSpan(0);
+      setBox(null);
+      return;
+    }
     if (!open) {
       setShown(false);
       return;
     }
-    const frame = requestAnimationFrame(() => setShown(true));
-    return () => cancelAnimationFrame(frame);
-  }, [open]);
+    setShown(false);
+    setPhase("measure");
+  }, [mounted, open]);
 
   useLayoutEffect(() => {
     if (!open) return;
@@ -1777,7 +1787,6 @@ function FloatingMenu({
         }
       }
       setBox({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
-      setAbove(false);
     };
     const onScroll = (event: Event) => {
       const target = event.target;
@@ -1804,7 +1813,7 @@ function FloatingMenu({
 
   useLayoutEffect(() => {
     const menu = menuRef.current;
-    if (!menu || !box) return;
+    if (!open || !menu || !box || phase !== "measure") return;
     const height = menu.offsetHeight;
     const pad = 8;
     const width = Math.max(0, box.width - 4);
@@ -1815,9 +1824,23 @@ function FloatingMenu({
     const spaceBelow = window.innerHeight - (box.top + box.height + 2) - pad;
     const spaceAbove = box.top - 2 - pad;
     const nextAbove = height > spaceBelow && spaceAbove >= height;
+    const placed = nextAbove === above && height === span && Math.abs(left - box.left) <= 0.5;
     if (Math.abs(left - box.left) > 0.5) setBox({ ...box, left });
     if (nextAbove !== above) setAbove(nextAbove);
-  }, [box, above, shown]);
+    if (height !== span) setSpan(height);
+    if (placed) setPhase("hold");
+  }, [open, box, above, span, phase]);
+
+  useLayoutEffect(() => {
+    if (!open || phase !== "hold") return;
+    setPhase("play");
+  }, [open, phase]);
+
+  useLayoutEffect(() => {
+    if (!open || phase !== "play") return;
+    const frame = requestAnimationFrame(() => setShown(true));
+    return () => cancelAnimationFrame(frame);
+  }, [open, phase]);
 
   if (!mounted || !box) return null;
   const close = (event: { stopPropagation: () => void }) => {
@@ -1833,17 +1856,14 @@ function FloatingMenu({
       <div
         ref={menuRef}
         data-chrome=""
-        className={`fixed z-[120] overflow-hidden rounded-lg border border-white ${above ? "origin-bottom" : "origin-top"} ${reduce ? "" : "transition-[opacity,transform]"} ${shown ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`fixed z-[120] overflow-hidden rounded-lg border border-white ${above ? "origin-bottom" : "origin-top"} ${phase === "play" && !reduce ? "transition-[opacity,transform]" : ""} ${shown ? "opacity-100" : "pointer-events-none opacity-0"}`}
         style={{
-          top: above ? box.top - 2 : box.top + box.height + 2,
+          top: above ? box.top - 2 - span : box.top + box.height + 2,
           left: box.left + 2,
           width: Math.max(0, box.width - 4),
-          transform: above
-            ? `translateY(calc(-100% + ${shown ? 0 : 4}px)) scale(${shown ? 1 : 0.98})`
-            : shown
-              ? undefined
-              : "translateY(-4px) scale(0.98)",
-          transitionDuration: reduce ? undefined : shown ? `${PANEL_ENTER_MS}ms` : `${PANEL_EXIT_MS}ms`,
+          visibility: phase === "play" ? "visible" : "hidden",
+          transform: shown ? undefined : above ? "translateY(4px) scale(0.98)" : "translateY(-4px) scale(0.98)",
+          transitionDuration: reduce || phase !== "play" ? undefined : shown ? `${PANEL_ENTER_MS}ms` : `${PANEL_EXIT_MS}ms`,
           transitionTimingFunction: EASE_OUT,
         }}
         onClick={(event) => event.stopPropagation()}
@@ -1901,7 +1921,7 @@ export function ColorPicker({
           <span>{tr(locale, "Элемент", "Element")}</span>
           <span className="flex items-center gap-1">
             {target}
-            <SfSymbol name="chevrons-up-down" className="size-5" />
+            <PanelIcon name="chevrons-up-down" className="size-5" />
           </span>
         </div>
         <FloatingMenu open={targetMenu} anchor={targetAnchor} onClose={() => setTargetMenu(false)}>
@@ -2013,7 +2033,7 @@ export function ColorPicker({
             }}
             className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${picking ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
           >
-            <SfSymbol name="pipette" className="size-5" />
+            <PanelIcon name="pipette" className="size-5" />
           </button>
         </span>
       </div>
@@ -2160,7 +2180,7 @@ export function MotionWindow({
     <section data-chrome="" className="flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
       <header className="flex h-4 items-center px-1">
         <span className="flex min-w-0 items-center gap-1">
-          <SfSymbol name="spline" className="size-5" />
+          <PanelIcon name="spline" className="size-5" />
           <span className="text-[14px] leading-4">{tr(locale, "Движение", "Motion")}</span>
         </span>
       </header>
@@ -2254,7 +2274,7 @@ export function MotionWindow({
                 }}
                 className="flex size-6 items-center justify-center rounded text-white transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"
               >
-                <SfSymbol name={coordsCopied ? "check" : "file"} className="size-5" />
+                <PanelIcon name={coordsCopied ? "check" : "file"} className="size-5" />
               </button>
             </span>
             <span className="grid h-6 w-full grid-cols-4 gap-1">
@@ -2305,7 +2325,7 @@ export function MotionWindow({
                 <span className={rowLabel}>{tr(locale, "Пресет", "Preset")}</span>
                 <span className="flex items-center gap-1">
                   {springLabel}
-                  <SfSymbol name="chevrons-up-down" className="size-5" />
+                  <PanelIcon name="chevrons-up-down" className="size-5" />
                 </span>
               </Row>
               <FloatingMenu open={springMenu} anchor={springAnchor} onClose={() => setSpringMenu(false)}>
@@ -2320,7 +2340,7 @@ export function MotionWindow({
               <span className={rowLabel}>{tr(locale, "Кривая", "Ease")}</span>
               <span className="flex items-center gap-1">
                 {presetLabel}
-                <SfSymbol name="chevrons-up-down" className="size-5" />
+                <PanelIcon name="chevrons-up-down" className="size-5" />
               </span>
             </Row>
             <FloatingMenu open={menu} anchor={easeAnchor} onClose={() => setMenu(false)}>
@@ -2385,7 +2405,7 @@ export function AxisWindow({
     <section data-chrome="" className="flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
       <header className="flex h-4 items-center px-1">
         <span className="flex min-w-0 items-center gap-1">
-          <SfSymbol name="waypoints" className="size-5" />
+          <PanelIcon name="waypoints" className="size-5" />
           <span className="text-[14px] leading-4">{tr(locale, "Ось", "Axis")}</span>
         </span>
       </header>
@@ -2503,11 +2523,7 @@ export function AxisWindow({
           ) : null}
           {points.map((point, index) => {
             const at = plotPoint(point);
-            const active = index === selected;
-            if (active && style === "corner") {
-              return <rect key={index} x={at.x - 4} y={at.y - 4} width="8" height="8" fill={VOID} stroke={SILVER} strokeWidth="1.5" />;
-            }
-            return <circle key={index} cx={at.x} cy={at.y} r={active ? 4 : 3} fill={VOID} stroke={SILVER} strokeWidth="1.5" />;
+            return <circle key={index} cx={at.x} cy={at.y} r={index === selected ? 4 : 3} fill={VOID} stroke={SILVER} strokeWidth="1.5" />;
           })}
         </svg>
         <Row bind="bars">
@@ -2523,7 +2539,7 @@ export function AxisWindow({
           </span>
         </Row>
         <Row bind="bars">
-          <span className={rowLabel}>{tr(locale, "Точка", "Point")}</span>
+          <span className={rowLabel}>{tr(locale, "Линия", "Line")}</span>
           <Segment
             value={style}
             onChange={onStyle}
@@ -3056,7 +3072,7 @@ export function NewPage() {
               onClick={() => setScrubKey((current) => (current === key ? null : key))}
               className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${openScrub ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
             >
-              <SfSymbol name="settings-2" className="size-5" />
+              <PanelIcon name="settings-2" className="size-5" />
             </button>
           </span>
         </span>
@@ -3174,21 +3190,21 @@ export function NewPage() {
               onClick={() => setOpen((value) => !value)}
               className={`flex size-7 shrink-0 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}
             >
-              <SfSymbol name="sliders-horizontal" className="size-5" />
+              <PanelIcon name="sliders-horizontal" className="size-5" />
             </button>
             {open ? (
               <>
                 <button type="button" aria-label={tt("Сброс", "Reset")} disabled={changeCount === 0} onClick={() => history.record(d, tt("Сброс", "Reset"))} className={`flex size-7 shrink-0 items-center justify-center rounded ${changeCount === 0 ? "text-black/50" : "text-black"}`}>
-                  <SfSymbol name="trash-2" className="size-5" />
+                  <PanelIcon name="trash-2" className="size-5" />
                 </button>
                 <button type="button" aria-label={tt("Копировать", "Copy")} disabled={changeCount === 0} onClick={() => void copyScene()} className={`flex size-7 shrink-0 items-center justify-center rounded ${changeCount === 0 ? "text-black/50" : "text-black"}`}>
-                  <SfSymbol name={copied === "file" ? "check" : "file"} className="size-5" />
+                  <PanelIcon name={copied === "file" ? "check" : "file"} className="size-5" />
                 </button>
               </>
             ) : null}
             {open ? (
               <button type="button" aria-label={tt("Ссылка", "Link")} onClick={() => void copyLink()} className="flex size-7 shrink-0 items-center justify-center rounded text-black">
-                <SfSymbol name={copied === "link" ? "check" : "link"} className="size-5" />
+                <PanelIcon name={copied === "link" ? "check" : "link"} className="size-5" />
               </button>
             ) : null}
             <button
@@ -3207,7 +3223,7 @@ export function NewPage() {
               }}
               className={`flex size-7 shrink-0 items-center justify-center rounded ${searchOpen ? "bg-black text-white" : "text-black"}`}
             >
-              <SfSymbol name="search" className="size-5" />
+              <PanelIcon name="search" className="size-5" />
             </button>
             <input
               ref={searchRef}
@@ -3305,7 +3321,7 @@ export function NewPage() {
                   changed={settings.showLayoutGrid !== d.showLayoutGrid}
                   action={
                     <button type="button" data-bind="scene" aria-pressed={settings.showLayoutGrid} aria-label={tt("Сетка", "Grid")} onClick={() => patch({ showLayoutGrid: !settings.showLayoutGrid })}>
-                      <SfSymbol name={settings.showLayoutGrid ? "eye" : "eye-off"} className="size-5" />
+                      <PanelIcon name={settings.showLayoutGrid ? "eye" : "eye-off"} className="size-5" />
                     </button>
                   }
                 >
@@ -3417,7 +3433,7 @@ export function NewPage() {
                         }}
                         className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${motionOpen ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
                       >
-                        <SfSymbol name="spline" className="size-5" />
+                        <PanelIcon name="spline" className="size-5" />
                       </button>
                     </span>
                   </Row>
@@ -3542,7 +3558,7 @@ export function NewPage() {
                       <ChangedName changed={settings.barCap !== d.barCap} label={tx(P.barCap.label, locale)} onReset={() => patch({ barCap: d.barCap })} />
                       <span className="flex items-center gap-1">
                         {capLabel}
-                        <SfSymbol name="chevrons-up-down" className="size-5" />
+                        <PanelIcon name="chevrons-up-down" className="size-5" />
                       </span>
                     </Row>
                     <FloatingMenu open={capOpen} anchor={capAnchor} onClose={() => setCapOpen(false)}>
@@ -3611,7 +3627,7 @@ export function NewPage() {
                       }}
                       className="flex size-6 items-center justify-center rounded text-white transition-[box-shadow] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white motion-reduce:transition-none"
                     >
-                      <SfSymbol name="rotate-ccw" className="size-5" />
+                      <PanelIcon name="rotate-ccw" className="size-5" />
                     </button>
                   </Row>
                 </Section>
@@ -3702,7 +3718,7 @@ export function NewPage() {
           <section data-chrome="" className="flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
             <header className="flex h-4 items-center px-1">
               <span className="flex min-w-0 items-center gap-1">
-                <SfSymbol name="palette" className="size-5" />
+                <PanelIcon name="palette" className="size-5" />
                 <span className="text-[14px] leading-4">{tt("Палитра", "Palette")}</span>
               </span>
             </header>

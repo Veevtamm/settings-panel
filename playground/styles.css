@@ -19,6 +19,18 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "ABC Areal Mono";
+  src: url("./fonts/ABCArealMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-areal-mono {
+  font-family: "ABC Areal Mono", ui-monospace, monospace;
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

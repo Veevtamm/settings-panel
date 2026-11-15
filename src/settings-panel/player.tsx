@@ -16,7 +16,7 @@ import {
 } from "../lib/player-clips";
 import { pinNear } from "../lib/playhead";
 import { clampNumber, cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { MUTED, pickerChrome, pointerHeld } from "./chrome";
 import { FieldButton } from "./fields";
 import { useCopyFlash } from "./use-copy-flash";
@@ -531,7 +531,7 @@ export function TransportRow({
     );
   }
 
-  const transport: { icon: SfSymbolName; label: string; active: boolean; run: () => void }[] = [
+  const transport: { icon: PanelIconName; label: string; active: boolean; run: () => void }[] = [
     {
       icon: "skip-back",
       label: tx(PANEL_COPY.back, locale),
@@ -563,7 +563,7 @@ export function TransportRow({
   return (
     <div className="grid h-[28px] grid-cols-[1fr_auto_1fr] items-center">
       <div className="flex items-center gap-1 justify-self-start">
-        <SfSymbol name="circle-gauge" className="size-5" style={{ color: MUTED }} />
+        <PanelIcon name="circle-gauge" className="size-5" style={{ color: MUTED }} />
         <FieldButton
           label={tx(PANEL_COPY.speed(state.speed), locale)}
           active={state.speed !== 1}
@@ -581,7 +581,7 @@ export function TransportRow({
             active={item.active}
             onClick={item.run}
           >
-            <SfSymbol name={item.icon} className="size-5" />
+            <PanelIcon name={item.icon} className="size-5" />
           </FieldButton>
         ))}
       </div>
@@ -591,10 +591,10 @@ export function TransportRow({
           active={pinned}
           onClick={() => controller.togglePin()}
         >
-          <SfSymbol name={pinned ? "pin-off" : "pin"} className="size-5" />
+          <PanelIcon name={pinned ? "pin-off" : "pin"} className="size-5" />
         </FieldButton>
         <FieldButton label={tx(PANEL_COPY.copyMoment, locale)} onClick={copyMoment}>
-          <SfSymbol name={copied ? "check" : "file"} className="size-5" />
+          <PanelIcon name={copied ? "check" : "file"} className="size-5" />
         </FieldButton>
       </div>
     </div>

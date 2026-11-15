@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "re
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
 import { SELECT_LIST_MAX_PX, placeSelectOverlay } from "../lib/select-overlay";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import { cn } from "../lib/utils";
 import {
   EASE_OUT,
@@ -225,7 +225,7 @@ export function PanelSelectList({
             {selectedLabel}
           </span>
         </span>
-        <SfSymbol
+        <PanelIcon
           name="chevron-up"
           className={cn(
             "size-5 shrink-0 text-[color:var(--sp-muted)] transition-[color,transform] duration-150 fine-hover:group-hover/preset-trigger:text-[color:var(--sp-fg)]",

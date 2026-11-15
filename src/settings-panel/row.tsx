@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import { cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import {
@@ -181,7 +181,7 @@ export function InfoHint({ label, text }: { label: string; text: string }) {
       onBlur={hide}
       className="flex size-5 shrink-0 cursor-default items-center justify-center text-[color:var(--sp-muted)] outline-none transition-colors duration-150 fine-hover:hover:text-[color:var(--sp-fg)] focus-visible:text-[color:var(--sp-fg)]"
     >
-      <SfSymbol name="info" className="block size-5" />
+      <PanelIcon name="info" className="block size-5" />
       {pos
         ? createPortal(
             <div
@@ -254,7 +254,7 @@ export function RowLabel({
           value={icon}
         />
       ) : icon ? (
-        <SfSymbol
+        <PanelIcon
           name={icon}
           className="size-5 shrink-0"
           style={{ color: ICON }}

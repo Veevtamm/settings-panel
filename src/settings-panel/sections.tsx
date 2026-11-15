@@ -8,7 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { CHEVRON_MS, EASE_OUT, ICON, MUTED } from "./chrome";
 import { SectionIconPicker } from "./icon-picker";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
@@ -39,7 +39,7 @@ export function SectionBlock({
   locale = "ru",
   onIconChange,
 }: {
-  icon?: SfSymbolName;
+  icon?: PanelIconName;
   title: string;
   open: boolean;
   onToggle: () => void;
@@ -60,7 +60,7 @@ export function SectionBlock({
   pinned?: boolean;
   onPinClick?: () => void;
   locale?: PanelLocale;
-  onIconChange?: (name: SfSymbolName) => void;
+  onIconChange?: (name: PanelIconName) => void;
 }) {
   return (
     <section
@@ -84,7 +84,7 @@ export function SectionBlock({
                 className="inline-flex size-5 shrink-0 cursor-grab items-center justify-center active:cursor-grabbing"
                 onPointerDown={onGripPointerDown}
               >
-                <SfSymbol
+                <PanelIcon
                   name="grip-vertical"
                   className="size-5"
                   style={{ color: ICON }}
@@ -107,7 +107,7 @@ export function SectionBlock({
                 }}
                 className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
               >
-                <SfSymbol
+                <PanelIcon
                   name={pinned ? "pin-off" : "pin"}
                   className="size-5"
                   style={{ color: ICON }}
@@ -130,7 +130,7 @@ export function SectionBlock({
         <span className="flex min-w-0 flex-1 items-center text-left">
           <span className="inline-flex min-w-0 items-center gap-1">
             {onIconChange || !icon ? null : (
-              <SfSymbol name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
+              <PanelIcon name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
             )}
             {modified && onResetValue ? (
               <span
@@ -174,7 +174,7 @@ export function SectionBlock({
         >
           <span className="inline-flex min-w-0 items-center gap-1">
             {onIconChange || !icon ? null : (
-              <SfSymbol name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
+              <PanelIcon name={icon} className="size-5 shrink-0" style={{ color: ICON }} />
             )}
             {modified && onResetValue ? (
               <span
@@ -221,7 +221,7 @@ export function SectionBlock({
               onClick={() => onVisibilityChange(!visibilityOn)}
               className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
             >
-              <SfSymbol
+              <PanelIcon
                 name={visibilityOn ? "eye" : "eye-off"}
                 className="size-5"
                 style={{ color: ICON }}
@@ -234,7 +234,7 @@ export function SectionBlock({
             onClick={onClose}
             className="relative z-[3]"
           >
-            <SfSymbol name="x" className="size-5" />
+            <PanelIcon name="x" className="size-5" />
           </FieldButton>
           ) : (
           <button
@@ -248,7 +248,7 @@ export function SectionBlock({
             }
             className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
           >
-            <SfSymbol
+            <PanelIcon
               name="chevron-up"
               className={cn(
                 "size-5",
@@ -387,8 +387,8 @@ export function SubsectionBlock({
   locale?: PanelLocale;
   /** Stable subsection-order id (Russian copy). Defaults to `title`. */
   orderKey?: string;
-  icon?: SfSymbolName;
-  onIconChange?: (name: SfSymbolName) => void;
+  icon?: PanelIconName;
+  onIconChange?: (name: PanelIconName) => void;
   modified?: boolean;
   onResetValue?: () => void;
 }) {
@@ -459,7 +459,7 @@ export function SubsectionBlock({
             }
             onPointerDown={onGripPointerDown}
           >
-            <SfSymbol name="grip-vertical" className="size-5" style={{ color: ICON }} />
+            <PanelIcon name="grip-vertical" className="size-5" style={{ color: ICON }} />
           </span>
           ) : null}
           {onIconChange ? (
@@ -470,7 +470,7 @@ export function SubsectionBlock({
               value={icon}
             />
           ) : icon ? (
-            <SfSymbol
+            <PanelIcon
               name={icon}
               className="size-5 shrink-0"
               style={{ color: ICON }}
@@ -526,7 +526,7 @@ export function SubsectionBlock({
             onClick={() => onVisibilityChange(!visibilityOn)}
             className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
           >
-            <SfSymbol
+            <PanelIcon
               name={visibilityOn ? "eye" : "eye-off"}
               className="size-5"
               style={{ color: ICON }}
@@ -544,7 +544,7 @@ export function SubsectionBlock({
           }
           className="inline-flex size-5 shrink-0 cursor-pointer items-center justify-center outline-none"
         >
-        <SfSymbol
+        <PanelIcon
           name="chevron-up"
           className={cn(
             "size-5",

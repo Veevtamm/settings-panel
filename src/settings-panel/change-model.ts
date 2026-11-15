@@ -1,6 +1,6 @@
 import { formatBezierInput } from "../lib/cubic-bezier";
 import { formatSpring, readSprings } from "../lib/spring";
-import type { SfSymbolName } from "../sf-symbol";
+import type { PanelIconName } from "../panel-icon";
 import { copyKey, PANEL_COPY, tx, type PanelLocale } from "./locale";
 import {
   AXIS_VIEW_ID,
@@ -34,7 +34,7 @@ export type ChangeModelInput<TSettings> = {
   easingTargets: readonly EasingTarget[];
   springTargets?: readonly SpringTarget[];
   hasCurveSection: boolean;
-  sectionIcons: Record<string, SfSymbolName>;
+  sectionIcons: Record<string, PanelIconName>;
 };
 
 /** What differs from `defaultSettings`: badge count, Reset / Copy, «only changed». */
@@ -163,7 +163,7 @@ export function formatDefaultsHandoff<TSettings>(args: {
   groups: readonly SettingsGroup<TSettings>[];
   players: readonly PlayerSetting<TSettings>[];
   subsectionOrder: Record<string, string[]>;
-  sectionIcons: Record<string, SfSymbolName>;
+  sectionIcons: Record<string, PanelIconName>;
   hasCurveSection: boolean;
   curveTitle: string;
   easingTitle: string;

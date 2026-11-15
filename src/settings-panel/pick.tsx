@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { cn } from "../lib/utils";
 import { pickActive, pickEase, pickIdle, pickerChrome } from "./chrome";
 import { isMember } from "./model";
@@ -25,12 +25,12 @@ import {
   type SettingXAnchor,
 } from "./types";
 
-const FIT_GLYPH: Record<(typeof SETTING_X_ANCHORS)[number], SfSymbolName> = {
+const FIT_GLYPH: Record<(typeof SETTING_X_ANCHORS)[number], PanelIconName> = {
   left: "align-start-vertical",
   center: "align-center-vertical",
   right: "align-end-vertical",
 };
-const TEXT_ALIGN_GLYPH: Record<SettingTextAlign, SfSymbolName> = {
+const TEXT_ALIGN_GLYPH: Record<SettingTextAlign, PanelIconName> = {
   left: "align-left",
   center: "align-center",
   right: "align-right",
@@ -109,7 +109,7 @@ export function isSettingFrameOrient(value: unknown): value is SettingFrameOrien
   return isMember(value, SETTING_FRAME_ORIENTS);
 }
 
-export const FRAME_ORIENT_GLYPH: Record<SettingFrameOrient, SfSymbolName> = {
+export const FRAME_ORIENT_GLYPH: Record<SettingFrameOrient, PanelIconName> = {
   square: "square",
   portrait: "rectangle-vertical",
   landscape: "rectangle-horizontal",
@@ -123,7 +123,7 @@ export function FrameOrientGlyph({
   className?: string;
 }) {
   return (
-    <SfSymbol
+    <PanelIcon
       name={FRAME_ORIENT_GLYPH[orient]}
       className={cn("pointer-events-none block size-5", className)}
     />
@@ -263,7 +263,7 @@ export function SettingXAnchor({
         onChange={onChange}
         optionLabel={(anchor) => anchorLabel(anchor, locale)}
         optionGlyph={(anchor) => (
-          <SfSymbol
+          <PanelIcon
             name={FIT_GLYPH[anchor]}
             className="pointer-events-none block size-5"
           />
@@ -311,7 +311,7 @@ export function SettingTextAlign({
         onChange={onChange}
         optionLabel={(align) => tx(TEXT_ALIGN_COPY[align], locale)}
         optionGlyph={(align) => (
-          <SfSymbol
+          <PanelIcon
             name={TEXT_ALIGN_GLYPH[align]}
             className="pointer-events-none block size-5"
           />

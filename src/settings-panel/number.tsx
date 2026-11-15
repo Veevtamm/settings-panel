@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { clampNumber, cn } from "../lib/utils";
-import { SfSymbol } from "../sf-symbol";
+import { PanelIcon } from "../panel-icon";
 import {
   EASE_OUT,
   FIELD,
@@ -461,7 +461,7 @@ export function RangeSlider({
 
 export function StepperMark({ kind }: { kind: "minus" | "plus" }) {
   return (
-    <SfSymbol
+    <PanelIcon
       name={kind}
       className="pointer-events-none block size-5"
     />
@@ -573,7 +573,7 @@ function withCurveButton(
     <div className="flex shrink-0 items-center gap-1">
       {onEditCurve ? (
         <FieldButton label={editCurveLabel ?? ""} onClick={onEditCurve}>
-          <SfSymbol name="spline" className="size-5" />
+          <PanelIcon name="spline" className="size-5" />
         </FieldButton>
       ) : null}
       {control}
@@ -793,7 +793,7 @@ export function SettingNumber({
                   }
             }
           >
-            <SfSymbol name="settings-2" className="size-5" />
+            <PanelIcon name="settings-2" className="size-5" />
           </FieldButton>
           {field}
         </div>

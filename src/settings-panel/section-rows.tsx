@@ -1,7 +1,7 @@
 "use client";
 
 import { type ReactNode } from "react";
-import type { SfSymbolName } from "../sf-symbol";
+import type { PanelIconName } from "../panel-icon";
 import { SettingColor } from "./color";
 import { SettingEnumDropdown, SettingText, SettingToggle } from "./fields";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
@@ -209,12 +209,12 @@ export function SectionRows<TSettings>({
   dotFor: (
     key: keyof TSettings,
     info?: string,
-    icon?: SfSymbolName,
+    icon?: PanelIconName,
   ) => ResetDotProps;
   dotForKeys: (
     keys: readonly (keyof TSettings)[],
     info?: string,
-    icon?: SfSymbolName,
+    icon?: PanelIconName,
   ) => ResetDotProps;
   rowIndex: Map<keyof TSettings, IndexedRow<TSettings>>;
   onEditEasing?: (easingId: string) => void;

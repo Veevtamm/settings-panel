@@ -3,7 +3,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { evalNumberExpression } from "../lib/eval-number-expression";
 import { cn } from "../lib/utils";
-import { SfSymbol, type SfSymbolName } from "../sf-symbol";
+import { PanelIcon, type PanelIconName } from "../panel-icon";
 import {
   ENUM_DROPDOWN_W,
   FIELD,
@@ -149,7 +149,7 @@ export function FieldButton({
             {children}
           </span>
           {expanded ? (
-            <SfSymbol
+            <PanelIcon
               name="x"
               className="absolute inset-0 size-5 opacity-0 transition-opacity duration-150 fine-hover:group-hover/field-btn:opacity-100"
             />
@@ -344,8 +344,8 @@ export function SettingToggle({
   onChange: (value: boolean) => void;
   onLabel?: string;
   offLabel?: string;
-  offIcon?: SfSymbolName;
-  onIcon?: SfSymbolName;
+  offIcon?: PanelIconName;
+  onIcon?: PanelIconName;
   value: boolean;
   control?: "dropdown" | "segment" | "action";
   /** Segment track width. Overrides `wide` (120) and the 86 default. */
@@ -402,7 +402,7 @@ export function SettingToggle({
                 )}
               >
                 {segment.glyph ? (
-                  <SfSymbol name={segment.glyph} className="size-5" />
+                  <PanelIcon name={segment.glyph} className="size-5" />
                 ) : (
                   segment.text
                 )}
