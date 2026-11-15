@@ -42,6 +42,8 @@ export type SegmentStagger = ClipStagger & {
   stepMax: number;
   /** Child lane label without the number. */
   caption: string;
+  /** Omit the child lanes. The bar still spans `count` steps. */
+  lanes?: boolean;
 };
 
 export type PlayerSegment = {
@@ -155,6 +157,7 @@ export function playerSegments<TSettings>(
               phase.stagger.caption ?? PANEL_COPY.staggerLine,
               locale,
             ),
+            lanes: phase.stagger.lanes,
           },
   }));
 }

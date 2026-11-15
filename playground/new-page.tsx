@@ -94,8 +94,16 @@ function useScrollRoot() {
   return { el, setEl };
 }
 
-function SfSymbol({ name, className }: { name: LucideIconName; className?: string }) {
-  return <PanelSymbol name={name} className={className} strokeWidth={1.8} />;
+function SfSymbol({
+  name,
+  className,
+  strokeWidth = 1.8,
+}: {
+  name: LucideIconName;
+  className?: string;
+  strokeWidth?: number;
+}) {
+  return <PanelSymbol name={name} className={className} strokeWidth={strokeWidth} />;
 }
 
 export type Hsva = { h: number; s: number; v: number; a: number };
