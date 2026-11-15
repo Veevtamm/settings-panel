@@ -7,8 +7,8 @@ import {
   type PanelStyle,
 } from "../src/lib/panel-theme";
 import { App } from "./App";
+import { KitPage } from "./kit";
 import { NewPage } from "./new-page";
-import { ShowPage } from "./show";
 import { PANEL_ID } from "./schema";
 import "./styles.css";
 
@@ -16,7 +16,11 @@ function styleForPath(path: string): PanelStyle {
   return path === "/new" ? "new" : "classic";
 }
 
-if (typeof window !== "undefined" && window.location.pathname !== "/show") {
+function isSheet(path: string) {
+  return path === "/kit";
+}
+
+if (typeof window !== "undefined" && !isSheet(window.location.pathname)) {
   const boot = styleForPath(window.location.pathname);
   if (readPanelStyle(PANEL_ID) !== boot) writePanelStyle(PANEL_ID, boot);
 }
@@ -42,7 +46,7 @@ function Playground() {
   return style === "new" ? <NewPage /> : <App />;
 }
 
-const Page = window.location.pathname === "/show" ? ShowPage : Playground;
+const Page = window.location.pathname === "/kit" ? KitPage : Playground;
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

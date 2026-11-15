@@ -79,8 +79,8 @@ export const PANEL_COPY = {
   panelStyleClassic: L("Старый", "Old"),
   panelStyleNew: L("Новый", "New"),
   panelStyleInfo: L(
-    "Новый — интерфейс /new: свой бар и ряды. Пресеты и шрифт там нет.",
-    "New is the /new interface: its own dock and rows. No presets and no font row.",
+    "Новый — сцена /new: свой бар и ряды. Пресеты, шрифт и таймлайн остаются в старой. Набор состояний — /kit.",
+    "New is the /new scene: its own dock and rows. Presets, font and the timeline stay on the old one. The state sheet is /kit.",
   ),
   panelFont: L("Шрифт", "Font"),
   panelFontInfo: L(

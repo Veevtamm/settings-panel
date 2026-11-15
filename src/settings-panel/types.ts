@@ -253,6 +253,11 @@ export type PlayerPhase<TSettings> = {
   key: keyof TSettings;
   /** Absolute start. Omit = pack after the previous packed phase. */
   startKey?: keyof TSettings;
+  /** Added to `startKey`: `startIndex × settings[startStepKey]`. Shared by a run of rows. */
+  startIndex?: number;
+  startStepKey?: keyof TSettings;
+  /** Ms added to `startKey` when the gap is not a constant step. Later rows stay put when dragged. */
+  startPad?: number;
   caption: Copy;
   kind: "phase" | "pause";
   max: number;
@@ -271,6 +276,8 @@ export type PhaseStagger<TSettings> = {
   stepMax?: number;
   /** Child lane label; «строка» → «строка 1», «строка 2»… */
   caption?: Copy;
+  /** Omit the child lanes. The bar still spans `count` steps. */
+  lanes?: boolean;
 };
 
 /** Loop one phase; other tagged tracks freeze at `from`. */

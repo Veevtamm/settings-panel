@@ -114,6 +114,23 @@ export function emitClips(
   };
 }
 
+function phaseStart<TSettings>(
+  phase: {
+    startKey?: keyof TSettings;
+    startIndex?: number;
+    startStepKey?: keyof TSettings;
+    startPad?: number;
+  },
+  settings: TSettings,
+) {
+  if (phase.startKey == null) return undefined;
+  const base = Number(settings[phase.startKey]);
+  if (phase.startPad != null) return base + phase.startPad;
+  const index = phase.startIndex ?? 0;
+  if (index <= 0 || phase.startStepKey == null) return base;
+  return base + index * Number(settings[phase.startStepKey]);
+}
+
 /** One `PlayerSegment` per phase — dock, in-panel player and HUD read the same shape. */
 export function playerSegments<TSettings>(
   player: PlayerSetting<TSettings>,
@@ -121,13 +138,12 @@ export function playerSegments<TSettings>(
   locale: PanelLocale,
 ): PlayerSegment[] {
   return player.phases.map((phase) => ({
-    id: String(phase.key),
+    id: phase.startIndex ? `${String(phase.key)}:${phase.startIndex}` : String(phase.key),
     caption: tx(phase.caption, locale),
     kind: phase.kind,
     max: phase.max,
     value: Number(settings[phase.key]),
-    start:
-      phase.startKey != null ? Number(settings[phase.startKey]) : undefined,
+    start: phaseStart(phase, settings),
     stagger:
       phase.stagger == null
         ? undefined
@@ -239,25 +255,40 @@ export function patchPlayerClips<TSettings>(
     phases: readonly {
       key: keyof TSettings;
       startKey?: keyof TSettings;
+      startIndex?: number;
+      startStepKey?: keyof TSettings;
+      startPad?: number;
       stagger?: { stepKey: keyof TSettings };
     }[];
   },
   next: PlayerClipsChange,
+  settings?: TSettings,
 ): Partial<TSettings> {
-  return Object.fromEntries(
-    player.phases.flatMap((phase, i) => {
-      const rows: [keyof TSettings, number][] = [[phase.key, next.durations[i]]];
-      if (i === 0) rows.push([player.totalKey, next.total]);
-      if (phase.startKey != null && next.starts[i] != null) {
-        rows.push([phase.startKey, next.starts[i]]);
-      }
-      const step = next.steps?.[i];
-      if (phase.stagger != null && step != null) {
-        rows.push([phase.stagger.stepKey, step]);
-      }
-      return rows;
-    }),
-  ) as Partial<TSettings>;
+  const starts = new Map<keyof TSettings, number>();
+  const rows: [keyof TSettings, number][] = [];
+  player.phases.forEach((phase, i) => {
+    rows.push([phase.key, next.durations[i]]);
+    if (i === 0) rows.push([player.totalKey, next.total]);
+    const step = next.steps?.[i];
+    if (phase.stagger != null && step != null) rows.push([phase.stagger.stepKey, step]);
+    if (phase.startKey == null || next.starts[i] == null || !settings) return;
+    const index = phase.startIndex ?? 0;
+    const gap = phase.startStepKey != null ? Number(settings[phase.startStepKey]) : 0;
+    const stored = Number(settings[phase.startKey]);
+    const displayed = phase.startPad != null ? stored + phase.startPad : stored + index * gap;
+    if (Math.abs(next.starts[i] - displayed) <= 0.5) return;
+    if (phase.startPad != null && index > 0) return;
+    if (index > 0 && phase.startStepKey != null) {
+      rows.push([
+        phase.startStepKey,
+        Math.max(0, Math.round((next.starts[i] - stored) / index)),
+      ]);
+      return;
+    }
+    starts.set(phase.startKey, next.starts[i]);
+  });
+  for (const [key, value] of starts) rows.push([key, value]);
+  return Object.fromEntries(rows) as Partial<TSettings>;
 }
 
 export function phaseTimes<TSettings>(
@@ -265,6 +296,9 @@ export function phaseTimes<TSettings>(
     phases: readonly {
       key: keyof TSettings;
       startKey?: keyof TSettings;
+      startIndex?: number;
+      startStepKey?: keyof TSettings;
+      startPad?: number;
       stagger?: { count: number; stepKey: keyof TSettings };
     }[];
   },
@@ -272,8 +306,7 @@ export function phaseTimes<TSettings>(
 ): SegmentTimes[] {
   return player.phases.map((phase) => ({
     value: Number(settings[phase.key]),
-    start:
-      phase.startKey != null ? Number(settings[phase.startKey]) : undefined,
+    start: phaseStart(phase, settings),
     stagger:
       phase.stagger == null
         ? undefined

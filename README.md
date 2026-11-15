@@ -143,7 +143,7 @@ const [settings, setSettings] = useLocalSettingsStore(store);
 
 ## Local development
 
-`npm run playground` opens `https://settings-panel.localhost` (via Portless): one page with every control, the timeline, spring, Bezier and axis windows. `npm run check` runs types and tests.
+`npm run playground` opens `https://settings-panel.localhost` (via Portless). `/` is the current panel. `/new` is the playground: the scene where behavior is tested together. `/kit` is the kit: every field and its states, configured on their own. `npm run check` runs types and tests.
 
 While you edit this repo next to an app:
 

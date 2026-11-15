@@ -126,6 +126,8 @@ export type PanelSettingsFile = {
   panelFloat?: { x: number; y: number } | null;
   /** Viewport top-left of a free-floating spring / Bezier / axis window. Omit = docked in the stack beside the scene. */
   chromeFloat?: Partial<Record<ChromeWindowId, { x: number; y: number }>> | null;
+  /** Timeline window top, px from the viewport. Omit / null = docked at the bottom. */
+  timelineTop?: number | null;
   /** Dock Bar slot (4 corners + top / bottom center). Omit = `defaultDockCorner` (top-center). Scene Reset and Panel Settings «Положение» do not clear it. */
   dockSlot?: DockCorner;
   /** Header Lucide glyphs (section / subsection / row). Omit / missing id = schema `icon`. Reset restores schema. */
@@ -212,6 +214,9 @@ export function parsePanelSettingsObject(raw: string | null): PanelSettingsFile 
     if (panelPos) next.panelFloat = panelPos;
     const chromePos = parseChromeFloat(rec.chromeFloat);
     if (chromePos) next.chromeFloat = chromePos;
+    if (typeof rec.timelineTop === "number" && Number.isFinite(rec.timelineTop)) {
+      next.timelineTop = rec.timelineTop;
+    }
     const icons = parseSectionIcons(rec.sectionIcons);
     if (icons) next.sectionIcons = icons;
     const lastEdited = parseLastEdited(rec.lastEdited);
@@ -244,6 +249,7 @@ export function pickPanelLayout(file: PanelSettingsFile): PanelSettingsFile {
   if (file.dockSlot) next.dockSlot = file.dockSlot;
   if (file.panelFloat !== undefined) next.panelFloat = file.panelFloat;
   if (file.chromeFloat) next.chromeFloat = file.chromeFloat;
+  if (file.timelineTop != null) next.timelineTop = file.timelineTop;
   if (file.panelWidth != null) next.panelWidth = file.panelWidth;
   if (file.panelHeight != null) next.panelHeight = file.panelHeight;
   if (file.theme) next.theme = file.theme;
@@ -258,6 +264,7 @@ export function panelLayoutHasChrome(file: PanelSettingsFile) {
     file.dockSlot != null ||
     file.panelFloat != null ||
     file.chromeFloat != null ||
+    file.timelineTop != null ||
     file.panelWidth != null ||
     file.panelHeight != null
   );
@@ -306,6 +313,10 @@ export function writePanelSettings(
     ) {
       delete next.chromeFloat;
     } else next.chromeFloat = patch.chromeFloat;
+  }
+  if (patch.timelineTop !== undefined) {
+    if (patch.timelineTop == null) delete next.timelineTop;
+    else next.timelineTop = patch.timelineTop;
   }
   if (patch.sectionIcons !== undefined) {
     if (Object.keys(patch.sectionIcons).length === 0) delete next.sectionIcons;

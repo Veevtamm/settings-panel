@@ -776,7 +776,9 @@ export function PhaseLanes({
         const spanQ = clip.duration / viewSpan;
         const stagger = segment.stagger;
         const lines =
-          stagger != null && stagger.count > 1 ? stagger.count : 0;
+          stagger != null && stagger.count > 1 && stagger.lanes !== false
+            ? stagger.count
+            : 0;
         const linesOpen = lines > 0 && !collapsed?.has(i);
         const userGroup = clipGroups?.find((group) =>
           group.keys.includes(segmentKey(segment, i)),

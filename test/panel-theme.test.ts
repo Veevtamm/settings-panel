@@ -20,6 +20,15 @@ describe("parsePanelSettingsObject", () => {
     });
   });
 
+  it("reads a finite timelineTop and drops anything else", () => {
+    expect(
+      parsePanelSettingsObject(JSON.stringify({ timelineTop: 64 })).timelineTop,
+    ).toBe(64);
+    expect(
+      parsePanelSettingsObject(JSON.stringify({ timelineTop: "64" })).timelineTop,
+    ).toBeUndefined();
+  });
+
   it("reads font system and ignores unknown values", () => {
     expect(
       parsePanelSettingsObject(JSON.stringify({ font: "system" })).font,

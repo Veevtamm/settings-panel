@@ -26,7 +26,7 @@ export type ExtraEasingPreset = {
 
 /** Labels as in Figma Motion Panel preset list */
 export const EASING_PRESET_LABELS: Record<EasingPresetId, string> = {
-  custom: "Custom bezier",
+  custom: "Custom",
   linear: "Linear",
   ease: "Ease",
   "ease-in": "Ease-In",

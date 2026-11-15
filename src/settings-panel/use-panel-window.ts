@@ -596,12 +596,13 @@ export function usePanelWindow({
     setChromeFloat({});
     if (ownFloat) {
       writePanelSettings(panelId, { panelFloat: null });
-      writePanelSettings(layoutStoreId, { chromeFloat: null });
+      writePanelSettings(layoutStoreId, { chromeFloat: null, timelineTop: null });
       return;
     }
     writePanelSettings(layoutStoreId, {
       panelFloat: null,
       chromeFloat: null,
+      timelineTop: null,
     });
   };
 

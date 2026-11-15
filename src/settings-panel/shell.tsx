@@ -180,6 +180,30 @@ import {
   writeLastDockBarW,
 } from "./use-panel-window";
 
+/** This browser session only. A new session shows the dock again. */
+function dockHiddenStorageKey(panelId: string) {
+  return `${panelId}:dock-hidden`;
+}
+
+function readSessionDockHidden(panelId: string) {
+  if (typeof window === "undefined") return false;
+  try {
+    return sessionStorage.getItem(dockHiddenStorageKey(panelId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeSessionDockHidden(panelId: string, hidden: boolean) {
+  try {
+    const key = dockHiddenStorageKey(panelId);
+    if (hidden) sessionStorage.setItem(key, "1");
+    else sessionStorage.removeItem(key);
+  } catch {
+    /* private mode */
+  }
+}
+
 export function SettingsPanel<TSettings>(props: SettingsPanelProps<TSettings>) {
   return (
     <SettingsPanelImpl
@@ -373,6 +397,7 @@ export function SettingsPanelImpl<TSettings>({
   const {
     panelFloat,
     dockDragging,
+    dockSnap,
     dockMovedRef,
     panelResizing,
     panelMoving,
@@ -1295,9 +1320,21 @@ export function SettingsPanelImpl<TSettings>({
     .map((item) => item.controller.id)
     .join("\0");
   const [timelineOpen, setTimelineOpen] = useState(false);
-  /** ⌘\ : hide the whole dock (not persisted — a reload brings it back). */
+  /** ⌘\ hides the dock for this browser session. A new session shows it again. */
   const [dockHidden, setDockHidden] = useState(false);
   const dockHiddenRef = useRef(false);
+  useLayoutEffect(() => {
+    const hidden = readSessionDockHidden(layoutStoreId);
+    dockHiddenRef.current = hidden;
+    if (hidden) setDockHidden(true);
+  }, [layoutStoreId]);
+  // Slot, viewport and bar width settle in layout effects. The first visible
+  // commit has no left/top ease, so a reload does not slide out of the default slot.
+  const [dockPlaced, setDockPlaced] = useState(false);
+  const dockPlacedRef = useRef(false);
+  useLayoutEffect(() => setDockPlaced(true), []);
+  const dockSettled = dockPlacedRef.current;
+  if (dockPlaced) dockPlacedRef.current = true;
 
   const closeDockPlayers = () => {
     for (const item of playersRef.current) {
@@ -1407,6 +1444,7 @@ export function SettingsPanelImpl<TSettings>({
       setPanelInstant(true);
       const hide = !dockHiddenRef.current;
       dockHiddenRef.current = hide;
+      writeSessionDockHidden(layoutStoreId, hide);
       if (hide) {
         closeDockPlayers();
         setPanelOpen(false);
@@ -1699,11 +1737,13 @@ export function SettingsPanelImpl<TSettings>({
               top: shownPos.y,
               left: shownPos.x,
               opacity: dockHidden ? 0 : 1,
-              visibility: dockHidden ? "hidden" : "visible",
-              ...(dockDragging || skipPanelMotion
+              visibility: dockPlaced && !dockHidden ? "visible" : "hidden",
+              ...(dockDragging || skipPanelMotion || !dockSettled
                 ? {}
                 : {
-                    transitionProperty: "top, left, opacity, visibility",
+                    transitionProperty: dockSnap
+                      ? "top, left, opacity, visibility"
+                      : "opacity, visibility",
                     transitionDuration: `${PANEL_ENTER_MS}ms`,
                     transitionTimingFunction: EASE_OUT,
                   }),
@@ -2344,7 +2384,7 @@ export function SettingsPanelImpl<TSettings>({
               headerLeading={group.headerLeading}
             >
               <div
-                className="flex flex-col gap-4"
+                className="flex flex-col gap-2"
                 data-subsection-group={group.id}
               >
                 {mergeSectionOrder(

@@ -63,7 +63,7 @@ CSS (Tailwind 4). `@source` смотрит на `src` пакета относи�
 
 Пока правишь панель рядом с сайтом: `"file:../settings-panel"` и `turbopack.root` = родитель обеих папок. Не править копию в `node_modules`.
 
-`npm run playground` открывает `https://settings-panel.localhost` (через Portless): одна страница со всеми контролами, таймлайном, пружиной, Безье и осью. `npm run check` — типы и тесты.
+`npm run playground` открывает `https://settings-panel.localhost` (через Portless). `/` — текущая панель. `/new` — плейграунд новой версии: сцена, где смотрят поведение. `/kit` — кит: все поля и состояния, их настраивают. `npm run check` — типы и тесты.
 
 ## Лицензия
 

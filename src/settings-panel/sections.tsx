@@ -431,7 +431,7 @@ export function SubsectionBlock({
           : undefined
       }
     >
-      <div className="group/sub flex h-5 w-full items-center gap-1.5 pl-[6px]">
+      <div className="group/sub flex h-7 w-full items-center gap-1.5 pl-[6px]">
         <span
           className={cn(
             "inline-flex min-w-0 flex-1 items-center",

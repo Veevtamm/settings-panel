@@ -8,7 +8,7 @@ export type SpringPreset = SpringConfig & {
   en: string;
 };
 
-/** Templates in the spring dropdown. A curve that matches none of them is «Своя». */
+/** Templates in the spring dropdown. A curve that matches none of them is «Custom». */
 export const SPRING_PRESET_GROUPS: {
   key: "smooth" | "snappy" | "overshoot";
   presets: readonly SpringPreset[];

@@ -42,6 +42,12 @@ body {
   }
 }
 
+/* Same ink and paper as the scene panel. Tailwind black/white read these. */
+[data-new-ui] {
+  --color-black: #0b0b0b;
+  --color-white: #e4e4e4;
+}
+
 /* Dark theme is the light chrome with black and white swapped. */
 html[data-theme="dark"] [data-chrome] {
   filter: invert(1);
@@ -55,4 +61,91 @@ html[data-theme="dark"] [data-chrome] [data-toast] {
 
 html[data-theme="dark"] [data-chrome] [data-truecolor] {
   filter: invert(1);
+}
+
+/* Kit moon swaps black and white before paint. A filter would invert the
+   already-smoothed glyphs, so text on white looks heavier than on the light theme. */
+.photo-theme-dark {
+  --color-black: #e4e4e4;
+  --color-white: #0b0b0b;
+}
+
+.photo-theme-dark .text-white\/45 {
+  color: color-mix(in srgb, var(--color-white) 45%, transparent);
+}
+
+.photo-theme-dark .text-white\/50:not(:hover),
+.photo-theme-dark .empty\:before\:text-white\/50:empty::before {
+  color: color-mix(in srgb, var(--color-white) 50%, transparent);
+}
+
+.photo-theme-dark .text-black\/50,
+.photo-theme-dark .placeholder\:text-black\/50::placeholder {
+  color: color-mix(in srgb, var(--color-black) 50%, transparent);
+}
+
+.photo-theme-dark .bg-white\/10 {
+  background-color: color-mix(in srgb, var(--color-white) 10%, transparent);
+}
+
+.photo-theme-dark .bg-white\/20 {
+  background-color: color-mix(in srgb, var(--color-white) 20%, transparent);
+}
+
+.photo-theme-dark .bg-white\/25 {
+  background-color: color-mix(in srgb, var(--color-white) 25%, transparent);
+}
+
+.photo-theme-dark .bg-white\/35 {
+  background-color: color-mix(in srgb, var(--color-white) 35%, transparent);
+}
+
+.photo-theme-dark .bg-white\/45 {
+  background-color: color-mix(in srgb, var(--color-white) 45%, transparent);
+}
+
+.photo-theme-dark .bg-white\/50 {
+  background-color: color-mix(in srgb, var(--color-white) 50%, transparent);
+}
+
+.photo-theme-dark .bg-black\/15 {
+  background-color: color-mix(in srgb, var(--color-black) 15%, transparent);
+}
+
+.photo-theme-dark .bg-black\/50 {
+  background-color: color-mix(in srgb, var(--color-black) 50%, transparent);
+}
+
+.photo-theme-dark .border-white\/50 {
+  border-color: color-mix(in srgb, var(--color-white) 50%, transparent);
+}
+
+/* Gap chip: white fill blinks once on hover and on each wheel step. */
+@keyframes sp-chip-flash {
+  0%,
+  40% {
+    background-color: var(--color-white);
+    color: var(--color-black);
+  }
+  100% {
+    background-color: transparent;
+    color: var(--color-white);
+  }
+}
+
+.sp-chip-flash {
+  animation: sp-chip-flash 240ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* Press on the new UI. `scale` composes with a child's transform. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-new-ui] button:not([data-no-press]) {
+    transition-property: scale, color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 160ms;
+    transition-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  [data-new-ui] button:not([data-no-press]):active {
+    scale: 0.97;
+  }
 }

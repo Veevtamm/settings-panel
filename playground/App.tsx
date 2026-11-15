@@ -18,6 +18,13 @@ import {
 import { cubicBezierToCss } from "../src/lib/cubic-bezier";
 import { staggerSpan } from "../src/lib/player-clips";
 import { DEFAULTS, P, store, type PlaygroundSettings as S } from "./params";
+
+function hexAlpha(hex: string, percent: number) {
+  const alpha = Math.round((Math.min(100, Math.max(0, percent)) / 100) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `${hex}${alpha}`;
+}
 import { EASING_TARGETS, MODULE_ROWS, PANEL_ID, SPRING_TARGETS, groupsFor } from "./schema";
 
 const ORIENT_RATIO = { square: 1, portrait: 4 / 3, landscape: 3 / 4 } as const;
@@ -133,7 +140,7 @@ export function App() {
     <main
       className="flex min-h-dvh p-16"
       style={{
-        background: settings.backgroundColor,
+        background: hexAlpha(settings.backgroundColor, settings.backgroundOpacity),
         alignItems: flex(ay),
         justifyContent: flex(ax),
       }}
@@ -145,7 +152,7 @@ export function App() {
           style={{
             backgroundImage: `linear-gradient(${settings.gridLineColor} 1px, transparent 1px), linear-gradient(90deg, ${settings.gridLineColor} 1px, transparent 1px)`,
             backgroundSize: "64px 64px",
-            opacity: 0.28,
+            opacity: settings.gridOpacity / 100,
           }}
         />
       ) : null}
@@ -175,6 +182,7 @@ export function App() {
               height={`calc(100% - ${settings.strokeWidth}px)`}
               fill="none"
               stroke={settings.strokeColor}
+              strokeOpacity={settings.strokeOpacity / 100}
               strokeWidth={settings.strokeWidth}
               strokeLinejoin={
                 settings.strokeJoin === "bevel" || settings.strokeJoin === "round"
@@ -190,6 +198,7 @@ export function App() {
           style={{
             fontSize: settings.fontSize,
             fontWeight: Math.round((settings.wghtMin + settings.wghtMax) / 2),
+            color: hexAlpha(settings.textColor, settings.textOpacity),
           }}
         >
           {settings.title}

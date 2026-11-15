@@ -22,11 +22,14 @@ import {
   type ClipStagger,
 } from "../lib/player-clips";
 import {
+  PANEL_THEME_EVENT,
   focusPanel,
+  readPanelSettings,
   useDockSlot,
   usePanelLocale,
   usePanelTheme,
   usePanelFont,
+  writePanelSettings,
 } from "../lib/panel-theme";
 import { parseBezierInput, type CubicBezier } from "../lib/cubic-bezier";
 import { savedCurveExtras } from "../lib/curve-library";
@@ -52,8 +55,12 @@ import {
   DOCK_DRAG_PX,
   DOCK_INSET,
   GAP_IN,
+  PANEL_MAGNET_PX,
+  PANEL_MOVE_EDGE,
   bindPointerDrag,
   GLASS,
+  isPanelMoveTarget,
+  lockPanelTextSelect,
   MUTED,
   PANEL_EXIT_MS,
   dockBarButtonClass,
@@ -570,6 +577,7 @@ function TimelineDockBody({
   theme,
   font,
   dockCorner,
+  layoutPanelId,
   open,
   reduceMotion,
 }: TimelineDockProps & {
@@ -603,15 +611,47 @@ function TimelineDockBody({
   const minRef = useRef(min);
   minRef.current = min;
   const viewportH = useViewportHeight();
-  const barRoom = dockCorner.startsWith("bottom") ? DOCK_BAR_H + GAP_IN : 0;
-  const lanesMaxPx = Math.max(
-    ELEMENT_ROW_PX * 3,
-    viewportH - DOCK_INSET * 2 - barRoom - 168,
-  );
+  const storeId = layoutPanelId ?? panelId;
+  const dockBottom = dockCorner.startsWith("bottom");
+  const barRoom = dockBottom ? DOCK_BAR_H + GAP_IN : 0;
+  const bottomGap = DOCK_INSET + barRoom;
+  const minTop = dockBottom ? DOCK_INSET : DOCK_INSET + DOCK_BAR_H + GAP_IN;
+  const [windowTop, setWindowTop] = useState<number | null>(null);
+  const [moving, setMoving] = useState(false);
+  const windowTopRef = useRef(windowTop);
+  windowTopRef.current = windowTop;
+  useLayoutEffect(() => {
+    if (!storeId) return;
+    const stored = readPanelSettings(storeId).timelineTop;
+    setWindowTop(typeof stored === "number" ? stored : null);
+  }, [storeId]);
+  useEffect(() => {
+    if (!storeId) return;
+    const onTheme = (event: Event) => {
+      const detail = (event as CustomEvent<{ panelId?: string }>).detail;
+      if (detail?.panelId !== storeId) return;
+      const stored = readPanelSettings(storeId).timelineTop;
+      setWindowTop(typeof stored === "number" ? stored : null);
+    };
+    window.addEventListener(PANEL_THEME_EVENT, onTheme);
+    return () => window.removeEventListener(PANEL_THEME_EVENT, onTheme);
+  }, [storeId]);
+  const floated = windowTop != null;
+  const windowMax = floated
+    ? Math.max(160, viewportH - windowTop - bottomGap)
+    : viewportH - DOCK_INSET * 2;
+  const lanesMaxPx = Math.max(ELEMENT_ROW_PX * 3, windowMax - 168);
   const viewStart = view?.start ?? 0;
   const viewEnd = view?.end ?? scale;
   const viewSpan = Math.max(viewEnd - viewStart, min);
   const scaleRootRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (windowTop == null || moving) return;
+    const height = scaleRootRef.current?.offsetHeight ?? 0;
+    const maxTop = Math.max(minTop, viewportH - bottomGap - height);
+    const next = Math.min(maxTop, Math.max(minTop, windowTop));
+    if (next !== windowTop) setWindowTop(next);
+  }, [bottomGap, minTop, moving, viewportH, windowTop]);
   const [orderIds, setOrderIds] = useState<string[]>(() =>
     mergeOrder(
       panelId ? readTimelineOrder(panelId, controller.id) : undefined,
@@ -1080,6 +1120,56 @@ function TimelineDockBody({
   );
   const totalTitle = totalLabel ?? tx(PANEL_COPY.animationTime, locale);
 
+  function onWindowPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0 || !isPanelMoveTarget(event.target)) return;
+    event.preventDefault();
+    const pointerId = event.pointerId;
+    const el = event.currentTarget;
+    lockPanelTextSelect(el, pointerId);
+    const originTop = el.getBoundingClientRect().top;
+    const height = el.getBoundingClientRect().height;
+    const startX = event.clientX;
+    const startY = event.clientY;
+    let moved = false;
+    let last = windowTopRef.current;
+
+    bindPointerDrag(pointerId, {
+      onMove(ev) {
+        const dx = ev.clientX - startX;
+        const dy = ev.clientY - startY;
+        if (!moved && Math.hypot(dx, dy) < DOCK_DRAG_PX) return;
+        if (!moved) {
+          moved = true;
+          setMoving(true);
+        }
+        const vh = window.innerHeight;
+        const next = Math.max(minTop, originTop + dy);
+        const capped = Math.min(next, Math.max(minTop, vh - bottomGap - height));
+        const home = vh - bottomGap - height;
+        if (Math.abs(capped - home) < PANEL_MAGNET_PX) {
+          last = null;
+          setWindowTop(null);
+        } else {
+          last = capped;
+          setWindowTop(capped);
+        }
+      },
+      onEnd() {
+        if (el.hasPointerCapture(pointerId)) el.releasePointerCapture(pointerId);
+        delete document.documentElement.dataset.panelMoving;
+        setMoving(false);
+        if (!moved) return;
+        const suppressClick = (click: MouseEvent) => {
+          click.preventDefault();
+          click.stopPropagation();
+        };
+        window.addEventListener("click", suppressClick, true);
+        window.setTimeout(() => window.removeEventListener("click", suppressClick, true), 0);
+        if (storeId) writePanelSettings(storeId, { timelineTop: last });
+      },
+    });
+  }
+
   return (
       <>
         <div
@@ -1090,12 +1180,14 @@ function TimelineDockBody({
           data-panel-font={font}
           role="region"
           aria-label={tx(PANEL_COPY.openTimeline, locale)}
+          onPointerDown={onWindowPointerDown}
           className={cn(
-            "fixed z-[100] origin-bottom overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans backdrop-blur-[8px]",
+            "fixed z-[100] overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans backdrop-blur-[8px]",
+            floated ? "origin-top" : "origin-bottom",
             panelPopClassName({
               open,
-              fromBottom: true,
-              skip: reduceMotion || instant,
+              fromBottom: !floated,
+              skip: reduceMotion || instant || moving,
             }),
           )}
           aria-hidden={!open}
@@ -1104,17 +1196,28 @@ function TimelineDockBody({
             background: GLASS,
             left: glassPad,
             right: glassPad,
-            bottom: glassPad + barRoom,
+            top: floated ? windowTop : undefined,
+            bottom: floated ? "auto" : bottomGap,
             width: "auto",
             maxWidth: TIMELINE_WIDTH_MAX,
-            maxHeight: viewportH - DOCK_INSET * 2,
+            maxHeight: windowMax,
             marginInline: "auto",
-            ...panelPopStyle({ open, skip: reduceMotion || instant }),
+            ...panelPopStyle({ open, skip: reduceMotion || instant || moving }),
           }}
         >
+          <div
+            aria-hidden
+            data-panel-move=""
+            className="absolute inset-x-2 top-0 z-[2] cursor-grab touch-none select-none active:cursor-grabbing"
+            style={{ height: PANEL_MOVE_EDGE }}
+          />
           <div className="flex flex-col gap-2 py-2 pl-3 pr-2">
             <div className="flex items-start gap-2">
-              <div className="shrink-0" style={{ width: INSPECTOR }}>
+              <div
+                data-panel-move=""
+                className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
+                style={{ width: INSPECTOR }}
+              >
                 {(targetOptions?.length ?? 0) > 1 ? (
                   targetDropdown
                 ) : (

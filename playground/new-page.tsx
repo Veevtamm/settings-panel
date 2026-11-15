@@ -14,6 +14,7 @@ import { movePanelRow, panelRowSlot, samePanelRowOrder } from "../src/lib/panel-
 import { usePrefersReducedMotion } from "../src/lib/prefers-reduced-motion";
 import { SfSymbol as PanelSymbol } from "../src/sf-symbol";
 import type { LucideIconName } from "../src/lucide-glyphs";
+import { PageBar } from "./page-bar";
 import {
   COPY_DONE_MS,
   DOCK_DRAG_PX,
@@ -34,6 +35,7 @@ import {
 } from "../src/settings-panel/chrome";
 import { panelPopClassName, panelPopStyle } from "../src/settings-panel/motion-ui";
 import { hexToHsv, hsvToHex } from "../src/settings-panel/color";
+import { PairGlyph } from "../src/settings-panel/number";
 import { PresetCurveIcon } from "../src/settings-panel/preset-curve";
 import { SectionCollapse, useDeferredMount } from "../src/settings-panel/row";
 import { useSettingsHistory } from "../src/settings-panel/use-history";
@@ -44,7 +46,6 @@ import {
   parseSkipCells,
   sampleAxisX,
   serializeSkipCells,
-  SettingsTimeline,
   useLocalSettingsStore,
   usePanelStyle,
   waapiSpan,
@@ -66,19 +67,17 @@ import {
 import { tx } from "../src/settings-panel/locale";
 import { DEFAULTS, P, store, type PlaygroundSettings as S } from "./params";
 import { MODULE_ROWS, PANEL_ID } from "./schema";
-import { NewTimeline } from "./new-timeline";
-
-/** Published build keeps the current timeline. The draft stays on the dev server. */
-const publishedTimeline = (import.meta as { env?: { PROD?: boolean } }).env?.PROD === true;
 
 const AREAL_STACK = '"ABC Areal Variable", "ABC Areal", "Geist", ui-sans-serif, system-ui, sans-serif';
-const VOID = "#0B0B0B";
-const SILVER = "#E4E4E4";
+export const PANEL_INK = "#0B0B0B";
+export const PANEL_PAPER = "#E4E4E4";
+const VOID = PANEL_INK;
+const SILVER = PANEL_PAPER;
 
 const row = "group/row relative flex shrink-0 text-[14px] leading-none text-white";
 const rowLabel = "decoration-1 underline-offset-[3px] group-hover/row:underline";
 const fieldUnderline = "underline decoration-1 underline-offset-[3px]";
-const rowLayout = "h-8 items-center justify-between gap-2 px-1";
+const rowLayout = "h-auto min-h-8 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-1";
 const stackLayout = "h-auto flex-col items-stretch justify-start gap-1 p-1";
 const NEW_PANEL_W_MIN = 296;
 const NEW_PANEL_W_MAX = PANEL_WIDTH_MAX;
@@ -99,7 +98,7 @@ function SfSymbol({ name, className }: { name: LucideIconName; className?: strin
   return <PanelSymbol name={name} className={className} strokeWidth={1.8} />;
 }
 
-type Hsva = { h: number; s: number; v: number; a: number };
+export type Hsva = { h: number; s: number; v: number; a: number };
 type Point = { x: number; y: number };
 type Curve = [number, number, number, number];
 
@@ -127,6 +126,13 @@ function hsvaToRgb(color: Hsva): [number, number, number] {
   return [rgb?.r ?? 0, rgb?.g ?? 0, rgb?.b ?? 0];
 }
 
+function hexAlpha(hex: string, percent: number) {
+  const alpha = Math.round((Math.min(100, Math.max(0, percent)) / 100) * 255)
+    .toString(16)
+    .padStart(2, "0");
+  return `${hex}${alpha}`;
+}
+
 function rgbToHex(rgb: [number, number, number]) {
   return rgb.map((channel) => channel.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
@@ -137,7 +143,7 @@ function hsvaToHsl(color: Hsva) {
   return [Math.round(color.h), Math.round(s * 100), Math.round(l * 100)] as const;
 }
 
-type ColorFormat = "hex" | "rgb" | "hsl";
+export type ColorFormat = "hex" | "rgb" | "hsl";
 
 function formatColor(color: Hsva, format: ColorFormat) {
   if (format === "rgb") return hsvaToRgb(color).join(" ");
@@ -247,7 +253,7 @@ function tr(locale: "ru" | "en", ru: string, en: string) {
   return tx({ ru, en }, locale);
 }
 
-function ChangedName({ changed, label, onReset }: { changed: boolean; label: string; onReset: () => void }) {
+export function ChangedName({ changed, label, onReset }: { changed: boolean; label: string; onReset: () => void }) {
   const locale = useContext(PanelLocale);
   const reduce = usePrefersReducedMotion();
   const mark = useRef<HTMLSpanElement>(null);
@@ -277,7 +283,7 @@ function ChangedName({ changed, label, onReset }: { changed: boolean; label: str
   );
 }
 
-function RowHint({ text, children }: { text: string; children: ReactNode }) {
+export function RowHint({ text, children }: { text: string; children: ReactNode }) {
   const anchor = useRef<HTMLDivElement>(null);
   const [box, setBox] = useState<{ top: number; left: number } | null>(null);
   const timer = useRef<number | null>(null);
@@ -342,37 +348,49 @@ function RowHint({ text, children }: { text: string; children: ReactNode }) {
   );
 }
 
-function Row({
+function DragGrip({ className = "-left-2" }: { className?: string }) {
+  const sort = useContext(startSort);
+  const locale = useContext(PanelLocale);
+  if (!sort) return null;
+  return (
+    <span
+      data-grip=""
+      role="button"
+      aria-label={locale === "en" ? "Drag" : "Перетащить"}
+      className={`group/grip pointer-events-auto absolute inset-y-0 z-10 flex w-2 cursor-grab touch-none items-center justify-center ${className}`}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        const item = event.currentTarget.closest("[data-sort-id]");
+        const id = item?.getAttribute("data-sort-id");
+        if (!id) return;
+        event.preventDefault();
+        event.stopPropagation();
+        sort(id, event);
+      }}
+    >
+      <span className="hidden flex-col gap-[3px] group-hover/grip:flex">
+        <i className="size-0.5 rounded-full bg-black" />
+        <i className="size-0.5 rounded-full bg-black" />
+        <i className="size-0.5 rounded-full bg-black" />
+      </span>
+    </span>
+  );
+}
+
+export function Row({
   children,
   className = rowLayout,
   radius = true,
+  bind,
 }: {
   children: ReactNode;
   className?: string;
   radius?: boolean;
+  bind?: string;
 }) {
-  const sort = useContext(startSort);
-
   return (
-    <div data-row="" className={`${row} ${radius ? "rounded-lg" : ""} bg-black ${className}`}>
-      <span
-        className="group/grip pointer-events-auto absolute inset-y-0 -left-2 flex w-2 cursor-grab touch-none items-center justify-center"
-        onPointerDown={(event) => {
-          if (!sort || event.button !== 0) return;
-          const item = event.currentTarget.closest("[data-sort-id]");
-          const id = item?.getAttribute("data-sort-id");
-          if (!id) return;
-          event.preventDefault();
-          event.stopPropagation();
-          sort(id, event);
-        }}
-      >
-        <span className="hidden flex-col gap-[3px] group-hover/grip:flex">
-          <i className="size-0.5 rounded-full bg-black" />
-          <i className="size-0.5 rounded-full bg-black" />
-          <i className="size-0.5 rounded-full bg-black" />
-        </span>
-      </span>
+    <div data-row="" data-bind={bind} className={`${row} ${radius ? "rounded-lg" : ""} bg-black ${className}`}>
+      <DragGrip />
       {children}
     </div>
   );
@@ -530,7 +548,7 @@ function Sortable({
               style={{ width: lift.width, height: lift.height }}
             >
               <div
-                className="size-full overflow-hidden bg-black shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
+                className={`size-full overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.28)] ${capsule ? "bg-black" : "bg-white"}`}
                 style={{ borderRadius: 8 }}
                 dangerouslySetInnerHTML={{ __html: lift.html }}
               />
@@ -604,7 +622,7 @@ function FloatWindow({
     });
   }
 
-  function startResize(edge: "left" | "right" | "bottom" | "bottom-left" | "bottom-right", event: ReactPointerEvent<HTMLDivElement>) {
+  function startResize(edge: "bottom" | "bottom-left" | "bottom-right", event: ReactPointerEvent<HTMLDivElement>) {
     if (!resizable || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -617,9 +635,8 @@ function FloatWindow({
     const startH = rect.height;
     const startTop = rect.top;
     const startRight = rect.right;
-    const fromLeft = edge === "left" || edge === "bottom-left";
-    const fromRight = edge === "right" || edge === "bottom-right";
-    const vertical = edge !== "left" && edge !== "right";
+    const fromLeft = edge === "bottom-left";
+    const fromRight = edge === "bottom-right";
     setPos({ x: rect.left, y: rect.top, w: rect.width, h: rect.height });
     const clampW = (value: number) => Math.min(resizable.maxWidth, Math.max(resizable.minWidth, value));
     const room = Math.max(resizable.minHeight, window.innerHeight - startTop - 12);
@@ -634,7 +651,7 @@ function FloatWindow({
           next.width = clampW(startW - dx);
           setPos({ x: startRight - next.width, y: startTop, w: startW, h: startH });
         }
-        if (vertical) next.height = clampH(startH + dy);
+        next.height = clampH(startH + dy);
         resizable.onResize(next);
       },
       onEnd() {},
@@ -657,8 +674,6 @@ function FloatWindow({
       <div className="absolute inset-x-0 top-0 z-20 h-2 cursor-grab touch-none" />
       {resizable ? (
         <>
-          <div data-resize="" className="absolute top-2 bottom-3 left-0 z-30 w-1.5 cursor-ew-resize touch-none" onPointerDown={(event) => startResize("left", event)} />
-          <div data-resize="" className="absolute top-2 bottom-3 right-0 z-30 w-1.5 cursor-ew-resize touch-none" onPointerDown={(event) => startResize("right", event)} />
           <div data-resize="" className="absolute inset-x-3 bottom-0 z-30 h-1.5 cursor-ns-resize touch-none" onPointerDown={(event) => startResize("bottom", event)} />
           <div data-resize="" className="absolute bottom-0 left-0 z-40 size-3 cursor-nesw-resize touch-none" onPointerDown={(event) => startResize("bottom-left", event)} />
           <div data-resize="" className="absolute bottom-0 right-0 z-40 size-3 cursor-nwse-resize touch-none" onPointerDown={(event) => startResize("bottom-right", event)} />
@@ -688,7 +703,7 @@ function Pop({ open, children }: { open: boolean; children: ReactNode }) {
   );
 }
 
-function ValueField({
+export function ValueField({
   value,
   unit,
   current,
@@ -745,8 +760,8 @@ function ValueField({
 
   return (
     <span className={block ? "relative flex h-full w-full items-center justify-center" : "relative inline-flex h-[18px] items-center gap-1"}>
-      <span className={`inline-flex h-[18px] items-center ${block ? "" : "relative"}`}>
-        <span className={`text-[14px] leading-[18px] whitespace-nowrap ${block ? (editing ? "text-black" : "text-white group-hover/chip:text-black") : "text-white"} ${!block && editing ? fieldUnderline : ""}`}>{shown || "0"}</span>
+      <span className={`inline-flex h-[18px] items-center ${block ? "" : "group/value relative"}`}>
+        <span className={`text-[14px] leading-[18px] whitespace-nowrap ${block ? (editing ? "text-black" : "text-white group-hover/chip:text-black") : "text-white decoration-1 underline-offset-[3px] group-hover/value:underline"} ${!block && editing ? fieldUnderline : ""}`}>{shown || "0"}</span>
         <input
           value={shown}
           onFocus={(event) => {
@@ -780,13 +795,67 @@ function ValueField({
   );
 }
 
-function Section({
+const PANEL_SECTION_IDS = ["scene", "card", "title", "bars"] as const;
+
+export const SectionFoldContext = createContext<{
+  closed: ReadonlySet<string>;
+  toggle: (id: string) => void;
+} | null>(null);
+
+export function ParametersPanel({
+  title,
+  canCollapse,
+  onToggleFold,
+  collapseLabel,
+  expandLabel,
+  className = "",
+  style,
+  bodyRef,
+  bodyStyle,
+  children,
+}: {
+  title: string;
+  canCollapse: boolean;
+  onToggleFold: () => void;
+  collapseLabel: string;
+  expandLabel: string;
+  className?: string;
+  style?: CSSProperties;
+  bodyRef?: (node: HTMLDivElement | null) => void;
+  bodyStyle?: CSSProperties;
+  children: ReactNode;
+}) {
+  return (
+    <section data-chrome="" className={`relative flex flex-col overflow-hidden rounded-2xl bg-white text-black ${className}`} style={style}>
+      <header className="flex items-center justify-between px-3 pt-2 pb-0.5">
+        <span className="flex h-5 min-w-0 items-center gap-1">
+          <SfSymbol name="sliders-horizontal" className="size-5" />
+          <span className="text-[14px] leading-4">{title}</span>
+        </span>
+        <button type="button" aria-label={canCollapse ? collapseLabel : expandLabel} onClick={onToggleFold} className="flex size-5 items-center justify-center">
+          <SfSymbol name={canCollapse ? "list-chevrons-down-up" : "list-chevrons-up-down"} className="size-5" />
+        </button>
+      </header>
+      <div
+        ref={bodyRef}
+        className="mt-1.5 min-h-0 overflow-y-auto overscroll-y-contain px-2 pb-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        style={bodyStyle}
+      >
+        {children}
+      </div>
+    </section>
+  );
+}
+
+export function Section({
+  foldId,
   title,
   icon,
   action,
   changed = false,
   children,
 }: {
+  foldId?: string;
   title: string;
   icon?: LucideIconName;
   action?: ReactNode;
@@ -794,20 +863,27 @@ function Section({
   children: ReactNode;
 }) {
   const locale = useContext(PanelLocale);
+  const fold = useContext(SectionFoldContext);
   const reduce = usePrefersReducedMotion();
-  const [open, setOpen] = useState(true);
+  const [localOpen, setLocalOpen] = useState(true);
+  const open = fold && foldId ? !fold.closed.has(foldId) : localOpen;
   const mounted = useDeferredMount(open, reduce, SECTION_MS);
+  function toggleOpen() {
+    if (fold && foldId) fold.toggle(foldId);
+    else setLocalOpen((value) => !value);
+  }
 
   return (
     <div className="flex flex-col" data-section={title} data-changed={changed ? "true" : "false"}>
-      <div className="flex h-4 items-center px-1 text-black">
-        <button type="button" onClick={() => setOpen((value) => !value)} className="flex min-w-0 flex-1 items-center gap-1 text-left">
+      <div className="relative -ml-2 flex h-4 w-[calc(100%+8px)] items-center pl-3 pr-1 text-black">
+        <DragGrip className="left-0" />
+        <button type="button" onClick={toggleOpen} className="flex min-w-0 flex-1 items-center gap-1 text-left">
           {icon ? <SfSymbol name={icon} className="size-5" /> : null}
           <span className="text-[14px] leading-4">{title}</span>
         </button>
         <span className="flex items-center gap-2">
           {action}
-          <button type="button" aria-label={locale === "en" ? (open ? "Collapse" : "Expand") : (open ? "Свернуть" : "Развернуть")} onClick={() => setOpen((value) => !value)}>
+          <button type="button" aria-label={locale === "en" ? (open ? "Collapse" : "Expand") : (open ? "Свернуть" : "Развернуть")} onClick={toggleOpen}>
             <SfSymbol name={open ? "chevron-up" : "chevron-down"} className="size-5" />
           </button>
         </span>
@@ -863,7 +939,7 @@ function DockedWindows({ children }: { children: ReactNode }) {
       style={{
         top: below ? dock.y + dock.h + 8 : undefined,
         bottom: below ? undefined : window.innerHeight - dock.y + 8,
-        left: right ? undefined : centered ? dock.x + dock.w / 2 : dock.x,
+        left: right ? undefined : centered ? window.innerWidth / 2 : dock.x,
         right: right ? window.innerWidth - (dock.x + dock.w) : undefined,
         transform: centered ? "translateX(-50%)" : undefined,
         alignItems: below ? "flex-start" : "flex-end",
@@ -874,7 +950,7 @@ function DockedWindows({ children }: { children: ReactNode }) {
   );
 }
 
-function Toast({ text, detail }: { text: string; detail?: string }) {
+export function Toast({ text, detail }: { text: string; detail?: string }) {
   return (
     <p
       data-toast=""
@@ -892,10 +968,12 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
   const moved = useRef(false);
   const draggingRef = useRef(false);
   const [corner, setCorner] = useState<DockCorner>("top-center");
-  const [pos, setPos] = useState({ x: DOCK_INSET, y: DOCK_INSET });
+  const [pos, setPos] = useState({ x: DOCK_INSET, y: DOCK_INSET, w: 180, h: 36 });
   const [placed, setPlaced] = useState(false);
   const [animate, setAnimate] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [slide, setSlide] = useState(false);
+  const barSize = useRef({ w: 0, h: 0 });
 
   function size() {
     const bar = barRef.current;
@@ -906,7 +984,13 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
     const place = () => {
       if (draggingRef.current) return;
       const { w, h } = size();
-      setPos(dockPosForCorner(corner, w, window.innerWidth, window.innerHeight, h));
+      if (w !== barSize.current.w || h !== barSize.current.h) {
+        barSize.current = { w, h };
+        setSlide(false);
+      }
+      const next = dockPosForCorner(corner, w, window.innerWidth, window.innerHeight, h);
+      if (corner.endsWith("center")) next.x = Math.max(DOCK_INSET, (window.innerWidth - w) / 2);
+      setPos({ ...next, w, h });
     };
     place();
     setPlaced(true);
@@ -928,8 +1012,7 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
 
   useLayoutEffect(() => {
     if (!placed) return;
-    const { w, h } = size();
-    onAnchor({ x: pos.x, y: pos.y, w, h, corner });
+    onAnchor({ x: pos.x, y: pos.y, w: pos.w, h: pos.h, corner });
   }, [placed, pos, corner, onAnchor]);
 
   function onPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -947,16 +1030,15 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
         draggingRef.current = true;
         setDragging(true);
         const { w, h } = size();
-        setPos(
-          clampDockPos(
-            ev.clientX - offsetX,
-            ev.clientY - offsetY,
-            w,
-            window.innerWidth,
-            window.innerHeight,
-            h,
-          ),
+        const next = clampDockPos(
+          ev.clientX - offsetX,
+          ev.clientY - offsetY,
+          w,
+          window.innerWidth,
+          window.innerHeight,
+          h,
         );
+        setPos({ ...next, w, h });
       },
       onEnd() {
         draggingRef.current = false;
@@ -973,7 +1055,10 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
           h,
         );
         setCorner(next);
-        setPos(dockPosForCorner(next, w, window.innerWidth, window.innerHeight, h));
+        setSlide(true);
+        const snapped = dockPosForCorner(next, w, window.innerWidth, window.innerHeight, h);
+        if (next.endsWith("center")) snapped.x = Math.max(DOCK_INSET, (window.innerWidth - w) / 2);
+        setPos({ ...snapped, w, h });
       },
     });
   }
@@ -982,12 +1067,12 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
     <div
       ref={barRef}
       data-chrome=""
-      className={`fixed z-[100] flex h-8 items-center gap-1 rounded-lg bg-white p-1 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+      className={`fixed z-[100] flex h-9 items-center gap-1 rounded-lg bg-white p-1 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
       style={{
         top: pos.y,
         left: pos.x,
         visibility: placed ? "visible" : "hidden",
-        transition: !animate || dragging ? undefined : `top ${PANEL_ENTER_MS}ms ${EASE_OUT}, left ${PANEL_ENTER_MS}ms ${EASE_OUT}`,
+        transition: !animate || dragging || !slide ? undefined : `top ${PANEL_ENTER_MS}ms ${EASE_OUT}, left ${PANEL_ENTER_MS}ms ${EASE_OUT}`,
       }}
       onPointerDown={onPointerDown}
       onClickCapture={(event) => {
@@ -1007,23 +1092,23 @@ function ScreenDock({ children, toast, onAnchor }: { children: ReactNode; toast?
   );
 }
 
-function CommandMark() {
+export function CommandMark() {
   return (
-    <svg viewBox="0 0 24 24" className="size-[11px]" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+    <svg viewBox="0 0 24 24" className="size-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" />
     </svg>
   );
 }
 
-function KeyCap({ children }: { children: ReactNode }) {
+export function KeyCap({ children }: { children: ReactNode }) {
   return (
-    <span className="flex size-4 items-center justify-center rounded text-[11px] leading-[12px] text-white inset-ring inset-ring-white">
+    <span className="pointer-events-none flex size-6 items-center justify-center rounded text-[14px] leading-none text-white opacity-50 inset-ring inset-ring-white">
       {children}
     </span>
   );
 }
 
-function StepMark({ kind }: { kind: "plus" | "minus" }) {
+export function StepMark({ kind }: { kind: "plus" | "minus" }) {
   return (
     <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
       <rect x="3.5" y="7.4" width="9" height="1.2" rx="0.6" fill="currentColor" />
@@ -1032,19 +1117,17 @@ function StepMark({ kind }: { kind: "plus" | "minus" }) {
   );
 }
 
-function actionIcon(enabled: boolean) {
-  return `size-5 opacity-50 ${enabled ? "group-hover/action:opacity-100" : ""}`;
-}
-
-function DockButton({
+export function DockButton({
   name,
   active,
+  disabled = false,
   onClick,
   label,
   badge,
 }: {
   name: LucideIconName;
   active?: boolean;
+  disabled?: boolean;
   onClick?: () => void;
   label: string;
   badge?: number;
@@ -1055,13 +1138,14 @@ function DockButton({
         type="button"
         aria-label={label}
         aria-pressed={active}
+        disabled={disabled}
         onClick={onClick}
-        className={`flex size-6 items-center justify-center rounded ${active ? "bg-black text-white" : "text-black hover:inset-ring hover:inset-ring-black"}`}
+        className={`flex size-7 items-center justify-center rounded ${disabled ? "text-black/50" : active ? "bg-black text-white" : "text-black fine-hover:hover:inset-ring fine-hover:hover:inset-ring-black"}`}
       >
         <SfSymbol name={name} className="size-5" />
       </button>
       {badge != null ? (
-        <span className="pointer-events-none absolute top-[-7px] left-[17px] flex size-3.5 items-center justify-center rounded-full bg-black text-[10px] leading-none text-white">
+        <span className="pointer-events-none absolute top-[-7px] left-[21px] flex size-3.5 items-center justify-center rounded-full bg-black text-[10px] leading-none text-white">
           {badge}
         </span>
       ) : null}
@@ -1107,7 +1191,7 @@ function FollowCaption({
   );
 }
 
-function Track({
+export function Track({
   min,
   max,
   start,
@@ -1334,7 +1418,7 @@ const PICK_GLYPH: Record<string, [number, number, string]> = {
   "order-end": [3.4, 2.4, "M 8 10.6 L 8 0.6 C 8 0.27 8.27 0 8.6 0 C 8.93 0 9.2 0.27 9.2 0.6 L 9.2 10.6 C 9.2 10.93 8.93 11.2 8.6 11.2 C 8.27 11.2 8 10.93 8 10.6 Z M 6.6 8 C 6.93 8 7.2 8.27 7.2 8.6 C 7.2 8.93 6.93 9.2 6.6 9.2 L 5.6 9.2 C 5.27 9.2 5 8.93 5 8.6 C 5 8.27 5.27 8 5.6 8 L 6.6 8 Z M 6.6 5 C 6.93 5 7.2 5.27 7.2 5.6 C 7.2 5.93 6.93 6.2 6.6 6.2 L 3.6 6.2 C 3.27 6.2 3 5.93 3 5.6 C 3 5.27 3.27 5 3.6 5 L 6.6 5 Z M 6.6 2 C 6.93 2 7.2 2.27 7.2 2.6 C 7.2 2.93 6.93 3.2 6.6 3.2 L 0.6 3.2 C 0.27 3.2 0 2.93 0 2.6 C 0 2.27 0.27 2 0.6 2 L 6.6 2 Z"],
 };
 
-function PickGlyph({ name }: { name: string }) {
+export function PickGlyph({ name }: { name: string }) {
   const glyph = PICK_GLYPH[name];
   if (!glyph) return <SfSymbol name={name as LucideIconName} className="size-5" />;
   const [x, y, d] = glyph;
@@ -1345,7 +1429,7 @@ function PickGlyph({ name }: { name: string }) {
   );
 }
 
-function Segment<T extends string>({
+export function Segment<T extends string>({
   value,
   options,
   onChange,
@@ -1402,10 +1486,10 @@ function Segment<T extends string>({
             type="button"
             aria-pressed={selected}
             onClick={() => onChange(option.id)}
-            className={`relative z-10 flex items-center justify-center transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${drawn ? "group/pick size-6" : "px-1.5"} ${equal ? "flex-1" : ""} ${selected ? "text-black" : drawn ? "text-white" : "text-white/50 hover:text-white"}`}
+            className={`relative z-10 flex items-center justify-center transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] motion-reduce:transition-none ${drawn ? "group/pick size-6" : "px-1.5"} ${equal ? "flex-1" : ""} ${selected ? "text-black" : drawn ? "text-white" : "text-white/50 fine-hover:hover:text-white"}`}
           >
             {drawn ? (
-              <span className={selected ? undefined : "opacity-50 transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] group-hover/pick:opacity-100 motion-reduce:transition-none"}>
+              <span className={selected ? undefined : "opacity-50 transition-opacity duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:group-hover/pick:opacity-100 motion-reduce:transition-none"}>
                 {option.glyph ?? <PickGlyph name={option.icon ?? ""} />}
               </span>
             ) : (
@@ -1423,7 +1507,7 @@ const ANCHORS = [
   "left", "center", "right",
   "bottom left", "bottom", "bottom right",
 ] as const;
-type Anchor = (typeof ANCHORS)[number];
+export type Anchor = (typeof ANCHORS)[number];
 
 /** Figma New / Anchor glyphs: 12 box, path offset [x, y]. */
 const ANCHOR_GLYPH: Record<Anchor, [number, number, string]> = {
@@ -1438,7 +1522,7 @@ const ANCHOR_GLYPH: Record<Anchor, [number, number, string]> = {
   "bottom right": [1, 1, "M5 0h4q1 0 1 1v8q0 1-1 1H1q-1 0-1-1V5q0-1 1-1h2q1 0 1-1V1q0-1 1-1Z"],
 };
 
-function AnchorPick({ value, onChange }: { value: Anchor; onChange: (next: Anchor) => void }) {
+export function AnchorPick({ value, onChange }: { value: Anchor; onChange: (next: Anchor) => void }) {
   const index = ANCHORS.indexOf(value);
   return (
     <span className="relative grid h-[72px] w-full grid-cols-3 overflow-hidden rounded">
@@ -1478,7 +1562,7 @@ function AnchorPick({ value, onChange }: { value: Anchor; onChange: (next: Ancho
   );
 }
 
-function IconPick<T extends string>({
+export function IconPick<T extends string>({
   value,
   options,
   onChange,
@@ -1496,22 +1580,28 @@ function IconPick<T extends string>({
   );
 }
 
-function Menu({
+export function Menu({
   options,
   groups,
   value,
+  selected,
   onChange,
   onCreate,
   onItemAction,
+  onRemove,
   curves = false,
 }: {
   options?: string[];
   groups?: string[][];
   value: string;
+  /** Несколько выбранных. Галочка и клик тогда не заменяют одно значение. */
+  selected?: readonly string[];
   onChange: (next: string) => void;
   onCreate?: (label: string) => void;
   /** Появляется меню пункта. Без него три точки не рисуются. */
   onItemAction?: (option: string) => void;
+  /** Крестик справа вместо трёх точек: убрать пункт из списка. */
+  onRemove?: (option: string) => void;
   curves?: boolean;
 }) {
   const [creating, setCreating] = useState(false);
@@ -1554,7 +1644,7 @@ function Menu({
               key={option}
               type="button"
               onClick={() => onChange(option)}
-              className="group/item flex h-6 items-center gap-1 rounded px-0.5 hover:inset-ring hover:inset-ring-white"
+              className="group/item flex h-6 items-center gap-1 rounded px-0.5 fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"
             >
               {curves ? (
                 <span className="flex size-5 items-center justify-center">
@@ -1564,11 +1654,23 @@ function Menu({
                   />
                 </span>
               ) : (
-                <SfSymbol name="check" className={`size-5 ${option === value ? "" : "opacity-0"}`} />
+                <SfSymbol name="check" className={`size-5 ${(selected ? selected.includes(option) : option === value) ? "" : "opacity-0"}`} />
               )}
               <span className="min-w-0 flex-1 text-left">{option}</span>
               {curves ? (
                 <SfSymbol name="check" className={`size-5 ${option === value ? "" : "opacity-0"}`} />
+              ) : onRemove ? (
+                <span
+                  role="button"
+                  aria-label={`Удалить ${option}`}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onRemove(option);
+                  }}
+                  className="pointer-events-none flex size-4 shrink-0 items-center justify-center opacity-0 group-hover/item:pointer-events-auto group-hover/item:opacity-100"
+                >
+                  <SfSymbol name="x" className="size-4" strokeWidth={1.75} />
+                </span>
               ) : onItemAction ? (
                 <span
                   role="button"
@@ -1598,19 +1700,24 @@ function Menu({
           autoFocus
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
-          onBlur={() => {
-            if (draft.trim()) onCreate?.(draft.trim());
+          onBlur={(event) => {
+            const label = event.currentTarget.value.trim();
+            if (label) onCreate?.(label);
             setCreating(false);
             setDraft("");
           }}
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
-            if (event.key === "Escape") setCreating(false);
+            if (event.key === "Escape") {
+              event.stopPropagation();
+              setCreating(false);
+              setDraft("");
+            }
           }}
           className="h-6 bg-transparent px-1 text-white outline-none"
         />
       ) : onCreate ? (
-        <button type="button" onClick={() => setCreating(true)} className="mt-1 flex h-6 items-center gap-1 rounded px-0.5 hover:inset-ring hover:inset-ring-white">
+        <button type="button" onClick={() => setCreating(true)} className="mt-1 flex h-6 items-center gap-1 rounded px-0.5 fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white">
           <SfSymbol name="plus" className="size-5" />
           New input
         </button>
@@ -1711,14 +1818,14 @@ function FloatingMenu({
   };
   return createPortal(
     <>
-      <button type="button" aria-label="Закрыть меню" className="fixed z-[80] cursor-default" style={{ top: 0, left: 0, right: 0, height: box.top }} onClick={close} />
-      <button type="button" aria-label="Закрыть меню" className="fixed z-[80] cursor-default" style={{ top: box.top + box.height, left: 0, right: 0, bottom: 0 }} onClick={close} />
-      <button type="button" aria-label="Закрыть меню" className="fixed z-[80] cursor-default" style={{ top: box.top, left: 0, width: box.left, height: box.height }} onClick={close} />
-      <button type="button" aria-label="Закрыть меню" className="fixed z-[80] cursor-default" style={{ top: box.top, left: box.left + box.width, right: 0, height: box.height }} onClick={close} />
+      <button type="button" aria-label="Закрыть меню" data-no-press="" className="fixed z-[110] cursor-default" style={{ top: 0, left: 0, right: 0, height: box.top }} onClick={close} />
+      <button type="button" aria-label="Закрыть меню" data-no-press="" className="fixed z-[110] cursor-default" style={{ top: box.top + box.height, left: 0, right: 0, bottom: 0 }} onClick={close} />
+      <button type="button" aria-label="Закрыть меню" data-no-press="" className="fixed z-[110] cursor-default" style={{ top: box.top, left: 0, width: box.left, height: box.height }} onClick={close} />
+      <button type="button" aria-label="Закрыть меню" data-no-press="" className="fixed z-[110] cursor-default" style={{ top: box.top, left: box.left + box.width, right: 0, height: box.height }} onClick={close} />
       <div
         ref={menuRef}
         data-chrome=""
-        className={`fixed z-[90] overflow-hidden rounded-lg border border-white ${above ? "origin-bottom" : "origin-top"} ${reduce ? "" : "transition-[opacity,transform]"} ${shown ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        className={`fixed z-[120] overflow-hidden rounded-lg border border-white ${above ? "origin-bottom" : "origin-top"} ${reduce ? "" : "transition-[opacity,transform]"} ${shown ? "opacity-100" : "pointer-events-none opacity-0"}`}
         style={{
           top: above ? box.top - 2 : box.top + box.height + 2,
           left: box.left + 2,
@@ -1740,21 +1847,28 @@ function FloatingMenu({
   );
 }
 
-function ColorPicker({
+export function ColorPicker({
   color,
   onChange,
-  opacity,
   format,
   onFormat,
+  target,
+  targets,
+  onTarget,
 }: {
   color: Hsva;
   onChange: (next: Hsva) => void;
-  opacity: boolean;
   format: ColorFormat;
   onFormat: (next: ColorFormat) => void;
+  target: string;
+  targets: readonly string[];
+  onTarget: (label: string) => void;
 }) {
+  const locale = useContext(PanelLocale);
   const hue = `hsl(${color.h} 100% 50%)`;
   const [picking, setPicking] = useState(false);
+  const [targetMenu, setTargetMenu] = useState(false);
+  const targetAnchor = useRef<HTMLDivElement>(null);
 
   function drag(event: ReactPointerEvent<HTMLDivElement>, apply: (x: number, y: number, rect: DOMRect) => void) {
     event.stopPropagation();
@@ -1773,7 +1887,27 @@ function ColorPicker({
   }
 
   return (
-    <section className="w-full overflow-hidden bg-black text-[14px] leading-none text-white">
+    <>
+      <div ref={targetAnchor} onClick={() => setTargetMenu((open) => !open)} className="cursor-pointer overflow-hidden rounded-lg bg-black text-[14px] leading-none text-white">
+        <div className="flex h-8 items-center justify-between px-1">
+          <span>{tr(locale, "Элемент", "Element")}</span>
+          <span className="flex items-center gap-1">
+            {target}
+            <SfSymbol name="chevrons-up-down" className="size-5" />
+          </span>
+        </div>
+        <FloatingMenu open={targetMenu} anchor={targetAnchor} onClose={() => setTargetMenu(false)}>
+          <Menu
+            options={[...targets]}
+            value={target}
+            onChange={(label) => {
+              onTarget(label);
+              setTargetMenu(false);
+            }}
+          />
+        </FloatingMenu>
+      </div>
+      <section className="w-full overflow-hidden rounded-lg bg-black text-[14px] leading-none text-white">
       <div
         data-color-drag=""
         data-truecolor=""
@@ -1815,27 +1949,25 @@ function ColorPicker({
           <span className="absolute top-[3px] h-[18px] w-1 rounded-[1px] bg-black" style={{ left: `calc(2px + (100% - 8px) * ${color.h / 360})` }} />
         </div>
       </div>
-      {opacity ? (
-        <div className="p-1">
-          <div
-            data-color-drag=""
-            data-truecolor=""
-            className="relative h-6 cursor-ew-resize touch-none overflow-hidden rounded"
-            style={{
-              background: `linear-gradient(to right, hsl(${color.h} 100% 50% / 0), hsl(${color.h} 100% 50%))`,
-            }}
-            onPointerDown={(event) =>
-              drag(event, (x, _y, rect) => {
-                const travel = Math.max(rect.width - 8, 1);
-                const ratio = Math.min(1, Math.max(0, (x - rect.left - 4) / travel));
-                onChange({ ...color, a: ratio });
-              })
-            }
-          >
-            <span className="absolute top-[3px] h-[18px] w-1 rounded-[1px] bg-black" style={{ left: `calc(2px + (100% - 8px) * ${color.a})` }} />
-          </div>
+      <div className="p-1">
+        <div
+          data-color-drag=""
+          data-truecolor=""
+          className="relative h-6 cursor-ew-resize touch-none overflow-hidden rounded"
+          style={{
+            background: `linear-gradient(to right, hsl(${color.h} 100% 50% / 0), hsl(${color.h} 100% 50%))`,
+          }}
+          onPointerDown={(event) =>
+            drag(event, (x, _y, rect) => {
+              const travel = Math.max(rect.width - 8, 1);
+              const ratio = Math.min(1, Math.max(0, (x - rect.left - 4) / travel));
+              onChange({ ...color, a: ratio });
+            })
+          }
+        >
+          <span className="absolute top-[3px] h-[18px] w-1 rounded-[1px] bg-black" style={{ left: `calc(2px + (100% - 8px) * ${color.a})` }} />
         </div>
-      ) : null}
+      </div>
       <div className="p-1">
         <Segment
           equal
@@ -1845,7 +1977,7 @@ function ColorPicker({
         />
       </div>
       <div className="flex h-8 items-center justify-between px-1">
-        <span>Value</span>
+        <span>{tr(locale, "Цвет", "Colour")}</span>
         <span className="flex items-center gap-1">
           <ValueField
             value={formatColor(color, format)}
@@ -1856,7 +1988,7 @@ function ColorPicker({
           />
           <button
             type="button"
-            aria-label="Пипетка"
+            aria-label={tr(locale, "Пипетка", "Eyedropper")}
             aria-pressed={picking}
             onClick={() => {
               const Ctor = (window as unknown as { EyeDropper?: new () => { open: () => Promise<{ sRGBHex: string }> } }).EyeDropper;
@@ -1871,17 +2003,33 @@ function ColorPicker({
                 .catch(() => undefined)
                 .finally(() => setPicking(false));
             }}
-            className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${picking ? "bg-white text-black" : "text-white hover:inset-ring hover:inset-ring-white"}`}
+            className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${picking ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
           >
             <SfSymbol name="pipette" className="size-5" />
           </button>
         </span>
       </div>
+      <div className="flex h-8 items-center justify-between px-1">
+        <span>{tr(locale, "Непрозрачность", "Opacity")}</span>
+        <ValueField
+          value={String(Math.round(color.a * 100))}
+          current={color.a * 100}
+          min={0}
+          max={100}
+          unit="%"
+          onCommit={(raw) => {
+            const parsed = Number(raw);
+            if (!Number.isFinite(parsed)) return;
+            onChange({ ...color, a: Math.min(100, Math.max(0, parsed)) / 100 });
+          }}
+        />
+      </div>
     </section>
+    </>
   );
 }
 
-function CoordChip({ value, onCommit }: { value: number; onCommit: (next: number) => void }) {
+export function CoordChip({ value, onCommit }: { value: number; onCommit: (next: number) => void }) {
   const [editing, setEditing] = useState(false);
   return (
     <span
@@ -1904,22 +2052,18 @@ function CoordChip({ value, onCommit }: { value: number; onCommit: (next: number
   );
 }
 
-function MotionWindow({
+export function MotionWindow({
   type,
   onType,
   curve,
   onCurve,
-  duration,
-  onDuration,
   spring,
   onSpring,
 }: {
-  type: "easing" | "time" | "physics";
-  onType: (next: "easing" | "time" | "physics") => void;
+  type: "easing" | "physics";
+  onType: (next: "easing" | "physics") => void;
   curve: [number, number, number, number];
   onCurve: (next: [number, number, number, number]) => void;
-  duration: number;
-  onDuration: (next: number) => void;
   spring: { stiffness: number; damping: number; mass: number };
   onSpring: (next: { stiffness: number; damping: number; mass: number }) => void;
 }) {
@@ -1935,7 +2079,6 @@ function MotionWindow({
   const series = springSeries(spring.stiffness, spring.damping, spring.mass);
   const types = [
     ["easing", tr(locale, "Кривая", "Easing")],
-    ["time", tr(locale, "Время", "Time")],
     ["physics", tr(locale, "Пружина", "Physics")],
   ] as const;
 
@@ -1945,9 +2088,7 @@ function MotionWindow({
     ? locale === "en"
       ? springPreset.en
       : springPreset.ru
-    : locale === "en"
-      ? "Custom"
-      : "Своя";
+    : "Custom";
   const springGroups = SPRING_PRESET_GROUPS.map((group) =>
     group.presets.map((preset) => (locale === "en" ? preset.en : preset.ru)),
   );
@@ -2091,7 +2232,7 @@ function MotionWindow({
           />
         </div>
         {type === "easing" ? (
-          <Row className={stackLayout}>
+          <Row bind="card" className={stackLayout}>
             <span className="flex h-6 w-full items-center justify-between">
               <span className={rowLabel}>{tr(locale, "Координаты", "Coords")}</span>
               <button
@@ -2103,7 +2244,7 @@ function MotionWindow({
                   setCoordsCopied(true);
                   window.setTimeout(() => setCoordsCopied(false), COPY_DONE_MS);
                 }}
-                className="flex size-6 items-center justify-center rounded text-white transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] hover:inset-ring hover:inset-ring-white"
+                className="flex size-6 items-center justify-center rounded text-white transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"
               >
                 <SfSymbol name={coordsCopied ? "check" : "file"} className="size-5" />
               </button>
@@ -2123,23 +2264,6 @@ function MotionWindow({
             </span>
           </Row>
         ) : null}
-        {type === "time" ? (
-          <Row>
-            <span className={rowLabel}>{tr(locale, "Длительность", "Duration")}</span>
-            <ValueField
-              value={String(duration)}
-              current={duration}
-              min={0}
-              max={4000}
-              step={10}
-              unit="ms"
-              onCommit={(next) => {
-                const parsed = Number(next);
-                if (Number.isFinite(parsed)) onDuration(parsed);
-              }}
-            />
-          </Row>
-        ) : null}
         {type === "physics" ? (
           <>
             {(
@@ -2149,7 +2273,7 @@ function MotionWindow({
                 [tr(locale, "Масса", "Mass"), "mass", 0.1, 10, 0.1],
               ] as const
             ).map(([label, key, low, high, step]) => (
-              <Row key={key}>
+              <Row key={key} bind="card">
                 <span className={rowLabel}>{label}</span>
                 <ValueField
                   value={trimNum(spring[key])}
@@ -2164,12 +2288,12 @@ function MotionWindow({
                 />
               </Row>
             ))}
-            <Row>
+            <Row bind="card">
               <span className={rowLabel}>{tr(locale, "Длительность", "Duration")}</span>
               <span className="text-white/50">{series.settleMs} ms</span>
             </Row>
             <div ref={springAnchor} onClick={() => setSpringMenu((open) => !open)} className="cursor-pointer">
-              <Row className={rowLayout}>
+              <Row bind="card" className={rowLayout}>
                 <span className={rowLabel}>{tr(locale, "Пресет", "Preset")}</span>
                 <span className="flex items-center gap-1">
                   {springLabel}
@@ -2184,7 +2308,7 @@ function MotionWindow({
         ) : null}
         {type !== "physics" ? (
           <div ref={easeAnchor} onClick={() => setMenu((open) => !open)} className="cursor-pointer">
-            <Row className={rowLayout}>
+            <Row bind="card" className={rowLayout}>
               <span className={rowLabel}>{tr(locale, "Кривая", "Ease")}</span>
               <span className="flex items-center gap-1">
                 {presetLabel}
@@ -2201,7 +2325,7 @@ function MotionWindow({
   );
 }
 
-function AxisWindow({
+export function AxisWindow({
   points,
   onPoints,
   handles,
@@ -2378,7 +2502,7 @@ function AxisWindow({
             return <circle key={index} cx={at.x} cy={at.y} r={active ? 4 : 3} fill={VOID} stroke={SILVER} strokeWidth="1.5" />;
           })}
         </svg>
-        <Row>
+        <Row bind="bars">
           <span className={rowLabel}>{tr(locale, "Точки", "Points")}</span>
           <span className="flex h-6 w-24 items-center justify-between rounded inset-ring inset-ring-white text-white">
             <button type="button" aria-label="Меньше" onClick={removePoint} className="flex size-6 items-center justify-center rounded bg-white text-black">
@@ -2390,7 +2514,7 @@ function AxisWindow({
             </button>
           </span>
         </Row>
-        <Row>
+        <Row bind="bars">
           <span className={rowLabel}>{tr(locale, "Точка", "Point")}</span>
           <Segment
             value={style}
@@ -2406,8 +2530,17 @@ function AxisWindow({
   );
 }
 
-function GapChips({ value, onChange }: { value: string; onChange: (next: string) => void }) {
+export function GapChips({ value, onChange }: { value: string; onChange: (next: string) => void }) {
   const listRef = useRef<HTMLDivElement>(null);
+  const [pulse, setPulse] = useState(0);
+  const [pulseAt, setPulseAt] = useState<number | null>(null);
+  const blink = (index: number) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    setPulseAt(index);
+    setPulse((n) => n + 1);
+  };
+  const blinkRef = useRef(blink);
+  blinkRef.current = blink;
   const chips = value
     .split(/[,;\s]+/)
     .map((part) => Number.parseInt(part, 10))
@@ -2430,23 +2563,28 @@ function GapChips({ value, onChange }: { value: string; onChange: (next: string)
         itemIndex === index ? Math.min(32, Math.max(2, item + (event.deltaY < 0 ? 1 : -1))) : item,
       );
       onChange(next.join(", "));
+      blinkRef.current(index);
     };
     list.addEventListener("wheel", onWheel, { passive: false });
     return () => list.removeEventListener("wheel", onWheel);
   }, [onChange]);
 
   return (
-    <span ref={listRef} className="flex h-6 gap-1">
+    <span ref={listRef} className="ml-auto flex w-full max-w-[108px] flex-wrap justify-end gap-1 py-1">
       {shown.map((item, index) => (
         <button
-          key={`${index}-${item}`}
+          key={pulseAt === index ? `${index}-${pulse}` : index}
           type="button"
           data-chip={index}
+          onPointerEnter={(event) => {
+            if (event.pointerType !== "mouse") return;
+            blink(index);
+          }}
           onDoubleClick={() => {
             if (shown.length < 2) return;
             onChange(shown.filter((_, itemIndex) => itemIndex !== index).join(", "));
           }}
-          className="flex size-6 items-center justify-center rounded font-mono text-[14px] text-white inset-ring inset-ring-white transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:bg-white fine-hover:hover:text-black motion-reduce:transition-none"
+          className={`flex size-6 shrink-0 items-center justify-center rounded font-mono text-[14px] text-white inset-ring inset-ring-white${pulseAt === index ? " sp-chip-flash" : ""}`}
         >
           {item}
         </button>
@@ -2456,9 +2594,14 @@ function GapChips({ value, onChange }: { value: string; onChange: (next: string)
         aria-label="Добавить зазор"
         disabled={shown.length >= 6}
         onClick={() => onChange([...shown, shown[shown.length - 1] ?? 8].join(", "))}
-        className="flex size-6 items-center justify-center rounded border border-dashed border-white text-white/50 transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:border-solid fine-hover:hover:bg-white fine-hover:hover:text-black motion-reduce:transition-none"
+        className="group/add relative flex size-6 shrink-0 items-center justify-center rounded text-white transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:bg-white fine-hover:hover:text-black motion-reduce:transition-none"
       >
-        <SfSymbol name="plus" className="size-5" />
+        <svg viewBox="0 0 24 24" className="pointer-events-none absolute inset-0 size-6 fine-hover:group-hover/add:hidden" fill="none" aria-hidden>
+          <rect x="0.5" y="0.5" width="23" height="23" rx="3.5" stroke="currentColor" strokeWidth="1" strokeDasharray="2 2" />
+        </svg>
+        <svg viewBox="0 0 24 24" className="size-5" aria-hidden>
+          <path fill="currentColor" d="M11.1 5h1.8v6.1H19v1.8h-6.1V19h-1.8v-6.1H5v-1.8h6.1V5Z" />
+        </svg>
       </button>
     </span>
   );
@@ -2483,12 +2626,12 @@ export function NewPage() {
   const d = DEFAULTS;
   const [open, setOpen] = useState(true);
   const [motionOpen, setMotionOpen] = useState(false);
-  const [motionType, setMotionType] = useState<"easing" | "time" | "physics">("easing");
+  const [motionType, setMotionType] = useState<"easing" | "physics">("easing");
   const [axisOpen, setAxisOpen] = useState(false);
-  const [timelineOpen, setTimelineOpen] = useState(true);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [scrubKey, setScrubKey] = useState<null | "cardSize" | "radius" | "strokeWidth">(null);
-  const [picker, setPicker] = useState<null | "background" | "grid" | "card" | "stroke" | "text">(null);
+  const [picker, setPicker] = useState<"background" | "grid" | "card" | "stroke" | "text">("background");
   const [pickerDraft, setPickerDraft] = useState<Hsva | null>(null);
   const [format, setFormat] = useState<ColorFormat>("hex");
   const [capOpen, setCapOpen] = useState(false);
@@ -2503,15 +2646,24 @@ export function NewPage() {
   const [dockAnchor, setDockAnchor] = useState<DockAnchor | null>(null);
   const [panelW, setPanelW] = useState(NEW_PANEL_W_MIN);
   const [panelH, setPanelH] = useState<number | null>(null);
+  const [closedSections, setClosedSections] = useState<Set<string>>(() => new Set());
+  const canCollapseAll = PANEL_SECTION_IDS.some((id) => !closedSections.has(id));
+  function toggleSection(id: string) {
+    setClosedSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+  function toggleFoldAll() {
+    setClosedSections(canCollapseAll ? new Set(PANEL_SECTION_IDS) : new Set());
+  }
   const [copied, setCopied] = useState<null | "file" | "link">(null);
   const [toast, setToast] = useState<{ id: number; text: string; detail?: string } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const capAnchor = useRef<HTMLDivElement>(null);
-  const backgroundAnchor = useRef<HTMLDivElement>(null);
-  const gridAnchor = useRef<HTMLDivElement>(null);
-  const cardAnchor = useRef<HTMLDivElement>(null);
-  const strokeAnchor = useRef<HTMLDivElement>(null);
-  const textAnchor = useRef<HTMLDivElement>(null);
+  const colorKey = picker === "grid" && !settings.showLayoutGrid ? "background" : picker;
   const panelScrollRef = useScrollRoot();
   const cardRef = useRef<HTMLDivElement>(null);
   const barsRef = useRef<HTMLDivElement>(null);
@@ -2551,27 +2703,6 @@ export function NewPage() {
         },
       }),
   );
-  const reel = useMemo(() => {
-    const base = P.reel;
-    return {
-      ...base,
-      phases: base.phases.map((phase) =>
-        phase.stagger
-          ? { ...phase, stagger: { ...phase.stagger, count: settings.columns } }
-          : phase,
-      ) as typeof base.phases,
-      controller: player,
-    };
-  }, [player, settings.columns]);
-  const timelineTargets = [
-    {
-      player: reel,
-      settings,
-      defaultSettings: DEFAULTS,
-      onSettingsChange: patch,
-      easingIds: ["card", "bars"] as const,
-    },
-  ];
   const reduce = usePrefersReducedMotion();
   const panelMounted = useDeferredMount(open, reduce, PANEL_EXIT_MS);
 
@@ -2581,10 +2712,10 @@ export function NewPage() {
 
   useEffect(() => () => player.dispose(), [player]);
   useEffect(() => {
-    timelineHold.current = timelineOpen;
-    player.setOpen(timelineOpen);
+    timelineHold.current = true;
+    player.setOpen(true);
     player.rebuild();
-  }, [player, timelineOpen]);
+  }, [player]);
   useEffect(() => {
     player.rebuild();
   }, [player, settings]);
@@ -2626,6 +2757,17 @@ export function NewPage() {
       return;
     }
     searchFiltering.current = true;
+    if (query.length >= 2) {
+      const paletteLabels = [
+        locale === "en" ? "palette" : "палитра",
+        tx(P.backgroundColor.label, locale),
+        tx(P.gridLineColor.label, locale),
+        tx(P.cardColor.label, locale),
+        tx(P.strokeColor.label, locale),
+        tx(P.textColor.label, locale),
+      ].map((label) => label.toLowerCase());
+      if (paletteLabels.some((label) => label.includes(query))) setPaletteOpen(true);
+    }
     for (const row of root.querySelectorAll<HTMLElement>("[data-row]")) {
       const text = row.textContent?.toLowerCase() ?? "";
       const matchesQuery = query.length === 0 || text.includes(query);
@@ -2690,27 +2832,24 @@ export function NewPage() {
   };
 
   const pickerHex =
-    picker === "grid"
+    colorKey === "grid"
       ? settings.gridLineColor
-      : picker === "card"
+      : colorKey === "card"
         ? settings.cardColor
-        : picker === "stroke"
+        : colorKey === "stroke"
           ? settings.strokeColor
-          : picker === "text"
+          : colorKey === "text"
             ? settings.textColor
             : settings.backgroundColor;
-  const pickerAlpha = picker === "card" ? settings.cardOpacity / 100 : 1;
+  const colorOpacityKey = {
+    background: "backgroundOpacity",
+    grid: "gridOpacity",
+    card: "cardOpacity",
+    stroke: "strokeOpacity",
+    text: "textOpacity",
+  } as const;
+  const pickerAlpha = settings[colorOpacityKey[colorKey]] / 100;
   const pickerColor = hexToHsva(pickerHex, pickerAlpha) ?? { h: 0, s: 0, v: 0, a: pickerAlpha };
-  const pickerAnchor =
-    picker === "grid"
-      ? gridAnchor
-      : picker === "card"
-        ? cardAnchor
-        : picker === "stroke"
-          ? strokeAnchor
-          : picker === "text"
-            ? textAnchor
-            : backgroundAnchor;
 
   function commitNumber(raw: string, current: number, min: number, max: number, apply: (value: number) => void) {
     const parsed = evalNumberExpression(raw, current);
@@ -2719,16 +2858,17 @@ export function NewPage() {
 
   function applyColor(key: NonNullable<typeof picker>, next: Hsva) {
     const hex = `#${rgbToHex(hsvaToRgb(next))}`;
-    if (key === "grid") patch({ gridLineColor: hex });
-    else if (key === "card") patch({ cardColor: hex, cardOpacity: Math.round(next.a * 100) });
-    else if (key === "stroke") patch({ strokeColor: hex });
-    else if (key === "text") patch({ textColor: hex });
-    else patch({ backgroundColor: hex });
+    const opacity = Math.round(next.a * 100);
+    if (key === "grid") patch({ gridLineColor: hex, gridOpacity: opacity });
+    else if (key === "card") patch({ cardColor: hex, cardOpacity: opacity });
+    else if (key === "stroke") patch({ strokeColor: hex, strokeOpacity: opacity });
+    else if (key === "text") patch({ textColor: hex, textOpacity: opacity });
+    else patch({ backgroundColor: hex, backgroundOpacity: opacity });
   }
 
   function paint(next: Hsva) {
     setPickerDraft(next);
-    applyColor(picker ?? "background", next);
+    applyColor(colorKey, next);
   }
 
   function setAxisPoints(next: Point[]) {
@@ -2756,26 +2896,25 @@ export function NewPage() {
   const capOption = P.barCap.options.find((option) => option.value === settings.barCap) ?? P.barCap.options[0];
   const capLabel = capOption ? tx(capOption.label, locale) : "";
   const sceneRows: { changed: boolean; line?: string }[] = [
-    { changed: settings.backgroundColor !== d.backgroundColor, line: `${tx(P.backgroundColor.label, locale)}: ${settings.backgroundColor}` },
+    { changed: settings.backgroundColor !== d.backgroundColor || settings.backgroundOpacity !== d.backgroundOpacity, line: `${tx(P.backgroundColor.label, locale)}: ${settings.backgroundColor} ${settings.backgroundOpacity}%` },
     { changed: settings.showLayoutGrid !== d.showLayoutGrid, line: `${tt("Сетка", "Grid")}: ${settings.showLayoutGrid ? "on" : "off"}` },
-    { changed: settings.gridLineColor !== d.gridLineColor, line: `${tx(P.gridLineColor.label, locale)}: ${settings.gridLineColor}` },
+    { changed: settings.gridLineColor !== d.gridLineColor || settings.gridOpacity !== d.gridOpacity, line: `${tx(P.gridLineColor.label, locale)}: ${settings.gridLineColor} ${settings.gridOpacity}%` },
     { changed: settings.cardSize !== d.cardSize, line: `${tx(P.cardSize.label, locale)}: ${settings.cardSize} px` },
     { changed: settings.radius !== d.radius, line: `${tx(P.radius.label, locale)}: ${settings.radius} px` },
     { changed: settings.orient !== d.orient, line: `${tx(P.orient.label, locale)}: ${settings.orient}` },
     { changed: settings.anchor !== d.anchor, line: `${tx(P.anchor.label, locale)}: ${settings.anchor}` },
     { changed: settings.padX !== d.padX || settings.padY !== d.padY, line: `${tx(P.pad.label, locale)}: ${settings.padX} × ${settings.padY} px` },
-    { changed: settings.cardColor !== d.cardColor, line: `${tx(P.cardColor.label, locale)}: ${settings.cardColor} ${settings.cardOpacity}%` },
-    { changed: settings.cardOpacity !== d.cardOpacity },
+    { changed: settings.cardColor !== d.cardColor || settings.cardOpacity !== d.cardOpacity, line: `${tx(P.cardColor.label, locale)}: ${settings.cardColor} ${settings.cardOpacity}%` },
     { changed: settings.shadow !== d.shadow, line: `${tx(P.shadow.label, locale)}: ${settings.shadow ? "on" : "off"}` },
     { changed: settings.cardLead !== d.cardLead, line: `${tx(P.cardLead.label, locale)}: ${settings.cardLead} ms` },
     { changed: JSON.stringify(cardCurve) !== JSON.stringify(d.easings.card), line: `${tt("Кривая", "Curve")}: ${curve.join(", ")}` },
     { changed: settings.strokeWidth !== d.strokeWidth, line: `${tx(P.strokeWidth.label, locale)}: ${settings.strokeWidth} px` },
     { changed: settings.strokeJoin !== d.strokeJoin, line: `${tt("Стык", "Join")}: ${settings.strokeJoin}` },
-    { changed: settings.strokeColor !== d.strokeColor, line: `${tx(P.strokeColor.label, locale)}: ${settings.strokeColor}` },
+    { changed: settings.strokeColor !== d.strokeColor || settings.strokeOpacity !== d.strokeOpacity, line: `${tx(P.strokeColor.label, locale)}: ${settings.strokeColor} ${settings.strokeOpacity}%` },
     { changed: settings.fontSize !== d.fontSize, line: `${tx(P.fontSize.label, locale)}: ${settings.fontSize} px` },
     { changed: settings.wghtMin !== d.wghtMin || settings.wghtMax !== d.wghtMax, line: `${tx(P.wght.label, locale)}: ${settings.wghtMin}–${settings.wghtMax}` },
     { changed: settings.align !== d.align, line: `${tx(P.align.label, locale)}: ${settings.align}` },
-    { changed: settings.textColor !== d.textColor, line: `${tx(P.textColor.label, locale)}: ${settings.textColor}` },
+    { changed: settings.textColor !== d.textColor || settings.textOpacity !== d.textOpacity, line: `${tx(P.textColor.label, locale)}: ${settings.textColor} ${settings.textOpacity}%` },
     { changed: settings.columns !== d.columns, line: `${tx(P.columns.label, locale)}: ${settings.columns}` },
     { changed: settings.fit !== d.fit, line: `${tx(P.fit.label, locale)}: ${settings.fit}` },
     { changed: settings.order !== d.order, line: `${tx(P.order.label, locale)}: ${settings.order}` },
@@ -2831,55 +2970,54 @@ export function NewPage() {
   }
 
   function colorRow(
-    key: NonNullable<typeof picker>,
+    key: "background" | "grid" | "card" | "stroke" | "text",
+    bind: string,
     label: string,
     hex: string,
     changed: boolean,
     onReset: () => void,
-    anchor: RefObject<HTMLDivElement | null>,
-    alpha?: number,
+    alpha: number,
   ) {
-    const body = hex.replace("#", "");
-    const hsva = hexToHsva(hex, alpha ?? 1) ?? pickerColor;
+    const hsva = hexToHsva(hex, alpha) ?? pickerColor;
+    const opacityKey = colorOpacityKey[key];
     return (
-      <div key={key} ref={anchor}>
-        <Row>
+      <div key={key}>
+        <Row bind={bind}>
           <ChangedName changed={changed} label={label} onReset={onReset} />
           <span className="flex items-center gap-2">
             <ValueField
               value={formatColor(hsva, format)}
               unit={format.toUpperCase()}
               onCommit={(next) => {
-                const parsed = parseColorInput(next, format, alpha ?? 1);
+                const parsed = parseColorInput(next, format, alpha);
                 if (parsed) applyColor(key, parsed);
               }}
             />
-            {alpha != null ? (
-              <ValueField
-                value={String(Math.round(alpha * 100))}
-                unit="%"
-                current={Math.round(alpha * 100)}
-                min={0}
-                max={100}
-                onCommit={(next) => commitNumber(next, Math.round(alpha * 100), 0, 100, (value) => patch({ cardOpacity: value }))}
-              />
-            ) : null}
+            <ValueField
+              value={String(Math.round(alpha * 100))}
+              unit="%"
+              current={Math.round(alpha * 100)}
+              min={0}
+              max={100}
+              onCommit={(next) => commitNumber(next, Math.round(alpha * 100), 0, 100, (value) => patch({ [opacityKey]: value }))}
+            />
             <button
               type="button"
               aria-label={label}
-              onClick={() =>
-                setPicker((current) => {
-                  if (current === key) {
-                    setPickerDraft(null);
-                    return null;
-                  }
-                  setPickerDraft(hexToHsva(hex, alpha ?? 1) ?? { h: 0, s: 0, v: 1, a: alpha ?? 1 });
-                  return key;
-                })
-              }
+              aria-pressed={paletteOpen && picker === key}
+              onClick={() => {
+                if (paletteOpen && picker === key) {
+                  setPaletteOpen(false);
+                  setPickerDraft(null);
+                  return;
+                }
+                setPickerDraft(null);
+                setPicker(key);
+                setPaletteOpen(true);
+              }}
               data-truecolor=""
               className="size-6 rounded"
-              style={{ background: alpha != null ? hex : `#${body}` }}
+              style={{ background: hexAlpha(hex, alpha * 100) }}
             />
           </span>
         </Row>
@@ -2898,7 +3036,7 @@ export function NewPage() {
   ) {
     const openScrub = scrubKey === key;
     return (
-      <Row key={key} className={stackLayout}>
+      <Row key={key} bind="card" className={stackLayout}>
         <span className="flex h-6 w-full items-center justify-between">
           <ChangedName changed={value !== d[key]} label={label} onReset={() => patch({ [key]: d[key] })} />
           <span className="flex items-center gap-1">
@@ -2908,7 +3046,7 @@ export function NewPage() {
               aria-pressed={openScrub}
               aria-label="Линейка"
               onClick={() => setScrubKey((current) => (current === key ? null : key))}
-              className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${openScrub ? "bg-white text-black" : "text-white hover:inset-ring hover:inset-ring-white"}`}
+              className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${openScrub ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
             >
               <SfSymbol name="settings-2" className="size-5" />
             </button>
@@ -2925,7 +3063,8 @@ export function NewPage() {
 
   return (
     <PanelLocale.Provider value={locale}>
-    <main className="relative min-h-dvh text-black" style={{ background: settings.backgroundColor, color: settings.textColor }}>
+    <main data-new-ui="" className="relative min-h-dvh text-black" style={{ background: hexAlpha(settings.backgroundColor, settings.backgroundOpacity), color: settings.textColor }}>
+      <PageBar trailing={<IconPick value={theme} onChange={setTheme} options={[{ id: "sun", icon: "sun" }, { id: "moon", icon: "moon" }]} />} />
       {settings.showLayoutGrid ? (
         <div
           aria-hidden
@@ -2933,14 +3072,14 @@ export function NewPage() {
           style={{
             backgroundImage: `linear-gradient(${settings.gridLineColor} 1px, transparent 1px), linear-gradient(90deg, ${settings.gridLineColor} 1px, transparent 1px)`,
             backgroundSize: "64px 64px",
-            opacity: 0.28,
+            opacity: settings.gridOpacity / 100,
           }}
         />
       ) : null}
       <div className="flex min-h-dvh p-16" style={{ alignItems: flex(ay), justifyContent: flex(ax) }}>
         <div
           ref={cardRef}
-          className="relative flex flex-col gap-3 transition-transform hover:scale-[1.04]"
+          className="relative flex flex-col gap-3 transition-transform fine-hover:hover:scale-[1.04]"
           style={{
             width: settings.cardSize,
             minHeight: settings.cardSize * ratio,
@@ -2964,15 +3103,17 @@ export function NewPage() {
                 height={`calc(100% - ${settings.strokeWidth}px)`}
                 fill="none"
                 stroke={settings.strokeColor}
+                strokeOpacity={settings.strokeOpacity / 100}
                 strokeWidth={settings.strokeWidth}
                 strokeLinejoin={settings.strokeJoin === "bevel" || settings.strokeJoin === "round" ? settings.strokeJoin : "miter"}
                 rx={Math.max(0, settings.radius - settings.strokeWidth / 2)}
               />
             </svg>
           ) : null}
-          <h1 className="leading-tight" style={{ fontSize: settings.fontSize, fontWeight: Math.round((settings.wghtMin + settings.wghtMax) / 2) }}>
+          <h1 className="leading-tight" style={{ fontSize: settings.fontSize, fontWeight: Math.round((settings.wghtMin + settings.wghtMax) / 2), color: hexAlpha(settings.textColor, settings.textOpacity) }}>
             {settings.title}
           </h1>
+          <div className="flex flex-col gap-3">
           <div
             ref={barsRef}
             className="flex flex-col"
@@ -3006,49 +3147,86 @@ export function NewPage() {
               );
             })}
           </div>
+          </div>
         </div>
       </div>
-      <a href="/" data-chrome="" className="fixed bottom-4 left-4 z-[90] rounded bg-black/70 px-2 py-1 text-[14px] text-white">
-        {tt("Текущая панель", "Current panel")}
-      </a>
-      {publishedTimeline ? (
-        <SettingsTimeline panelId={PANEL_ID} showDockButton={false} targets={timelineTargets} />
-      ) : (
-        <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[96] flex justify-center px-3">
-          <FloatWindow resetKey={placeEpoch}>
-            <Pop open={timelineOpen}>
-              <NewTimeline settings={settings} locale={locale} player={player} onChange={patch} />
-            </Pop>
-          </FloatWindow>
-        </div>
-      )}
       <DockAnchorContext.Provider value={dockAnchor}>
       <ScreenDock toast={toast ? <Toast text={toast.text} detail={toast.detail} /> : undefined} onAnchor={setDockAnchor}>
         <DockButton name="settings" label={tt("Настройки панели", "Panel Settings")} active={settingsOpen} onClick={() => setSettingsOpen((value) => !value)} />
         <span className="h-4 w-0.5 rounded-full bg-black/50" />
         <span className="relative z-10">
           <span
-            className={`flex h-6 overflow-hidden rounded inset-ring-black ${open ? "inset-ring" : "hover:inset-ring"} ${reduce ? "" : "transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"}`}
-            style={{ width: open ? 96 : 24 }}
+            className={`flex h-7 overflow-hidden rounded inset-ring-black ${open ? "inset-ring" : "fine-hover:hover:inset-ring"} ${reduce ? "" : "transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"}`}
+            style={{ width: open ? 28 + 56 + 28 + (searchOpen ? 164 : 28) : 28 }}
           >
             <button
               type="button"
               aria-label={tt("Панель", "Panel")}
               aria-pressed={open}
               onClick={() => setOpen((value) => !value)}
-              className={`flex size-6 shrink-0 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}
+              className={`flex size-7 shrink-0 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}
             >
               <SfSymbol name="sliders-horizontal" className="size-5" />
             </button>
-            <button type="button" aria-label={tt("Сброс", "Reset")} disabled={changeCount === 0} onClick={() => history.record(d, tt("Сброс", "Reset"))} className="group/action flex size-6 shrink-0 items-center justify-center rounded text-black">
-              <SfSymbol name="trash-2" className={actionIcon(changeCount > 0)} />
+            {open ? (
+              <>
+                <button type="button" aria-label={tt("Сброс", "Reset")} disabled={changeCount === 0} onClick={() => history.record(d, tt("Сброс", "Reset"))} className={`flex size-7 shrink-0 items-center justify-center rounded ${changeCount === 0 ? "text-black/50" : "text-black"}`}>
+                  <SfSymbol name="trash-2" className="size-5" />
+                </button>
+                <button type="button" aria-label={tt("Копировать", "Copy")} disabled={changeCount === 0} onClick={() => void copyScene()} className={`flex size-7 shrink-0 items-center justify-center rounded ${changeCount === 0 ? "text-black/50" : "text-black"}`}>
+                  <SfSymbol name={copied === "file" ? "check" : "file"} className="size-5" />
+                </button>
+              </>
+            ) : null}
+            {open ? (
+              <button type="button" aria-label={tt("Ссылка", "Link")} onClick={() => void copyLink()} className="flex size-7 shrink-0 items-center justify-center rounded text-black">
+                <SfSymbol name={copied === "link" ? "check" : "link"} className="size-5" />
+              </button>
+            ) : null}
+            <button
+              type="button"
+              aria-label={searchOpen ? tt("Закрыть поиск", "Close search") : tt("Поиск", "Search")}
+              aria-expanded={searchOpen}
+              onClick={() => {
+                if (searchOpen) {
+                  setSearchQuery("");
+                  setChangedOnly(false);
+                  setSearchOpen(false);
+                  return;
+                }
+                setOpen(true);
+                setSearchOpen(true);
+              }}
+              className={`flex size-7 shrink-0 items-center justify-center rounded ${searchOpen ? "bg-black text-white" : "text-black"}`}
+            >
+              <SfSymbol name="search" className="size-5" />
             </button>
-            <button type="button" aria-label={tt("Копировать", "Copy")} disabled={changeCount === 0} onClick={() => void copyScene()} className="group/action flex size-6 shrink-0 items-center justify-center rounded text-black">
-              <SfSymbol name={copied === "file" ? "check" : "file"} className={actionIcon(changeCount > 0)} />
-            </button>
-            <button type="button" aria-label={tt("Ссылка", "Link")} onClick={() => void copyLink()} className="group/action flex size-6 shrink-0 items-center justify-center rounded text-black">
-              <SfSymbol name={copied === "link" ? "check" : "link"} className={actionIcon(true)} />
-            </button>
+            <input
+              ref={searchRef}
+              type="search"
+              value={searchQuery}
+              placeholder={changedFilterActive ? tt(`Изменено · ${changeCount}`, `Changed · ${changeCount}`) : tt("Поиск", "Search")}
+              aria-label={tt("Поиск", "Search")}
+              aria-hidden={!searchOpen}
+              tabIndex={searchOpen ? 0 : -1}
+              autoComplete="off"
+              onChange={(event) => {
+                setChangedOnly(false);
+                setSearchQuery(event.target.value);
+                if (event.target.value.trim()) setOpen(true);
+              }}
+              onKeyDown={(event) => {
+                if (event.key !== "Escape") return;
+                event.preventDefault();
+                if (searchQuery) setSearchQuery("");
+                else {
+                  setSearchOpen(false);
+                  setChangedOnly(false);
+                }
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              className={`h-7 min-w-0 flex-1 bg-transparent pr-2 pl-1 text-[14px] leading-[18px] text-black outline-none [&::-webkit-search-cancel-button]:hidden ${changedFilterActive ? "placeholder:text-black" : "placeholder:text-black/50"}`}
+            />
           </span>
           {changeCount > 0 ? (
             <button
@@ -3067,64 +3245,20 @@ export function NewPage() {
                 setSearchOpen(true);
                 setOpen(true);
               }}
-              className={`absolute top-[-7px] left-[17px] z-20 flex size-3.5 items-center justify-center rounded-full text-[10px] leading-none ${changedFilterActive ? "bg-white text-black inset-ring inset-ring-black" : "bg-black text-white"}`}
+              className={`absolute top-[-7px] left-[21px] z-20 flex size-3.5 items-center justify-center rounded-full text-[10px] leading-none ${changedFilterActive ? "bg-white text-black inset-ring inset-ring-black" : "bg-black text-white"}`}
             >
               {changeCount}
             </button>
           ) : null}
         </span>
-        <DockButton name="timer" label={tt("Таймлайн", "Timeline")} active={timelineOpen} onClick={() => setTimelineOpen((value) => !value)} />
         <DockButton name="spline" label={tt("Кривая", "Curve")} active={motionOpen} onClick={() => setMotionOpen((value) => !value)} />
         <DockButton name="waypoints" label={tt("Ось", "Axis")} active={axisOpen} onClick={() => setAxisOpen((value) => !value)} />
-        <span className="h-4 w-0.5 rounded-full bg-black/50" />
-        <span
-          className={`flex h-6 overflow-hidden rounded inset-ring-black ${searchOpen ? "inset-ring" : "hover:inset-ring"} ${reduce ? "" : "transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"}`}
-          style={{ width: searchOpen ? 160 : 24 }}
-        >
-          <button
-            type="button"
-            aria-label={searchOpen ? tt("Закрыть поиск", "Close search") : tt("Поиск", "Search")}
-            aria-expanded={searchOpen}
-            onClick={() => {
-              setSearchOpen((value) => {
-                if (value) {
-                  setSearchQuery("");
-                  setChangedOnly(false);
-                } else setOpen(true);
-                return !value;
-              });
-            }}
-            className={`flex size-6 shrink-0 items-center justify-center rounded ${searchOpen ? "bg-black text-white" : "text-black"}`}
-          >
-            <SfSymbol name="search" className="size-5" />
-          </button>
-          <input
-            ref={searchRef}
-            type="search"
-            value={searchQuery}
-            placeholder={changedFilterActive ? tt(`Изменено · ${changeCount}`, `Changed · ${changeCount}`) : tt("Поиск", "Search")}
-            aria-label={tt("Поиск", "Search")}
-            aria-hidden={!searchOpen}
-            tabIndex={searchOpen ? 0 : -1}
-            autoComplete="off"
-            onChange={(event) => {
-              setChangedOnly(false);
-              setSearchQuery(event.target.value);
-              if (event.target.value.trim()) setOpen(true);
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== "Escape") return;
-              event.preventDefault();
-              if (searchQuery) setSearchQuery("");
-              else {
-                setSearchOpen(false);
-                setChangedOnly(false);
-              }
-            }}
-            onPointerDown={(event) => event.stopPropagation()}
-            className={`h-6 min-w-0 flex-1 bg-transparent pr-2 pl-1 text-[14px] leading-[18px] text-black outline-none [&::-webkit-search-cancel-button]:hidden ${changedFilterActive ? "placeholder:text-black" : "placeholder:text-black/50"}`}
-          />
-        </span>
+        <DockButton
+          name="palette"
+          label={tt("Палитра", "Palette")}
+          active={paletteOpen}
+          onClick={() => setPaletteOpen((value) => !value)}
+        />
       </ScreenDock>
       <DockedWindows>
         <FloatWindow
@@ -3143,32 +3277,39 @@ export function NewPage() {
           }}
         >
         {panelMounted ? (
-          <section
-            data-chrome=""
-            className={`relative overflow-hidden rounded-2xl bg-white ${panelPopClassName({ open, fromBottom: false, skip: reduce })}`}
+          <ParametersPanel
+            title={tt("Параметры", "Parameters")}
+            canCollapse={canCollapseAll}
+            onToggleFold={toggleFoldAll}
+            collapseLabel={tt("Свернуть все", "Collapse all")}
+            expandLabel={tt("Развернуть все", "Expand all")}
+            className={panelPopClassName({ open, fromBottom: false, skip: reduce })}
             style={{ ...panelPopStyle({ open, skip: reduce }), width: panelW, height: "auto" }}
+            bodyRef={panelScrollRef.setEl}
+            bodyStyle={{ maxHeight: (panelH ?? panelHeightCap(dockAnchor)) - 36 }}
           >
-            <div ref={panelScrollRef.setEl} className="min-h-0 overflow-y-auto overscroll-y-contain px-2 py-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden" style={{ maxHeight: panelH ?? panelHeightCap(dockAnchor) }}>
-              <Sortable className="flex flex-col gap-1.5">
+              <SectionFoldContext.Provider value={{ closed: closedSections, toggle: toggleSection }}>
+              <Sortable className="flex flex-col gap-2">
                 <Section
                   key="scene"
+                  foldId="scene"
                   title={tt("Сцена", "Scene")}
                   changed={settings.showLayoutGrid !== d.showLayoutGrid}
                   action={
-                    <button type="button" aria-pressed={settings.showLayoutGrid} aria-label={tt("Сетка", "Grid")} onClick={() => patch({ showLayoutGrid: !settings.showLayoutGrid })}>
+                    <button type="button" data-bind="scene" aria-pressed={settings.showLayoutGrid} aria-label={tt("Сетка", "Grid")} onClick={() => patch({ showLayoutGrid: !settings.showLayoutGrid })}>
                       <SfSymbol name={settings.showLayoutGrid ? "eye" : "eye-off"} className="size-5" />
                     </button>
                   }
                 >
-                  {colorRow("background", tx(P.backgroundColor.label, locale), settings.backgroundColor, settings.backgroundColor !== d.backgroundColor, () => patch({ backgroundColor: d.backgroundColor }), backgroundAnchor)}
+                  {colorRow("background", "scene", tx(P.backgroundColor.label, locale), settings.backgroundColor, settings.backgroundColor !== d.backgroundColor || settings.backgroundOpacity !== d.backgroundOpacity, () => patch({ backgroundColor: d.backgroundColor, backgroundOpacity: d.backgroundOpacity }), settings.backgroundOpacity / 100)}
                   {settings.showLayoutGrid
-                    ? colorRow("grid", tx(P.gridLineColor.label, locale), settings.gridLineColor, settings.gridLineColor !== d.gridLineColor, () => patch({ gridLineColor: d.gridLineColor }), gridAnchor)
+                    ? colorRow("grid", "scene", tx(P.gridLineColor.label, locale), settings.gridLineColor, settings.gridLineColor !== d.gridLineColor || settings.gridOpacity !== d.gridOpacity, () => patch({ gridLineColor: d.gridLineColor, gridOpacity: d.gridOpacity }), settings.gridOpacity / 100)
                     : null}
                 </Section>
-                <Section key="card" title={tx(P.cardColor.label, locale)}>
+                <Section key="card" foldId="card" title={tx(P.cardColor.label, locale)}>
                   {scrubRow("cardSize", tx(P.cardSize.label, locale), settings.cardSize, 80, 480, "px", 1)}
                   {scrubRow("radius", tx(P.radius.label, locale), settings.radius, 0, 120, "px", undefined)}
-                  <Row key="orient">
+                  <Row key="orient" bind="card">
                     <ChangedName changed={settings.orient !== d.orient} label={tx(P.orient.label, locale)} onReset={() => patch({ orient: d.orient })} />
                     <IconPick
                       value={settings.orient}
@@ -3180,13 +3321,13 @@ export function NewPage() {
                       ]}
                     />
                   </Row>
-                  <Row key="anchor" className={stackLayout}>
-                    <span className="flex h-[18px] w-full items-center">
+                  <Row key="anchor" bind="card" className={stackLayout}>
+                    <span className="flex h-6 w-full items-center">
                       <ChangedName changed={settings.anchor !== d.anchor} label={tx(P.anchor.label, locale)} onReset={() => patch({ anchor: d.anchor })} />
                     </span>
                     <AnchorPick value={settings.anchor} onChange={(anchor) => patch({ anchor })} />
                   </Row>
-                  <Row key="pad">
+                  <Row key="pad" bind="card">
                     <ChangedName
                       changed={settings.padX !== d.padX || settings.padY !== d.padY}
                       label={tx(P.pad.label, locale)}
@@ -3194,7 +3335,9 @@ export function NewPage() {
                     />
                     <span className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
-                        <SfSymbol name="arrow-left-right" className="size-4" />
+                        <span className="text-white">
+                          <PairGlyph icon="padX" />
+                        </span>
                         <ValueField
                           value={String(settings.padX)}
                           current={settings.padX}
@@ -3209,7 +3352,9 @@ export function NewPage() {
                         />
                       </span>
                       <span className="flex items-center gap-1">
-                        <SfSymbol name="arrow-up-down" className="size-4" />
+                        <span className="text-white">
+                          <PairGlyph icon="padY" />
+                        </span>
                         <ValueField
                           value={String(settings.padY)}
                           current={settings.padY}
@@ -3225,7 +3370,7 @@ export function NewPage() {
                       </span>
                     </span>
                   </Row>
-                  <Row key="width">
+                  <Row key="width" bind="card">
                     <RowHint text={tt("Сторона минус отступы слева и справа", "Side minus the left and right padding")}>
                       <span className={rowLabel}>{tt("Ширина", "Width")}</span>
                     </RowHint>
@@ -3233,14 +3378,14 @@ export function NewPage() {
                   </Row>
                   {colorRow(
                     "card",
+                    "card",
                     tx(P.cardColor.label, locale),
                     settings.cardColor,
                     settings.cardColor !== d.cardColor || settings.cardOpacity !== d.cardOpacity,
                     () => patch({ cardColor: d.cardColor, cardOpacity: d.cardOpacity }),
-                    cardAnchor,
                     settings.cardOpacity / 100,
                   )}
-                  <Row key="shadow">
+                  <Row key="shadow" bind="card">
                     <ChangedName changed={settings.shadow !== d.shadow} label={tx(P.shadow.label, locale)} onReset={() => patch({ shadow: d.shadow })} />
                     <button
                       type="button"
@@ -3251,7 +3396,7 @@ export function NewPage() {
                       <span className={`absolute top-0 left-0 size-6 rounded bg-black inset-ring inset-ring-white ${settings.shadow ? "translate-x-6" : "translate-x-0"} ${reduce ? "" : "transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]"}`} />
                     </button>
                   </Row>
-                  <Row key="lead">
+                  <Row key="lead" bind="card">
                     <ChangedName changed={settings.cardLead !== d.cardLead} label={tx(P.cardLead.label, locale)} onReset={() => patch({ cardLead: d.cardLead })} />
                     <span className="flex items-center gap-1">
                       <ValueField value={String(settings.cardLead)} current={settings.cardLead} min={0} max={400} step={10} unit="ms" onCommit={(next) => commitNumber(next, settings.cardLead, 0, 400, (cardLead) => patch({ cardLead }))} />
@@ -3262,14 +3407,14 @@ export function NewPage() {
                         onClick={() => {
                           setMotionOpen((value) => !value);
                         }}
-                        className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${motionOpen ? "bg-white text-black" : "text-white hover:inset-ring hover:inset-ring-white"}`}
+                        className={`flex size-6 items-center justify-center rounded transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] ${motionOpen ? "bg-white text-black" : "text-white fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"}`}
                       >
                         <SfSymbol name="spline" className="size-5" />
                       </button>
                     </span>
                   </Row>
                   {scrubRow("strokeWidth", tx(P.strokeWidth.label, locale), settings.strokeWidth, 0, 12, "px", 0.5)}
-                  <Row key="join">
+                  <Row key="join" bind="card">
                     <ChangedName changed={settings.strokeJoin !== d.strokeJoin} label={tt("Тип стыка", "Join")} onReset={() => patch({ strokeJoin: d.strokeJoin })} />
                     <Segment
                       value={settings.strokeJoin === "round" || settings.strokeJoin === "bevel" ? settings.strokeJoin : "miter"}
@@ -3277,14 +3422,14 @@ export function NewPage() {
                       options={(["miter", "round", "bevel"] as const).map((id) => ({ id, label: id, glyph: <PickGlyph name={`join-${id}`} /> }))}
                     />
                   </Row>
-                  {colorRow("stroke", tx(P.strokeColor.label, locale), settings.strokeColor, settings.strokeColor !== d.strokeColor, () => patch({ strokeColor: d.strokeColor }), strokeAnchor)}
+                  {colorRow("stroke", "card", tx(P.strokeColor.label, locale), settings.strokeColor, settings.strokeColor !== d.strokeColor || settings.strokeOpacity !== d.strokeOpacity, () => patch({ strokeColor: d.strokeColor, strokeOpacity: d.strokeOpacity }), settings.strokeOpacity / 100)}
                 </Section>
-                <Section key="title" title={tx(P.title.label, locale)}>
-                  <Row key="size">
+                <Section key="title" foldId="title" title={tx(P.title.label, locale)}>
+                  <Row key="size" bind="title">
                     <ChangedName changed={settings.fontSize !== d.fontSize} label={tx(P.fontSize.label, locale)} onReset={() => patch({ fontSize: d.fontSize })} />
                     <ValueField value={String(settings.fontSize)} current={settings.fontSize} min={10} max={96} unit="px" onCommit={(next) => commitNumber(next, settings.fontSize, 10, 96, (fontSize) => patch({ fontSize }))} />
                   </Row>
-                  <Row key="weight" className={stackLayout}>
+                  <Row key="weight" bind="title" className={stackLayout}>
                     <span className="flex h-6 w-full items-center justify-between">
                       <ChangedName
                         changed={settings.wghtMin !== d.wghtMin || settings.wghtMax !== d.wghtMax}
@@ -3314,7 +3459,7 @@ export function NewPage() {
                       onChange={(wghtMin, wghtMax) => patch({ wghtMin, wghtMax })}
                     />
                   </Row>
-                  <Row key="align">
+                  <Row key="align" bind="title">
                     <ChangedName changed={settings.align !== d.align} label={tx(P.align.label, locale)} onReset={() => patch({ align: d.align })} />
                     <IconPick
                       value={settings.align}
@@ -3327,10 +3472,10 @@ export function NewPage() {
                       ]}
                     />
                   </Row>
-                  {colorRow("text", tx(P.textColor.label, locale), settings.textColor, settings.textColor !== d.textColor, () => patch({ textColor: d.textColor }), textAnchor)}
+                  {colorRow("text", "title", tx(P.textColor.label, locale), settings.textColor, settings.textColor !== d.textColor || settings.textOpacity !== d.textOpacity, () => patch({ textColor: d.textColor, textOpacity: d.textOpacity }), settings.textOpacity / 100)}
                 </Section>
-                <Section key="bars" title={tt("Плашки", "Bars")}>
-                  <Row key="columns">
+                <Section key="bars" foldId="bars" title={tt("Плашки", "Bars")}>
+                  <Row key="columns" bind="bars">
                     <ChangedName changed={settings.columns !== d.columns} label={tx(P.columns.label, locale)} onReset={() => patch({ columns: d.columns })} />
                     <span className="flex h-6 w-24 items-center justify-between rounded text-white inset-ring inset-ring-white">
                       <button type="button" aria-label={tt("Меньше", "Less")} onClick={() => patch({ columns: Math.max(1, settings.columns - 1) })} className="flex size-6 items-center justify-center rounded bg-white text-black">
@@ -3342,7 +3487,7 @@ export function NewPage() {
                       </button>
                     </span>
                   </Row>
-                  <Row key="fit">
+                  <Row key="fit" bind="bars">
                     <ChangedName changed={settings.fit !== d.fit} label={tx(P.fit.label, locale)} onReset={() => patch({ fit: d.fit })} />
                     <IconPick
                       value={settings.fit}
@@ -3354,7 +3499,7 @@ export function NewPage() {
                       ]}
                     />
                   </Row>
-                  <Row key="order">
+                  <Row key="order" bind="bars">
                     <ChangedName changed={settings.order !== d.order} label={tx(P.order.label, locale)} onReset={() => patch({ order: d.order })} />
                     <Segment
                       value={settings.order}
@@ -3362,7 +3507,7 @@ export function NewPage() {
                       options={(["start", "center", "end"] as const).map((id) => ({ id, label: id, glyph: <PickGlyph name={`order-${id}`} /> }))}
                     />
                   </Row>
-                  <Row key="fill">
+                  <Row key="fill" bind="bars">
                     <ChangedName changed={settings.barsFill !== d.barsFill} label={tx(P.barsFill.label, locale)} onReset={() => patch({ barsFill: d.barsFill })} />
                     <Segment
                       value={settings.barsFill ? "fill" : "axis"}
@@ -3373,7 +3518,7 @@ export function NewPage() {
                       ]}
                     />
                   </Row>
-                  <Row key="kind">
+                  <Row key="kind" bind="bars">
                     <ChangedName changed={settings.barsBlocks !== d.barsBlocks} label={tx(P.barsBlocks.label, locale)} onReset={() => patch({ barsBlocks: d.barsBlocks })} />
                     <Segment
                       value={settings.barsBlocks ? "blocks" : "lines"}
@@ -3385,7 +3530,7 @@ export function NewPage() {
                     />
                   </Row>
                   <div key="cap" ref={capAnchor} onClick={() => setCapOpen((value) => !value)} className="cursor-pointer">
-                    <Row>
+                    <Row bind="bars">
                       <ChangedName changed={settings.barCap !== d.barCap} label={tx(P.barCap.label, locale)} onReset={() => patch({ barCap: d.barCap })} />
                       <span className="flex items-center gap-1">
                         {capLabel}
@@ -3404,15 +3549,19 @@ export function NewPage() {
                       />
                     </FloatingMenu>
                   </div>
-                  <Row key="gaps">
-                    <ChangedName changed={settings.barGaps !== d.barGaps} label={tt("Зазоры", "Gaps")} onReset={() => patch({ barGaps: d.barGaps })} />
+                  <Row key="gaps" bind="bars" className="h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1">
+                    <span className="flex h-8 items-center">
+                      <ChangedName changed={settings.barGaps !== d.barGaps} label={tt("Зазоры", "Gaps")} onReset={() => patch({ barGaps: d.barGaps })} />
+                    </span>
                     <GapChips value={settings.barGaps} onChange={(barGaps) => patch({ barGaps })} />
                   </Row>
-                  <Row key="skips" className="h-auto items-start justify-between gap-2 px-1 py-1">
-                    <ChangedName changed={settings.skipCells !== d.skipCells} label={tt("Пропуски", "Skips")} onReset={() => patch({ skipCells: d.skipCells })} />
-                    <span className="flex flex-col gap-1">
+                  <Row key="skips" bind="bars" className="h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1">
+                    <span className="flex h-8 items-center">
+                      <ChangedName changed={settings.skipCells !== d.skipCells} label={tt("Пропуски", "Skips")} onReset={() => patch({ skipCells: d.skipCells })} />
+                    </span>
+                    <span className="ml-auto flex flex-col gap-1 py-1">
                       {parseSkipCells(settings.skipCells, MODULE_ROWS).map((cols, rowIndex) => (
-                        <span key={rowIndex} className="flex gap-1">
+                        <span key={rowIndex} className="flex max-w-full flex-wrap justify-end gap-1">
                           {Array.from({ length: settings.columns }, (_, col) => {
                             const off = cols.includes(col);
                             return (
@@ -3429,7 +3578,7 @@ export function NewPage() {
                                   const empty = grid.every((line) => line.length === 0);
                                   patch({ skipCells: empty ? "" : serializeSkipCells(grid) });
                                 }}
-                                className={`size-4 rounded-[3px] ${off ? "border border-dashed border-white/50 bg-transparent" : "bg-white"}`}
+                                className={`size-6 rounded ${off ? "border border-dashed border-white/50 bg-transparent" : "bg-white"}`}
                               />
                             );
                           })}
@@ -3437,8 +3586,8 @@ export function NewPage() {
                       ))}
                     </span>
                   </Row>
-                  <Row key="shuffle">
-                    <span className={rowLabel}>{tt("Перемешать", "Shuffle")}</span>
+                  <Row key="shuffle" bind="bars">
+                    <span>{tt("Перемешать", "Shuffle")}</span>
                     <button
                       type="button"
                       aria-label={tt("Перемешать", "Shuffle")}
@@ -3459,11 +3608,8 @@ export function NewPage() {
                   </Row>
                 </Section>
               </Sortable>
-            </div>
-            <FloatingMenu open={picker != null} anchor={pickerAnchor} onClose={() => { setPicker(null); setPickerDraft(null); }}>
-              <ColorPicker color={pickerDraft ?? pickerColor} onChange={paint} opacity={picker === "card"} format={format} onFormat={setFormat} />
-            </FloatingMenu>
-          </section>
+              </SectionFoldContext.Provider>
+          </ParametersPanel>
         ) : null}
         </FloatWindow>
         <FloatWindow resetKey={placeEpoch}>
@@ -3520,12 +3666,10 @@ export function NewPage() {
         <FloatWindow resetKey={placeEpoch}>
         <Pop open={motionOpen}>
           <MotionWindow
-            type={motionType}
+            type={motionType === "physics" ? "physics" : "easing"}
             onType={setMotionType}
             curve={curve}
             onCurve={(next) => patch({ easings: { ...settings.easings, card: { x1: next[0], y1: next[1], x2: next[2], y2: next[3] } } })}
-            duration={settings.cardLead}
-            onDuration={(cardLead) => patch({ cardLead })}
             spring={hover}
             onSpring={(next) => patch({ springs: { ...settings.springs, hover: next } })}
           />
@@ -3543,6 +3687,57 @@ export function NewPage() {
             style={axisCorner ? "corner" : "smooth"}
             onStyle={(style) => patch({ axisHandles: settings.axisPoints.map(() => (style === "corner" ? [0, 0] : null)) })}
           />
+        </Pop>
+        </FloatWindow>
+        <FloatWindow resetKey={placeEpoch}>
+        <Pop open={paletteOpen}>
+          <section data-chrome="" className="flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
+            <header className="flex h-4 items-center px-1">
+              <span className="flex min-w-0 items-center gap-1">
+                <SfSymbol name="palette" className="size-5" />
+                <span className="text-[14px] leading-4">{tt("Палитра", "Palette")}</span>
+              </span>
+            </header>
+              <ColorPicker
+                color={pickerDraft ?? pickerColor}
+                onChange={paint}
+                format={format}
+                onFormat={setFormat}
+                target={tx(
+                  colorKey === "grid"
+                    ? P.gridLineColor.label
+                    : colorKey === "card"
+                      ? P.cardColor.label
+                      : colorKey === "stroke"
+                        ? P.strokeColor.label
+                        : colorKey === "text"
+                          ? P.textColor.label
+                          : P.backgroundColor.label,
+                  locale,
+                )}
+                targets={[
+                  tx(P.backgroundColor.label, locale),
+                  ...(settings.showLayoutGrid ? [tx(P.gridLineColor.label, locale)] : []),
+                  tx(P.cardColor.label, locale),
+                  tx(P.strokeColor.label, locale),
+                  tx(P.textColor.label, locale),
+                ]}
+                onTarget={(label) => {
+                  const next =
+                    label === tx(P.gridLineColor.label, locale)
+                      ? "grid"
+                      : label === tx(P.cardColor.label, locale)
+                        ? "card"
+                        : label === tx(P.strokeColor.label, locale)
+                          ? "stroke"
+                          : label === tx(P.textColor.label, locale)
+                            ? "text"
+                            : "background";
+                  setPickerDraft(null);
+                  setPicker(next);
+                }}
+              />
+          </section>
         </Pop>
         </FloatWindow>
       </DockedWindows>
