@@ -7,6 +7,7 @@ import { GLASS, ICON, MUTED, PANEL_MOVE_EDGE } from "./chrome";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { RowLabel } from "./row";
 import type { PanelFont } from "../lib/panel-theme";
+import { useChromeStyle } from "./panel-style";
 import { panelPopClassName, panelPopStyle } from "./motion-ui";
 
 /** Read-only value on the right — Version (mono) and shortcut keys (sans). No Field. */
@@ -166,11 +167,13 @@ export function DockedChromeWindow({
   children: ReactNode;
 }) {
   const floated = float != null;
+  const fresh = useChromeStyle() === "new";
   return (
     <div
       id={id}
       data-settings-panel=""
       data-settings-panel-window=""
+      data-panel-style={fresh ? "new" : "classic"}
       data-panel-theme={theme}
       data-panel-font={font}
       role="region"
@@ -180,14 +183,16 @@ export function DockedChromeWindow({
       inert={open ? undefined : true}
       onPointerDown={onPointerDown}
       className={cn(
-        "flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
+        fresh
+          ? "flex min-h-0 flex-col gap-0 overflow-hidden rounded-2xl bg-white font-sans text-left text-black"
+          : "flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
         "fixed",
         floated ? "origin-center" : origin,
         panelPopClassName({ open, fromBottom, skip: skip || Boolean(moving) }),
         moving && "cursor-grabbing select-none",
       )}
       style={{
-        background: GLASS,
+        background: fresh ? "var(--color-white)" : GLASS,
         zIndex: zIndex ?? 100,
         width,
         maxHeight,

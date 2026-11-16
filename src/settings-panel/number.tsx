@@ -31,6 +31,8 @@ import {
 import { copyKey } from "./locale";
 import type { PairFieldIcon, PairSetting, ResetDotProps } from "./types";
 import { FieldButton, NumberField, NumberInput, ReadOnlyField } from "./fields";
+import { NewNumberFace } from "./new-face";
+import { useChromeStyle } from "./panel-style";
 import { RowLabel, SettingRow } from "./row";
 
 export function scrubRatio(value: number, min: number, max: number) {
@@ -631,6 +633,7 @@ export function SettingNumber({
 } & ResetDotProps) {
   const [scrubOpen, setScrubOpen] = useState(false);
   const [dragMax, setDragMax] = useState<number | null>(null);
+  const fresh = useChromeStyle() === "new";
   const overflowMax =
     Number.isFinite(value) && value > max ? value : max;
   const sliderMax = scrub ? (dragMax ?? overflowMax) : max;
@@ -647,7 +650,13 @@ export function SettingNumber({
         onIconChange={onIconChange}
         locale={locale}
       >
-        <ReadOnlyField label={readOnlyLabel ?? "Auto"} unit={unit} />
+        {fresh ? (
+          <span className="text-[14px] leading-[18px] text-white/50">
+            {readOnlyLabel ?? "Auto"}
+          </span>
+        ) : (
+          <ReadOnlyField label={readOnlyLabel ?? "Auto"} unit={unit} />
+        )}
       </SettingRow>
     );
   }
@@ -669,7 +678,29 @@ export function SettingNumber({
         onIconChange={onIconChange}
         locale={locale}
       >
-        {withCurveButton(
+        {fresh ? (
+          <span className="flex h-6 w-24 items-center justify-between rounded text-white inset-ring inset-ring-white">
+            <button
+              type="button"
+              aria-label={`Decrease ${label}`}
+              disabled={atMin}
+              onClick={() => stepBy(-1)}
+              className="flex size-6 items-center justify-center rounded bg-white text-black disabled:opacity-30"
+            >
+              <StepperMark kind="minus" />
+            </button>
+            <span>{value}</span>
+            <button
+              type="button"
+              aria-label={`Increase ${label}`}
+              disabled={atMax}
+              onClick={() => stepBy(1)}
+              className="flex size-6 items-center justify-center rounded bg-white text-black disabled:opacity-30"
+            >
+              <StepperMark kind="plus" />
+            </button>
+          </span>
+        ) : withCurveButton(
           <div
             className={cn(
               "grid h-[28px] w-[86px] shrink-0 grid-cols-[28px_1px_28px_1px_28px]",
@@ -723,7 +754,16 @@ export function SettingNumber({
     );
   }
 
-  const numberField = (
+  const numberField = fresh ? (
+    <NewNumberFace
+      max={sliderMax}
+      min={min}
+      onCommit={onChange}
+      step={step}
+      unit={unit}
+      value={value}
+    />
+  ) : (
     <NumberField
       ariaLabel={aria}
       max={sliderMax}
@@ -760,8 +800,20 @@ export function SettingNumber({
   return (
     <div className={cn("flex flex-col", scrubOpen && "gap-1")}>
       <div
-        className="group flex h-[28px] items-center justify-between gap-4"
+        className={
+          fresh
+            ? "group/row relative flex h-8 items-center justify-between gap-2 bg-black px-1 text-[14px] leading-none text-white"
+            : "group flex h-[28px] items-center justify-between gap-4"
+        }
         data-setting-row=""
+        style={
+          fresh
+            ? {
+                ["--sp-fg" as string]: "var(--color-white)",
+                ["--sp-muted" as string]: "color-mix(in srgb, var(--color-white) 55%, transparent)",
+              }
+            : undefined
+        }
       >
         <RowLabel
           label={label}

@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
+import { useChromeStyle } from "./panel-style";
 import { PanelIcon } from "../panel-icon";
 import { cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
@@ -244,6 +245,7 @@ export function RowLabel({
   /** `main` = Figma `text/main`. Default `label` = `text-2`. */
   tone?: "label" | "main";
 } & ResetDotProps) {
+  const fresh = useChromeStyle() === "new";
   return (
     <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
       {onIconChange ? (
@@ -270,11 +272,24 @@ export function RowLabel({
         >
           <span
             aria-hidden
-            className="size-[5px] rounded-full bg-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:group-hover/reset-dot:bg-[color:var(--sp-fg)]"
+            className={cn(
+              "size-[5px] rounded-full transition-colors duration-150",
+              fresh
+                ? "bg-white"
+                : "bg-[color:var(--sp-muted)] fine-hover:group-hover/reset-dot:bg-[color:var(--sp-fg)]",
+            )}
           />
         </button>
       ) : null}
-      <span className={tone === "main" ? rowLabelMainClass : rowLabelClass}>
+      <span
+        className={
+          fresh
+            ? "truncate text-white decoration-1 underline-offset-[3px] group-hover/row:underline"
+            : tone === "main"
+              ? rowLabelMainClass
+              : rowLabelClass
+        }
+      >
         {label}
       </span>
       {info ? <InfoHint label={label} text={info} /> : null}
@@ -298,10 +313,25 @@ export function SettingRow({
   label: string;
   children: ReactNode;
 } & ResetDotProps) {
+  const fresh = useChromeStyle() === "new";
   return (
     <div
-      className="group flex h-[28px] items-center justify-between gap-4"
+      className={
+        fresh
+          ? "group/row relative flex h-8 items-center justify-between gap-2 bg-black px-1 text-[14px] leading-none text-white"
+          : "group flex h-[28px] items-center justify-between gap-4"
+      }
       data-setting-row=""
+      data-row={fresh ? "" : undefined}
+      style={
+        fresh
+          ? {
+              ["--sp-fg" as string]: "var(--color-white)",
+              ["--sp-muted" as string]: "color-mix(in srgb, var(--color-white) 55%, transparent)",
+              ["--sp-label" as string]: "var(--color-white)",
+            }
+          : undefined
+      }
     >
       <RowLabel label={label} {...dots} />
       {children}

@@ -17,6 +17,7 @@ import {
   pickerChrome,
 } from "./chrome";
 import type { EnumMark, EnumOption, ResetDotProps } from "./types";
+import { useChromeStyle } from "./panel-style";
 import { RowLabel, SettingRow } from "./row";
 import { PanelSelectList } from "./select";
 
@@ -355,6 +356,7 @@ export function SettingToggle({
   reduceMotion?: boolean;
 } & ResetDotProps) {
   const current = value ? onLabel : offLabel;
+  const fresh = useChromeStyle() === "new";
   const namedModes = control === "segment" || control === "dropdown";
 
   if (namedModes && control === "segment") {
@@ -375,6 +377,30 @@ export function SettingToggle({
         onIconChange={onIconChange}
         locale={locale}
       >
+        {fresh ? (
+          <span className="relative flex h-6 shrink-0 overflow-hidden rounded text-[14px] whitespace-nowrap text-white inset-ring inset-ring-white">
+            {segments.map((segment) => {
+              const active = segment.on === value;
+              return (
+                <button
+                  key={segment.text}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  aria-label={`${label}: ${segment.text}`}
+                  onClick={() => onChange(segment.on)}
+                  className={`relative z-[1] flex h-6 items-center justify-center px-2 ${active ? "bg-white text-black" : "text-white"}`}
+                >
+                  {segment.glyph ? (
+                    <PanelIcon name={segment.glyph} className="size-5" />
+                  ) : (
+                    segment.text
+                  )}
+                </button>
+              );
+            })}
+          </span>
+        ) : (
         <div
           role="radiogroup"
           aria-label={label}
@@ -419,6 +445,7 @@ export function SettingToggle({
             ];
           })}
         </div>
+        )}
       </SettingRow>
     );
   }
@@ -426,7 +453,11 @@ export function SettingToggle({
   if (namedModes && control === "dropdown") {
     return (
       <div
-        className="group flex items-start justify-between gap-4"
+        className={
+          fresh
+            ? "group/row relative flex h-8 items-center justify-between gap-2 bg-black px-1 text-[14px] leading-none text-white"
+            : "group flex items-start justify-between gap-4"
+        }
         data-setting-row=""
       >
         <RowLabel
@@ -449,7 +480,8 @@ export function SettingToggle({
           ]}
           reduceMotion={reduceMotion}
           value={value ? "on" : "off"}
-          width={ENUM_DROPDOWN_W}
+          width={fresh ? undefined : ENUM_DROPDOWN_W}
+          plain={fresh}
         />
       </div>
     );
@@ -472,13 +504,15 @@ export function SettingToggle({
           aria-pressed={value}
           onClick={() => onChange(!value)}
           className={cn(
-            "flex h-[28px] w-[86px] shrink-0 items-center justify-center rounded px-1.5",
-            fieldValueSans,
+            fresh
+              ? "flex h-6 shrink-0 items-center justify-center rounded bg-white px-2 text-[14px] text-black"
+              : "flex h-[28px] w-[86px] shrink-0 items-center justify-center rounded px-1.5",
+            fresh ? "" : fieldValueSans,
             "outline-none",
-            fieldChrome,
-            "fine-hover:hover:bg-[color:var(--sp-fill-hover)]",
+            fresh ? "" : fieldChrome,
+            fresh ? "" : "fine-hover:hover:bg-[color:var(--sp-fill-hover)]",
           )}
-          style={{ background: FIELD, color: MUTED }}
+          style={fresh ? undefined : { background: FIELD, color: MUTED }}
         >
           {current}
         </button>
@@ -496,6 +530,21 @@ export function SettingToggle({
       onIconChange={onIconChange}
       locale={locale}
     >
+      {fresh ? (
+        <button
+          type="button"
+          role="switch"
+          aria-checked={value}
+          aria-label={`${label}: ${current}`}
+          onClick={() => onChange(!value)}
+          className={`relative h-6 w-12 shrink-0 rounded inset-ring inset-ring-white ${value ? "bg-white" : "bg-transparent"}`}
+        >
+          <span
+            aria-hidden
+            className={`absolute top-0 left-0 size-6 rounded bg-black inset-ring inset-ring-white ${value ? "translate-x-6" : "translate-x-0"}`}
+          />
+        </button>
+      ) : (
       <button
         type="button"
         role="switch"
@@ -526,6 +575,7 @@ export function SettingToggle({
             )}
           />
       </button>
+      )}
     </SettingRow>
   );
 }
@@ -722,6 +772,7 @@ export function SettingEnumDropdown({
   /** Portal the open list (default). Pass `false` to grow in flow. */
   overlay?: boolean;
 } & ResetDotProps) {
+  const fresh = useChromeStyle() === "new";
   if (control === "segment" && options.length >= 2 && options.length <= 3) {
     return (
       <SettingEnumSegment
@@ -746,7 +797,11 @@ export function SettingEnumDropdown({
 
   return (
     <div
-      className="group flex items-start justify-between gap-4"
+      className={
+        fresh
+          ? "group/row relative flex h-8 items-center justify-between gap-2 bg-black px-1 text-[14px] leading-none text-white"
+          : "group flex items-start justify-between gap-4"
+      }
       data-setting-row=""
     >
       <RowLabel
@@ -766,8 +821,9 @@ export function SettingEnumDropdown({
         options={selectOptions}
         reduceMotion={reduceMotion}
         value={value}
-        width={controlWidth ?? ENUM_DROPDOWN_W}
+        width={fresh ? undefined : controlWidth ?? ENUM_DROPDOWN_W}
         overlay={overlay}
+        plain={fresh}
       />
     </div>
   );

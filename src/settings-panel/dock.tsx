@@ -10,6 +10,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { closestPanelFont } from "../lib/panel-theme";
+import { useChromeStyle } from "./panel-style";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { cn } from "../lib/utils";
 import { PanelIcon } from "../panel-icon";
@@ -92,10 +93,15 @@ export function DockBadgeAnchor({ children }: { children: ReactNode }) {
 }
 
 export function DockBarDivider() {
+  const fresh = useChromeStyle() === "new";
   return (
     <span
       aria-hidden
-      className="mx-0.5 h-5 w-px shrink-0 bg-[color:var(--sp-section-line)]"
+      className={
+        fresh
+          ? "mx-0.5 h-4 w-0.5 shrink-0 rounded-full bg-black/50"
+          : "mx-0.5 h-5 w-px shrink-0 bg-[color:var(--sp-section-line)]"
+      }
     />
   );
 }

@@ -225,10 +225,15 @@ const SECTION_ROW_BAGS = [
 
 /** Row bags — keep in sync with `SectionRows`. */
 export function sectionHasRows<TSettings>(section: SettingsSection<TSettings>) {
-  return SECTION_ROW_BAGS.some((key) => {
+  return sectionRowCount(section) > 0;
+}
+
+/** How many rows a section lists. One row is not a section in the new chrome. */
+export function sectionRowCount<TSettings>(section: SettingsSection<TSettings>) {
+  return SECTION_ROW_BAGS.reduce((sum, key) => {
     const bag = section[key];
-    return Array.isArray(bag) && bag.length > 0;
-  });
+    return sum + (Array.isArray(bag) ? bag.length : 0);
+  }, 0);
 }
 
 /** Keys one phase writes: duration, absolute start, stagger step. */

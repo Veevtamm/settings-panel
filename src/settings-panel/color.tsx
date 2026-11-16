@@ -29,6 +29,7 @@ import {
 import type { ResetDotProps } from "./types";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { FieldButton, NumberInput, StepperZones } from "./fields";
+import { useChromeStyle } from "./panel-style";
 import { SettingRow } from "./row";
 
 export type Hsv = { h: number; s: number; v: number };
@@ -418,6 +419,7 @@ export function SettingColor({
   const hex = normalizeHex(value, "#000000");
   const [draft, setDraft] = useState(hex);
   const [open, setOpen] = useState(false);
+  const fresh = useChromeStyle() === "new";
   const [mounted, setMounted] = useState(false);
   const [hsv, setHsv] = useState(() => hexToHsv(hex));
   const [pos, setPos] = useState<{
@@ -556,6 +558,25 @@ export function SettingColor({
       onIconChange={onIconChange}
       locale={locale}
     >
+        {fresh ? (
+          <span className="flex items-center gap-2">
+            <button
+              ref={swatchRef}
+              type="button"
+              aria-label={`${label} swatch`}
+              aria-expanded={open}
+              aria-haspopup="dialog"
+              data-truecolor=""
+              className="size-4 shrink-0 rounded"
+              style={{ background: hex }}
+              onClick={() => setOpen((prev) => !prev)}
+            />
+            <span className="text-[14px] leading-[18px] text-white">{hex}</span>
+            {opacity !== undefined ? (
+              <span className="text-[14px] leading-[18px] text-white/50">{opacity}%</span>
+            ) : null}
+          </span>
+        ) : (
         <div
           className={cn(
             "group/swatch relative grid h-[28px] shrink-0",
@@ -643,6 +664,7 @@ export function SettingColor({
           </>
         ) : null}
         </div>
+        )}
       </SettingRow>
       {host && mounted
         ? createPortal(

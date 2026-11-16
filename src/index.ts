@@ -107,6 +107,9 @@ export { SettingsMomentHud } from "./settings-panel/moment-hud";
 export { SettingsPanel } from "./settings-panel/shell";
 export { DockBarDivider } from "./settings-panel/dock";
 export { FieldButton, SettingToggle } from "./settings-panel/fields";
+export { CodeField } from "./settings-panel/code-field";
+export { ProjectRow } from "./settings-panel/project-row";
+export type { ProjectRowStatus } from "./settings-panel/project-row";
 export { PickRadioGroup } from "./settings-panel/pick";
 export { SettingChips } from "./settings-panel/chips";
 export { SettingCells, SettingSkipReplay } from "./settings-panel/cells";
@@ -120,6 +123,7 @@ export {
 } from "./settings-panel/stroke-join";
 export type { StrokeJoin } from "./settings-panel/stroke-join";
 export { useCopyFlash } from "./settings-panel/use-copy-flash";
+export { useSettingsHistory } from "./settings-panel/use-history";
 export {
   PanelIcon,
   PanelIcon as SfSymbol,
@@ -243,7 +247,7 @@ export {
   springValue,
   type SpringConfig,
 } from "./lib/spring";
-export { SETTINGS_LINK_PARAM } from "./lib/settings-transfer";
+export { SETTINGS_LINK_PARAM, decodeSettingsToken, encodeSettingsToken, settingsLinkUrl } from "./lib/settings-transfer";
 export {
   createParamStore,
   type ParamStoreOptions,

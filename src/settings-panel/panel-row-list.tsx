@@ -17,6 +17,7 @@ import {
 } from "../lib/panel-rows";
 import { cn } from "../lib/utils";
 import { DOCK_DRAG_PX, bindPointerDrag } from "./chrome";
+import { useChromeStyle } from "./panel-style";
 import { ROW_HOVER } from "./row";
 
 function readRowFile(panelId: string): Record<string, string[]> {
@@ -67,6 +68,7 @@ export function PanelRowList({
     setSaved(panelId && sectionKey ? readRowFile(panelId)[sectionKey] : undefined);
   }, [panelId, sectionKey]);
 
+  const fresh = useChromeStyle() === "new";
   const ordered = orderPanelRows(rows, saved);
   const listRef = useRef<HTMLDivElement>(null);
   const liftRef = useRef<HTMLDivElement>(null);
@@ -195,7 +197,14 @@ export function PanelRowList({
 
   return (
     <>
-      <div ref={listRef} className="relative flex flex-col gap-2">
+      <div
+        ref={listRef}
+        className={
+          fresh
+            ? "relative flex flex-col overflow-hidden rounded-lg bg-black"
+            : "relative flex flex-col gap-2"
+        }
+      >
         {dropLine ? (
           <div
             aria-hidden
@@ -207,7 +216,7 @@ export function PanelRowList({
           <div
             key={row.id}
             data-panel-row={row.id}
-            className={ROW_HOVER}
+            className={fresh ? undefined : ROW_HOVER}
             onPointerDown={(event) => arm(event, row.id)}
           >
             {row.node}

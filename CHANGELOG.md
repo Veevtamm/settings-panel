@@ -1,6 +1,22 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.5"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.7"`. Without `#tag` npm takes `main`.
+
+## 0.3.7
+
+### Added
+
+- `TextField` on the kit. Multiline copy sits in the black section block with no title above. A single line stays on a normal row.
+- Kit project header has no back chevron.
+
+## 0.3.6
+
+### Added
+
+- `@veevtamm/settings-panel/kit` — the chrome `/new` is built from (`ScreenDock`, `ParametersPanel`, `Section`, `Row`, `ValueField`, `MotionWindow`, `AxisWindow`). A project composes these. `SettingsTimeline` stays the timeline window.
+- `style: "new"` on a connected panel draws that same frame. Classic stays the default.
+- `ProjectRow` — the kit project list row (284×44, thumb 36). `image` or `tone`, `status` `draft` / `hidden`, `cue={false}` hides the hover chevron.
+- `CodeField` — six-digit code on the kit and the admin gate.
 
 ## 0.3.5
 

@@ -251,6 +251,41 @@ export function dockBarButtonClass(active = false) {
   );
 }
 
+/** New dock: 28 button on the 36 bar. Active is a black fill. */
+export function newDockButtonClass(active = false) {
+  return cn(
+    "relative inline-flex size-7 shrink-0 items-center justify-center rounded font-sans outline-none",
+    "transition-[background-color,color,box-shadow] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)]",
+    active
+      ? "bg-black text-white"
+      : "text-black fine-hover:hover:inset-ring fine-hover:hover:inset-ring-black",
+  );
+}
+
+export const NEW_DOCK_BAR_H = 36;
+
+/** Timeline keeps the classic window and reads the live bar height. */
+let dockBarHeight = DOCK_BAR_H;
+const dockBarHeightListeners = new Set<() => void>();
+
+export function dockBarOccupiedHeight() {
+  return dockBarHeight;
+}
+
+export function setDockBarOccupiedHeight(height: number) {
+  if (dockBarHeight === height) return;
+  dockBarHeight = height;
+  if (typeof document !== "undefined") {
+    document.documentElement.style.setProperty("--sp-dock-bar-h", `${height}px`);
+  }
+  for (const listener of dockBarHeightListeners) listener();
+}
+
+export function subscribeDockBarHeight(listener: () => void) {
+  dockBarHeightListeners.add(listener);
+  return () => dockBarHeightListeners.delete(listener);
+}
+
 function viewportSize(vw?: number, vh?: number) {
   return {
     vw: vw ?? (typeof window === "undefined" ? 1280 : window.innerWidth),

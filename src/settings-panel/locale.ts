@@ -75,12 +75,13 @@ export const PANEL_COPY = {
   dockShowAll: L("Все параметры", "All parameters"),
   language: L("Язык", "Language"),
   theme: L("Тема", "Theme"),
+  appearance: L("Внешний вид", "Appearance"),
   panelStyle: L("Стиль", "Style"),
   panelStyleClassic: L("Старый", "Old"),
   panelStyleNew: L("Новый", "New"),
   panelStyleInfo: L(
-    "Новый — сцена /new: свой бар и ряды. Пресеты, шрифт и таймлайн остаются в старой. Набор состояний — /kit.",
-    "New is the /new scene: its own dock and rows. Presets, font and the timeline stay on the old one. The state sheet is /kit.",
+    "Новый — белое окно, чёрные ряды и новый бар. Пресеты и шрифт остаются в старом. Окно таймлайна остаётся прежним, кнопка в баре — новая.",
+    "New is the white window, black rows and the new dock. Presets and the font stay on the old one. The timeline window stays as it is; its dock button is new.",
   ),
   panelFont: L("Шрифт", "Font"),
   panelFontInfo: L(

@@ -56,6 +56,7 @@ export function PanelSelectList({
   groups,
   width,
   overlay = true,
+  plain = false,
 }: {
   value: string;
   options: readonly { id: string; label: string }[];
@@ -75,6 +76,8 @@ export function PanelSelectList({
    * Pass `false` only if the list must push layout.
    */
   overlay?: boolean;
+  /** New row: value and chevron, no field box. */
+  plain?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [fadeTop, setFadeTop] = useState(false);
@@ -195,12 +198,14 @@ export function PanelSelectList({
     <div
       ref={rootRef}
       className={cn(
-        "relative flex w-full rounded after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded after:border after:border-[color:var(--sp-line-mid)] after:transition-[border-color] after:duration-150 after:ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:after:border-[color:var(--sp-line-strong)] focus-within:after:border-[color:var(--sp-line-focus)]",
-        overlay && open && box?.side === "above" ? "flex-col-reverse" : "flex-col",
+        plain
+          ? "relative flex w-full flex-col text-white"
+          : "relative flex w-full rounded after:pointer-events-none after:absolute after:inset-0 after:z-10 after:rounded after:border after:border-[color:var(--sp-line-mid)] after:transition-[border-color] after:duration-150 after:ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:after:border-[color:var(--sp-line-strong)] focus-within:after:border-[color:var(--sp-line-focus)]",
+        !plain && overlay && open && box?.side === "above" ? "flex-col-reverse" : plain ? "" : "flex-col",
         className,
       )}
       style={{
-        background: FIELD,
+        background: plain ? "transparent" : FIELD,
         ...(width != null && !overlay ? { width } : undefined),
         ...(overlay && open && box ? { width: box.width } : undefined),
       }}
@@ -217,9 +222,17 @@ export function PanelSelectList({
           }
           setOpen((prev) => !prev);
         }}
-        className="group/preset-trigger flex h-[28px] w-full items-center justify-between gap-2 px-1.5 text-left outline-none"
+        className={cn(
+          "group/preset-trigger flex w-full items-center justify-between gap-1 text-left outline-none",
+          plain ? "h-6 text-white" : "h-[28px] gap-2 px-1.5",
+        )}
       >
-        <span className="flex min-w-0 items-center gap-2 text-[color:var(--sp-muted)] transition-colors duration-150 fine-hover:group-hover/preset-trigger:text-[color:var(--sp-fg)]">
+        <span className={cn(
+          "flex min-w-0 items-center gap-2 transition-colors duration-150",
+          plain
+            ? "text-white"
+            : "text-[color:var(--sp-muted)] fine-hover:group-hover/preset-trigger:text-[color:var(--sp-fg)]",
+        )}>
           {optionIcon?.(value)}
           <span className={cn("truncate", fieldValueSans)}>
             {selectedLabel}
@@ -300,8 +313,8 @@ export function PanelSelectList({
     <div
       ref={anchorRef}
       className={cn(
-        "relative h-[28px] overflow-hidden",
-        width != null ? "shrink-0" : "w-full min-w-0",
+        plain ? "relative h-6 w-auto" : "relative h-[28px] overflow-hidden",
+        !plain && (width != null ? "shrink-0" : "w-full min-w-0"),
       )}
       style={width != null ? { width } : undefined}
     >

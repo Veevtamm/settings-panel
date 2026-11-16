@@ -6,6 +6,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from "react";
@@ -47,11 +48,16 @@ import {
 import { clampNumber, cn } from "../lib/utils";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
 import { PanelIcon } from "../panel-icon";
+import { useChromeStyle } from "./panel-style";
 import { RowLabel, SectionCollapse, useDeferredMount } from "./row";
 import {
   DEFAULT_DOCK_CORNER,
   DIM,
   DOCK_BAR_H,
+  dockBarButtonClass,
+  dockBarOccupiedHeight,
+  newDockButtonClass,
+  subscribeDockBarHeight,
   DOCK_DRAG_PX,
   DOCK_INSET,
   GAP_IN,
@@ -63,7 +69,6 @@ import {
   lockPanelTextSelect,
   MUTED,
   PANEL_EXIT_MS,
-  dockBarButtonClass,
   type DockCorner,
 } from "./chrome";
 import { panelPopClassName, panelPopStyle } from "./motion-ui";
@@ -371,6 +376,7 @@ export function TimelineToggleButton({
   locale?: PanelLocale;
   className?: string;
 }) {
+  const fresh = useChromeStyle() === "new";
   return (
     <button
       type="button"
@@ -381,7 +387,10 @@ export function TimelineToggleButton({
       )}
       data-dock-tip={tx(PANEL_COPY.dockTimeline, locale)}
       onClick={onToggle}
-      className={cn(dockBarButtonClass(open), className)}
+      className={cn(
+        fresh ? newDockButtonClass(open) : dockBarButtonClass(open),
+        className,
+      )}
     >
       <PanelIcon name="timer" />
     </button>
@@ -611,11 +620,16 @@ function TimelineDockBody({
   const minRef = useRef(min);
   minRef.current = min;
   const viewportH = useViewportHeight();
+  const barH = useSyncExternalStore(
+    subscribeDockBarHeight,
+    dockBarOccupiedHeight,
+    () => DOCK_BAR_H,
+  );
   const storeId = layoutPanelId ?? panelId;
   const dockBottom = dockCorner.startsWith("bottom");
-  const barRoom = dockBottom ? DOCK_BAR_H + GAP_IN : 0;
+  const barRoom = dockBottom ? barH + GAP_IN : 0;
   const bottomGap = DOCK_INSET + barRoom;
-  const minTop = dockBottom ? DOCK_INSET : DOCK_INSET + DOCK_BAR_H + GAP_IN;
+  const minTop = dockBottom ? DOCK_INSET : DOCK_INSET + barH + GAP_IN;
   const [windowTop, setWindowTop] = useState<number | null>(null);
   const [moving, setMoving] = useState(false);
   const windowTopRef = useRef(windowTop);

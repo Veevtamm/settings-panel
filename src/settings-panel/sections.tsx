@@ -13,6 +13,7 @@ import { CHEVRON_MS, EASE_OUT, ICON, MUTED } from "./chrome";
 import { SectionIconPicker } from "./icon-picker";
 import { PANEL_COPY, tx, type PanelLocale } from "./locale";
 import { applyLiftTransform, type LiftSize, type LiftXy } from "./model";
+import { useChromeStyle } from "./panel-style";
 import { SectionCollapse } from "./row";
 import { FieldButton } from "./fields";
 
@@ -62,6 +63,59 @@ export function SectionBlock({
   locale?: PanelLocale;
   onIconChange?: (name: PanelIconName) => void;
 }) {
+  const fresh = useChromeStyle() === "new";
+  if (fresh) {
+    return (
+      <section className="flex w-full flex-col text-black">
+        <div className="relative -ml-2 flex h-4 w-[calc(100%+8px)] items-center pl-3 pr-1">
+          <button
+            type="button"
+            onClick={onClose ? undefined : onToggle}
+            className="flex min-w-0 flex-1 items-center gap-1 text-left"
+          >
+            {icon ? <PanelIcon name={icon} className="size-5" /> : null}
+            <span className="truncate text-[14px] leading-4">{title}</span>
+          </button>
+          {visibilityOn != null && onVisibilityChange ? (
+            <button
+              type="button"
+              aria-pressed={visibilityOn}
+              aria-label={visibilityOn ? tx(PANEL_COPY.hide, locale) : tx(PANEL_COPY.show, locale)}
+              onClick={() => onVisibilityChange(!visibilityOn)}
+              className="flex size-5 items-center justify-center"
+            >
+              <PanelIcon name={visibilityOn ? "eye" : "eye-off"} className="size-5" />
+            </button>
+          ) : null}
+          {onClose ? (
+            <button
+              type="button"
+              aria-label={closeLabel ?? title}
+              onClick={onClose}
+              className="flex size-5 items-center justify-center"
+            >
+              <PanelIcon name="x" className="size-5" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              aria-expanded={open}
+              aria-label={open ? tx(PANEL_COPY.collapse(title), locale) : tx(PANEL_COPY.expand(title), locale)}
+              onClick={onToggle}
+              className="flex size-5 items-center justify-center"
+            >
+              <PanelIcon name={open ? "chevron-up" : "chevron-down"} className="size-5" />
+            </button>
+          )}
+        </div>
+        <div className="-ml-2 w-[calc(100%+8px)]">
+          <SectionCollapse open={open} reduceMotion={reduceMotion}>
+            <div className="flex flex-col gap-1 pt-1.5 pl-2">{children}</div>
+          </SectionCollapse>
+        </div>
+      </section>
+    );
+  }
   return (
     <section
       className={cn(
@@ -394,10 +448,56 @@ export function SubsectionBlock({
 }) {
   const subsectionKey = orderKey ?? title;
   const lifted = !plain && float !== null;
+  const fresh = useChromeStyle() === "new";
   useLayoutEffect(() => {
     if (!lifted) return;
     applyLiftTransform(floatRef?.current ?? null, xyRef?.current ?? null);
   });
+  if (fresh && !lifted) {
+    return (
+      <div className="flex flex-col text-black" data-subsection-title={subsectionKey}>
+        {plain ? (
+          children
+        ) : (
+          <>
+            <div className="flex h-4 items-center justify-between gap-2 px-1">
+              <button
+                type="button"
+                onClick={onToggle}
+                className="flex min-w-0 flex-1 items-center gap-1 text-left"
+              >
+                {icon ? <PanelIcon name={icon} className="size-5" /> : null}
+                <span className="truncate text-[14px] leading-4">{title}</span>
+              </button>
+              {onVisibilityChange != null && visibilityOn != null ? (
+                <button
+                  type="button"
+                  aria-pressed={visibilityOn}
+                  aria-label={visibilityOn ? tx(PANEL_COPY.hide, locale) : tx(PANEL_COPY.show, locale)}
+                  onClick={() => onVisibilityChange(!visibilityOn)}
+                  className="flex size-5 items-center justify-center"
+                >
+                  <PanelIcon name={visibilityOn ? "eye" : "eye-off"} className="size-5" />
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={onToggle}
+                aria-expanded={open}
+                aria-label={open ? tx(PANEL_COPY.collapse(title), locale) : tx(PANEL_COPY.expand(title), locale)}
+                className="flex size-5 items-center justify-center"
+              >
+                <PanelIcon name={open ? "chevron-up" : "chevron-down"} className="size-5" />
+              </button>
+            </div>
+            <SectionCollapse open={open} reduceMotion={reduceMotion}>
+              <div className="flex flex-col gap-1 pt-1.5">{children}</div>
+            </SectionCollapse>
+          </>
+        )}
+      </div>
+    );
+  }
   if (plain) {
     return (
       <div className="flex flex-col" data-subsection-title={subsectionKey}>
