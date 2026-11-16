@@ -653,7 +653,6 @@ export function FloatWindow({
     const startRight = rect.right;
     const fromLeft = edge === "bottom-left";
     const fromRight = edge === "bottom-right";
-    setPos({ x: rect.left, y: rect.top, w: rect.width, h: rect.height });
     const clampW = (value: number) => Math.min(resizable.maxWidth, Math.max(resizable.minWidth, value));
     const room = Math.max(resizable.minHeight, window.innerHeight - startTop - 12);
     const clampH = (value: number) => Math.min(resizable.maxHeight, room, Math.max(resizable.minHeight, value));
@@ -665,7 +664,7 @@ export function FloatWindow({
         if (fromRight) next.width = clampW(startW + dx);
         if (fromLeft) {
           next.width = clampW(startW - dx);
-          setPos({ x: startRight - next.width, y: startTop, w: startW, h: startH });
+          if (pos) setPos({ x: startRight - next.width, y: startTop, w: next.width, h: clampH(startH + dy) });
         }
         next.height = clampH(startH + dy);
         resizable.onResize(next);
@@ -692,6 +691,7 @@ export function FloatWindow({
       <div className="absolute inset-x-0 top-0 z-20 h-2 cursor-grab touch-none" />
       {resizable ? (
         <>
+          <div data-resize="" className="absolute inset-x-3 bottom-0 z-40 h-1.5 cursor-ns-resize touch-none" onPointerDown={(event) => startResize("bottom", event)} />
           <div data-resize="" className="absolute bottom-0 left-0 z-40 size-3 cursor-nesw-resize touch-none" onPointerDown={(event) => startResize("bottom-left", event)} />
           <div data-resize="" className="absolute bottom-0 right-0 z-40 size-3 cursor-nwse-resize touch-none" onPointerDown={(event) => startResize("bottom-right", event)} />
         </>
