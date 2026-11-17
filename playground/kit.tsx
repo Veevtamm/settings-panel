@@ -1,9 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
-import { DOCK_DRAG_PX, EASE_OUT, SECTION_MS, bindPointerDrag } from "../src/settings-panel/chrome";
-import { movePanelRow, panelRowSlot, samePanelRowOrder } from "../src/lib/panel-rows";
+import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useRowOrderDrag } from "../src/settings-panel/row-order-drag";
 import { PairGlyph } from "../src/settings-panel/number";
 import { PanelIcon } from "../src/panel-icon";
+import { LUCIDE_ICON_NAMES } from "../src/lucide-glyphs";
 import { CodeField } from "../src/settings-panel/code-field";
 import { TextField } from "../src/settings-panel/text-field";
 import { ProjectRow } from "../src/settings-panel/project-row";
@@ -71,12 +70,13 @@ function Plate({ children, hug = false }: { children: ReactNode; hug?: boolean }
   return <div className={`flex flex-col gap-1 rounded-2xl bg-white p-2 text-black ${hug ? "w-max max-w-full" : "w-[296px]"}`}>{children}</div>;
 }
 
-const PROJECTS: { title: string; meta: string; status?: "draft" | "hidden"; tone: string }[] = [
+const PROJECTS: { title: string; meta: string; status?: "draft" | "hidden" | "removed"; tone: string }[] = [
   { title: "Project One", meta: "campaign — 2020", tone: "bg-white/35" },
   { title: "Project With a Long Name", meta: "editorial — 2025", tone: "bg-white/25" },
   { title: "Draft Project", meta: "campaign — 2024", status: "draft", tone: "bg-white/45" },
   { title: "Project Four", meta: "commercial — 2025", tone: "bg-white/20" },
   { title: "Untitled", meta: "— 2026", status: "hidden", tone: "bg-white/10" },
+  { title: "Removed Project", meta: "campaign — 2023", status: "removed", tone: "bg-white/30" },
 ];
 
 function PhotoTile({
@@ -142,133 +142,23 @@ const PHOTO_ROW = [
 
 function PhotoRow() {
   const [photos, setPhotos] = useState(PHOTO_ROW);
-  const orderRef = useRef(photos.map((item) => item.id));
-  orderRef.current = photos.map((item) => item.id);
-  const listRef = useRef<HTMLDivElement>(null);
-  const liftRef = useRef<HTMLDivElement>(null);
-  const liftPlaceRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
-  const sourceRef = useRef<HTMLElement | null>(null);
-  const flipFrom = useRef<Map<string, number> | null>(null);
-  const [lift, setLift] = useState<{ html: string; width: number; height: number } | null>(null);
-
-  function placeLift(x: number, y: number) {
-    const place = liftPlaceRef.current;
-    const node = liftRef.current;
-    if (!place || !node) return;
-    place.x = x;
-    place.y = y;
-    node.style.left = `${x - place.offsetX}px`;
-    node.style.top = `${y - place.offsetY}px`;
-  }
-
-  useLayoutEffect(() => {
-    const place = liftPlaceRef.current;
-    if (!lift || !place) return;
-    placeLift(place.x, place.y);
-  }, [lift]);
-
-  useLayoutEffect(() => {
-    const from = flipFrom.current;
-    flipFrom.current = null;
-    const root = listRef.current;
-    if (!from || !root) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const nodes: HTMLElement[] = [];
-    for (const node of root.querySelectorAll<HTMLElement>("[data-sort-id]")) {
-      if (node.hasAttribute("data-tl-lift")) continue;
-      const prev = from.get(node.dataset.sortId ?? "");
-      if (prev == null) continue;
-      const dx = prev - node.getBoundingClientRect().left;
-      if (Math.abs(dx) < 0.5) continue;
-      node.style.transition = "none";
-      node.style.transform = `translateX(${dx}px)`;
-      nodes.push(node);
-    }
-    if (nodes.length === 0) return;
-    root.getBoundingClientRect();
-    for (const node of nodes) {
-      node.style.transition = `transform ${SECTION_MS}ms ${EASE_OUT}`;
-      node.style.transform = "";
-    }
-    const clear = window.setTimeout(() => {
-      for (const node of nodes) node.style.transition = "";
-    }, SECTION_MS);
-    return () => window.clearTimeout(clear);
-  }, [photos]);
-
-  function shiftOrder(next: string[]) {
-    const root = listRef.current;
-    const from = new Map<string, number>();
-    if (root) {
-      for (const node of root.querySelectorAll<HTMLElement>("[data-sort-id]")) {
-        from.set(node.dataset.sortId ?? "", node.getBoundingClientRect().left);
-      }
-    }
-    flipFrom.current = from;
-    setPhotos((list) => {
-      const byId = new Map(list.map((item) => [item.id, item]));
-      return next.flatMap((id) => {
-        const item = byId.get(id);
-        return item ? [item] : [];
+  const drag = useRowOrderDrag(
+    photos.map((item) => item.id),
+    (next) => {
+      setPhotos((list) => {
+        const byId = new Map(list.map((item) => [item.id, item]));
+        return next.flatMap((id) => {
+          const item = byId.get(id);
+          return item ? [item] : [];
+        });
       });
-    });
-  }
-
-  function onPointerDown(id: string, event: ReactPointerEvent<HTMLElement>) {
-    if (event.button !== 0) return;
-    if ((event.target as Element).closest("button")) return;
-    const pointerId = event.pointerId;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    let moved = false;
-    bindPointerDrag(pointerId, {
-      onMove(ev) {
-        if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DOCK_DRAG_PX) return;
-        const root = listRef.current;
-        const item = root?.querySelector<HTMLElement>(`[data-sort-id="${CSS.escape(id)}"]`);
-        if (!root || !item) return;
-        if (!moved) {
-          moved = true;
-          document.documentElement.dataset.phaseDrag = "grab";
-          const rect = item.getBoundingClientRect();
-          liftPlaceRef.current = {
-            x: ev.clientX,
-            y: ev.clientY,
-            offsetX: ev.clientX - rect.left,
-            offsetY: ev.clientY - rect.top,
-          };
-          sourceRef.current = item;
-          item.dataset.tlLift = "";
-          setLift({ html: item.innerHTML, width: rect.width, height: rect.height });
-        } else {
-          placeLift(ev.clientX, ev.clientY);
-        }
-        const origin = root.getBoundingClientRect().left;
-        const boxes = [...root.children]
-          .filter((node): node is HTMLElement => node instanceof HTMLElement && node.hasAttribute("data-sort-id"))
-          .map((node) => ({
-            id: node.dataset.sortId ?? "",
-            top: origin + node.offsetLeft,
-            bottom: origin + node.offsetLeft + node.offsetWidth,
-          }));
-        const hit = panelRowSlot(boxes, id, ev.clientX);
-        const current = orderRef.current.filter((itemId) => boxes.some((box) => box.id === itemId));
-        const next = hit ? movePanelRow(current, id, hit.index) : current;
-        if (hit && !samePanelRowOrder(current, next)) shiftOrder(next);
-      },
-      onEnd() {
-        delete document.documentElement.dataset.phaseDrag;
-        if (sourceRef.current) delete sourceRef.current.dataset.tlLift;
-        sourceRef.current = null;
-        liftPlaceRef.current = null;
-        setLift(null);
-      },
-    });
-  }
+    },
+    { axis: "x", lift: "bare" },
+  );
 
   return (
     <>
-      <div ref={listRef} className="relative flex items-start gap-2">
+      <div ref={drag.listRef} className="relative flex items-start gap-2">
         {photos.map((photo) => (
           <div key={photo.id} data-sort-id={photo.id}>
             <PhotoTile
@@ -276,22 +166,16 @@ function PhotoRow() {
               cover={photo.cover}
               makeCover={!photo.cover}
               ratio={photo.ratio}
-              onPointerDown={(event) => onPointerDown(photo.id, event)}
+              onPointerDown={(event) => {
+                const target = event.target;
+                if (target instanceof Element && target.closest("button")) return;
+                drag.onPointerDown(photo.id, event);
+              }}
             />
           </div>
         ))}
       </div>
-      {lift
-        ? createPortal(
-            <div
-              ref={liftRef}
-              className="pointer-events-none fixed z-[110] origin-top-left scale-[1.03] overflow-hidden rounded shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
-              style={{ width: lift.width, height: lift.height }}
-              dangerouslySetInnerHTML={{ __html: lift.html }}
-            />,
-            document.body,
-          )
-        : null}
+      {drag.lift}
     </>
   );
 }
@@ -345,20 +229,6 @@ function TextSpecimen() {
     <span className="block w-[284px] overflow-hidden rounded-lg bg-black">
       <TextField label="Текст" placeholder="Текст" caption={false} plain value={essay} rows={5} onChange={setEssay} />
     </span>
-  );
-}
-
-function ProjectHeader() {
-  return (
-    <div className="flex h-8 w-[284px] items-center justify-between text-black">
-      <span className="flex min-w-0 flex-col gap-1">
-        <span className="text-[14px] leading-4">Saint Valentine</span>
-        <span className="text-[11px] leading-3 text-black/45">на сайте · есть неопубликованное</span>
-      </span>
-      <button type="button" aria-label="Закрыть" className="flex size-4 shrink-0 items-center justify-center">
-        <PanelIcon name="x" className="size-4" />
-      </button>
-    </div>
   );
 }
 
@@ -616,158 +486,34 @@ function SceneDock({ state, done = false }: { state: "closed" | "open" | "search
 
 function ProjectList() {
   const [rows, setRows] = useState(PROJECTS);
-  const orderRef = useRef(rows.map((item) => item.title));
-  orderRef.current = rows.map((item) => item.title);
-  const listRef = useRef<HTMLDivElement>(null);
-  const liftRef = useRef<HTMLDivElement>(null);
-  const liftPlaceRef = useRef<{ x: number; y: number; offsetX: number; offsetY: number } | null>(null);
-  const sourceRef = useRef<HTMLElement | null>(null);
-  const flipFrom = useRef<Map<string, number> | null>(null);
-  const [lift, setLift] = useState<{ html: string; width: number; height: number } | null>(null);
-
-  function placeLift(x: number, y: number) {
-    const place = liftPlaceRef.current;
-    const node = liftRef.current;
-    if (!place || !node) return;
-    place.x = x;
-    place.y = y;
-    node.style.left = `${x - place.offsetX}px`;
-    node.style.top = `${y - place.offsetY}px`;
-  }
-
-  useLayoutEffect(() => {
-    const place = liftPlaceRef.current;
-    if (!lift || !place) return;
-    placeLift(place.x, place.y);
-  }, [lift]);
-
-  useLayoutEffect(() => {
-    const from = flipFrom.current;
-    flipFrom.current = null;
-    const root = listRef.current;
-    if (!from || !root) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const nodes: HTMLElement[] = [];
-    for (const node of root.querySelectorAll<HTMLElement>("[data-sort-id]")) {
-      if (node.hasAttribute("data-tl-lift")) continue;
-      const prev = from.get(node.dataset.sortId ?? "");
-      if (prev == null) continue;
-      const dy = prev - node.getBoundingClientRect().top;
-      if (Math.abs(dy) < 0.5) continue;
-      node.style.transition = "none";
-      node.style.transform = `translateY(${dy}px)`;
-      nodes.push(node);
-    }
-    if (nodes.length === 0) return;
-    root.getBoundingClientRect();
-    for (const node of nodes) {
-      node.style.transition = `transform ${SECTION_MS}ms ${EASE_OUT}`;
-      node.style.transform = "";
-    }
-    const clear = window.setTimeout(() => {
-      for (const node of nodes) node.style.transition = "";
-    }, SECTION_MS);
-    return () => window.clearTimeout(clear);
-  }, [rows]);
-
-  function shiftOrder(next: string[]) {
-    const root = listRef.current;
-    const from = new Map<string, number>();
-    if (root) {
-      for (const node of root.querySelectorAll<HTMLElement>("[data-sort-id]")) {
-        from.set(node.dataset.sortId ?? "", node.getBoundingClientRect().top);
-      }
-    }
-    flipFrom.current = from;
-    setRows((list) => {
-      const byTitle = new Map(list.map((item) => [item.title, item]));
-      return next.flatMap((title) => {
-        const item = byTitle.get(title);
-        return item ? [item] : [];
+  const drag = useRowOrderDrag(
+    rows.map((item) => item.title),
+    (next) => {
+      setRows((list) => {
+        const byTitle = new Map(list.map((item) => [item.title, item]));
+        return next.flatMap((title) => {
+          const item = byTitle.get(title);
+          return item ? [item] : [];
+        });
       });
-    });
-  }
-
-  function onPointerDown(id: string, event: ReactPointerEvent<HTMLElement>) {
-    if (event.button !== 0) return;
-    const pointerId = event.pointerId;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    let moved = false;
-    bindPointerDrag(pointerId, {
-      onMove(ev) {
-        if (!moved && Math.hypot(ev.clientX - startX, ev.clientY - startY) < DOCK_DRAG_PX) return;
-        const root = listRef.current;
-        const item = root?.querySelector<HTMLElement>(`[data-sort-id="${CSS.escape(id)}"]`);
-        if (!root || !item) return;
-        if (!moved) {
-          moved = true;
-          document.documentElement.dataset.phaseDrag = "grab";
-          const rect = item.getBoundingClientRect();
-          liftPlaceRef.current = {
-            x: ev.clientX,
-            y: ev.clientY,
-            offsetX: ev.clientX - rect.left,
-            offsetY: ev.clientY - rect.top,
-          };
-          sourceRef.current = item;
-          item.dataset.tlLift = "";
-          setLift({ html: item.innerHTML, width: rect.width, height: rect.height });
-        } else {
-          placeLift(ev.clientX, ev.clientY);
-        }
-        const origin = root.getBoundingClientRect().top;
-        const boxes = [...root.children]
-          .filter((node): node is HTMLElement => node instanceof HTMLElement && node.hasAttribute("data-sort-id"))
-          .map((node) => ({
-            id: node.dataset.sortId ?? "",
-            top: origin + node.offsetTop,
-            bottom: origin + node.offsetTop + node.offsetHeight,
-          }));
-        const hit = panelRowSlot(boxes, id, ev.clientY);
-        const current = orderRef.current.filter((itemId) => boxes.some((box) => box.id === itemId));
-        const next = hit ? movePanelRow(current, id, hit.index) : current;
-        if (hit && !samePanelRowOrder(current, next)) shiftOrder(next);
-      },
-      onEnd() {
-        delete document.documentElement.dataset.phaseDrag;
-        if (sourceRef.current) delete sourceRef.current.dataset.tlLift;
-        sourceRef.current = null;
-        liftPlaceRef.current = null;
-        setLift(null);
-      },
-    });
-  }
+    },
+    { lift: "black" },
+  );
 
   return (
     <>
-      <div ref={listRef} className="relative flex w-[284px] flex-col rounded-lg bg-black">
+      <div ref={drag.listRef} className="relative flex w-[284px] flex-col rounded-lg bg-black">
         {rows.map((item, index) => (
           <div key={item.title} data-sort-id={item.title}>
             <ProjectRow
               {...item}
               edge={index === 0 ? "first" : index === rows.length - 1 ? "last" : undefined}
-              onPointerDown={(event) => onPointerDown(item.title, event)}
+              onPointerDown={(event) => drag.onPointerDown(item.title, event)}
             />
           </div>
         ))}
       </div>
-      {lift
-        ? createPortal(
-            <div
-              ref={liftRef}
-              className="pointer-events-none fixed z-[110] origin-top-left scale-[1.03]"
-              style={{ width: lift.width, height: lift.height }}
-            >
-              <div
-                className="size-full overflow-hidden bg-black shadow-[0_8px_24px_rgba(0,0,0,0.28)]"
-                style={{ borderRadius: 8 }}
-                dangerouslySetInnerHTML={{ __html: lift.html }}
-              />
-            </div>,
-            document.body,
-          )
-        : null}
+      {drag.lift}
     </>
   );
 }
@@ -884,6 +630,16 @@ export function KitPage() {
       <PageBar trailing={<IconPick value={theme} onChange={setTheme} options={[{ id: "sun", icon: "sun" }, { id: "moon", icon: "moon" }]} />} />
       <div className={`flex flex-col gap-10 ${theme === "moon" ? "photo-theme-dark" : ""}`}>
       <Layer name="Атомы">
+      <Band name="Иконки">
+        <div className="flex max-w-full flex-wrap gap-1 rounded-2xl bg-white p-2 text-black">
+          {LUCIDE_ICON_NAMES.map((name) => (
+            <span key={name} className="flex w-[148px] flex-col items-center gap-1 px-1 py-2">
+              <PanelIcon name={name} className="size-5" />
+              <span className="text-center text-[11px] leading-4 text-black/50">{name}</span>
+            </span>
+          ))}
+        </div>
+      </Band>
       <Band name="Ряд">
         <Card name="Секция">
           <Plate>
@@ -1488,11 +1244,6 @@ export function KitPage() {
         <Card name="Список">
           <Plate hug>
             <ProjectList />
-          </Plate>
-        </Card>
-        <Card name="Шапка">
-          <Plate hug>
-            <ProjectHeader />
           </Plate>
         </Card>
         <Card name="Текст">

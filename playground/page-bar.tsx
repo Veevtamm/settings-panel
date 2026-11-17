@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 const PAGES = [
   { href: "/kit", label: "Кит" },
   { href: "/new", label: "Плейграунд" },
+  { href: "/admin", label: "Админка" },
 ];
 
 export function PageBar({ trailing }: { trailing?: ReactNode }) {

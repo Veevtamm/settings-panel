@@ -20,6 +20,7 @@
 - Пресеты, сброс ряда и копирование новых дефолтов
 - Иконки Lucide из Tools **Panel / Icon** (16×16 в слоте 20×20)
 - Свои настройки на каждую сцену в `localStorage`
+- Шаблон админки (`@veevtamm/settings-panel/admin`): вход, список проектов, страницы и редактор. Каталог и проверка кода остаются в проекте
 
 ## Установка
 
@@ -29,7 +30,7 @@
 npm install github:Veevtamm/settings-panel
 ```
 
-Зафиксировать версию — через тег: `github:Veevtamm/settings-panel#v0.3.7`. Что поменялось между версиями — в [`CHANGELOG.md`](CHANGELOG.md).
+Зафиксировать версию — через тег: `github:Veevtamm/settings-panel#v0.3.8`. Что поменялось между версиями — в [`CHANGELOG.md`](CHANGELOG.md).
 
 Пиры: `react` 19, `react-dom` 19, `clsx`, `tailwind-merge`. Geist — в layout сайта (дефолт панели). В настройках панели можно переключить хром на системный шрифт.
 
@@ -63,7 +64,7 @@ CSS (Tailwind 4). `@source` смотрит на `src` пакета относи�
 
 Пока правишь панель рядом с сайтом: `"file:../settings-panel"` и `turbopack.root` = родитель обеих папок. Не править копию в `node_modules`.
 
-`npm run playground` открывает `https://settings-panel.localhost` (через Portless). `/` — текущая панель. `/new` — плейграунд новой версии: сцена, где смотрят поведение. `/kit` — кит: все поля и состояния, их настраивают. `npm run check` — типы и тесты.
+`npm run playground` открывает `https://settings-panel.localhost` (через Portless). `/` — текущая панель. `/new` — плейграунд новой версии: сцена, где смотрят поведение. `/admin` — шаблон админки на условном сайте. `/kit` — кит: все поля и состояния, их настраивают. `npm run check` — типы и тесты.
 
 ## Лицензия
 

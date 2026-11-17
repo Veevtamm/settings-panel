@@ -3,7 +3,7 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { PanelIcon } from "../panel-icon";
 
-export type ProjectRowStatus = "draft" | "hidden";
+export type ProjectRowStatus = "draft" | "hidden" | "removed";
 
 /** Black project block from the kit list. Cover is 36, the second line is 11. */
 export function ProjectRow({
@@ -52,11 +52,11 @@ export function ProjectRow({
           <img
             src={image}
             alt=""
-            className={`absolute inset-0 size-full object-cover ${soft} ${status === "hidden" ? "scale-125 blur-[8px]" : ""}`}
+            className={`absolute inset-0 size-full object-cover ${soft} ${status === "hidden" || status === "removed" ? "scale-125 blur-[8px]" : ""}`}
           />
         ) : (
           <span
-            className={`absolute rounded ${tone} ${status === "draft" ? "inset-0 opacity-50" : status === "hidden" ? "inset-[-4px] blur-[8px]" : "inset-0"}`}
+            className={`absolute rounded ${tone} ${status === "draft" ? "inset-0 opacity-50" : status === "hidden" || status === "removed" ? "inset-[-4px] blur-[8px]" : "inset-0"}`}
           />
         )}
         {status === "draft" ? (
@@ -66,6 +66,9 @@ export function ProjectRow({
         ) : null}
         {status === "hidden" ? (
           <PanelIcon name="eye-off" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2" strokeWidth={1.25} />
+        ) : null}
+        {status === "removed" ? (
+          <PanelIcon name="trash-2" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 text-[#ff4d4d]" strokeWidth={1.25} />
         ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">

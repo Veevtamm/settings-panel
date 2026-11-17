@@ -34,17 +34,25 @@ const COPY = {
 };
 
 /** Response plot: dashed line = target, solid = spring position over its settle time. */
-function SpringGraph({ value, accent }: { value: SpringConfig; accent: string }) {
-  const settle = springSettleMs(value) / 1000;
+function SpringGraph({
+  value,
+  settle,
+  accent,
+}: {
+  value: SpringConfig;
+  settle: number;
+  accent: string;
+}) {
+  const seconds = settle / 1000;
   const points = Array.from({ length: SAMPLES + 1 }, (_, i) => {
-    const t = (settle * i) / SAMPLES;
+    const t = (seconds * i) / SAMPLES;
     return [t, springValue(value, t)] as const;
   });
   const peak = Math.max(1, ...points.map(([, y]) => y));
   const low = Math.min(0, ...points.map(([, y]) => y));
   const span = peak - low || 1;
   const w = CURVE_SIZE;
-  const toX = (t: number) => PAD + (settle > 0 ? t / settle : 0) * (w - 2 * PAD);
+  const toX = (t: number) => PAD + (seconds > 0 ? t / seconds : 0) * (w - 2 * PAD);
   const toY = (y: number) => PAD + ((peak - y) / span) * (GRAPH_H - 2 * PAD);
   const d = points
     .map(([t, y], i) => `${i === 0 ? "M" : "L"}${toX(t).toFixed(2)} ${toY(y).toFixed(2)}`)
@@ -90,6 +98,7 @@ export function SpringEditor({
   locale: PanelLocale;
   reduceMotion: boolean;
 }) {
+  const settle = springSettleMs(value);
   const field = (
     key: keyof SpringConfig,
     label: typeof COPY.stiffness,
@@ -120,7 +129,7 @@ export function SpringEditor({
         className={cn("w-full overflow-hidden rounded", fieldChrome)}
         style={{ background: FIELD }}
       >
-        <SpringGraph value={value} accent={accent} />
+        <SpringGraph value={value} settle={settle} accent={accent} />
       </div>
       {field("stiffness", COPY.stiffness, COPY.stiffnessInfo, {
         min: 1,
@@ -143,7 +152,7 @@ export function SpringEditor({
         onChange={() => {}}
         reduceMotion={reduceMotion}
         readOnly
-        readOnlyLabel={`≈ ${springSettleMs(value)}`}
+        readOnlyLabel={`≈ ${settle}`}
         unit="ms"
       />
     </div>

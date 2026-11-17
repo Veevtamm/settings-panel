@@ -1,6 +1,19 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.7"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.8"`. Without `#tag` npm takes `main`.
+
+## 0.3.8
+
+### Added
+
+- `@veevtamm/settings-panel/admin` — admin template (`AdminShell`): six-digit gate, project list, pages, project editor. No studio-specific fields. Info **Показ** is `Коротко` | `Полностью`. The app owns the catalog and the password check. Playground `/admin`.
+- Kit frame **Иконки**: every glyph in the set, 20px slot, name underneath.
+
+### Changed
+
+- A closed classic window drops its backdrop blur until it opens again. The open and close motion stays.
+- Spring settle time is the same millisecond, found without a 1 ms scan of the whole duration.
+- List drag (kit rows, project list, photo row, admin) is one gesture. Admin reads dock and windows from `kit-chrome` and does not load the palette, spring, or axis editors.
 
 ## 0.3.7
 

@@ -20,6 +20,7 @@ Scene settings panel for Next.js. The **sliders** button in the Dock Bar opens s
 - Presets, per-row reset, and copy-as-defaults
 - Lucide icons from Tools **Panel / Icon** (16×16 in a 20×20 slot)
 - Per-scene `localStorage`
+- Admin template (`@veevtamm/settings-panel/admin`): sign-in, project list, pages, and the project editor. The app keeps the catalog and checks the code
 
 ## Installation
 
@@ -29,7 +30,7 @@ The package lives on GitHub, not npm.
 npm install github:Veevtamm/settings-panel
 ```
 
-To pin a version, add a tag: `github:Veevtamm/settings-panel#v0.3.7`. What changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
+To pin a version, add a tag: `github:Veevtamm/settings-panel#v0.3.8`. What changed between versions is in [`CHANGELOG.md`](CHANGELOG.md).
 
 Peer dependencies: `react` 19, `react-dom` 19, `clsx`, `tailwind-merge`. Load Geist in the app layout (panel default). Panel Settings can switch the chrome to the system UI font.
 
@@ -143,7 +144,7 @@ const [settings, setSettings] = useLocalSettingsStore(store);
 
 ## Local development
 
-`npm run playground` opens `https://settings-panel.localhost` (via Portless). `/` is the current panel. `/new` is the playground: the scene where behavior is tested together. `/kit` is the kit: every field and its states, configured on their own. `npm run check` runs types and tests.
+`npm run playground` opens `https://settings-panel.localhost` (via Portless). `/` is the current panel. `/new` is the playground: the scene where behavior is tested together. `/admin` is the admin template on a stand-in site. `/kit` is the kit: every field and its states, configured on their own. `npm run check` runs types and tests.
 
 While you edit this repo next to an app:
 

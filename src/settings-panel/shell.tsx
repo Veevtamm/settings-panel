@@ -2058,7 +2058,8 @@ export function SettingsPanelImpl<TSettings>({
           className={cn(
             fresh
               ? "pointer-events-auto flex min-h-0 flex-col gap-0 overflow-hidden rounded-2xl bg-white font-sans text-left text-black"
-              : "pointer-events-auto flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
+              : "pointer-events-auto flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left",
+            !fresh && (panelOpen || panelMounted) && "backdrop-blur-[8px]",
             "fixed",
             panelFloat == null
               ? dockBottom

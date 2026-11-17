@@ -85,13 +85,47 @@ export function springValue({ stiffness, damping, mass }: SpringConfig, t: numbe
   return 1 + (r2 * Math.exp(r1 * t) - r1 * Math.exp(r2 * t)) / (r1 - r2);
 }
 
-/** Last moment the spring is farther than `SPRING_REST` from 1, in ms. */
+function springOutside(config: SpringConfig, ms: number) {
+  return Math.abs(1 - springValue(config, ms / 1000)) > SPRING_REST;
+}
+
+/** Last millisecond still outside the rest band, plus one.
+ *  Same sample as a 1 ms scan. Underdamped motion uses the decay envelope
+ *  so the walk stays on the tail; once a critically damped or overdamped
+ *  spring is inside the band it stays there, so that sample is a binary search.
+ */
 export function springSettleMs(config: SpringConfig) {
-  let last = 0;
-  for (let ms = 0; ms <= MAX_MS; ms += 1) {
-    if (Math.abs(1 - springValue(config, ms / 1000)) > SPRING_REST) last = ms;
+  const k = Math.max(config.stiffness, 1e-6);
+  const m = Math.max(config.mass, 1e-6);
+  const w0 = Math.sqrt(k / m);
+  const zeta = Math.max(config.damping, 0) / (2 * Math.sqrt(k * m));
+  if (!(zeta > 0) || !Number.isFinite(w0)) {
+    let last = 0;
+    for (let ms = 0; ms <= MAX_MS; ms += 1) {
+      if (springOutside(config, ms)) last = ms;
+    }
+    return last + 1;
   }
-  return last + 1;
+  if (zeta < 1) {
+    const wd = w0 * Math.sqrt(1 - zeta * zeta);
+    const amp = Math.hypot(1, (zeta * w0) / wd);
+    const tStar = Math.log(amp / SPRING_REST) / (zeta * w0);
+    let hi = Math.min(MAX_MS, Math.max(0, Math.ceil(tStar * 1000)));
+    while (hi < MAX_MS && springOutside(config, hi)) hi += 1;
+    let ms = hi;
+    while (ms > 0 && !springOutside(config, ms)) ms -= 1;
+    return ms + 1;
+  }
+  if (!springOutside(config, 0)) return 1;
+  if (springOutside(config, MAX_MS)) return MAX_MS + 1;
+  let lo = 0;
+  let hi = MAX_MS;
+  while (lo + 1 < hi) {
+    const mid = (lo + hi) >> 1;
+    if (springOutside(config, mid)) lo = mid;
+    else hi = mid;
+  }
+  return lo + 1;
 }
 
 /** One settle pass, then the CSS `linear()` that spans it. */

@@ -168,6 +168,7 @@ export function DockedChromeWindow({
 }) {
   const floated = float != null;
   const fresh = useChromeStyle() === "new";
+  const live = open || mounted;
   return (
     <div
       id={id}
@@ -185,7 +186,8 @@ export function DockedChromeWindow({
       className={cn(
         fresh
           ? "flex min-h-0 flex-col gap-0 overflow-hidden rounded-2xl bg-white font-sans text-left text-black"
-          : "flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left backdrop-blur-[8px]",
+          : "flex min-h-0 flex-col gap-0 overflow-hidden rounded-lg border border-[color:var(--sp-line)] font-sans text-left",
+        live && !fresh && "backdrop-blur-[8px]",
         "fixed",
         floated ? "origin-center" : origin,
         panelPopClassName({ open, fromBottom, skip: skip || Boolean(moving) }),
