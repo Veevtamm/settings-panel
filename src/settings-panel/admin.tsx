@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { CodeField } from "./code-field";
 import {
+  ChangedName,
   CommandMark,
   DockAnchorContext,
   DockButton,
@@ -29,7 +30,7 @@ import {
 import { samePanelRowOrder } from "../lib/panel-rows";
 import { useRowOrderDrag } from "./row-order-drag";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
-import { PROJECT_MENU_WIDTH, ProjectMenu, projectMenuItems } from "./project-menu";
+import { PROJECT_MENU_WIDTH, ProjectMenu, type ProjectMenuItem } from "./project-menu";
 import { ProjectRow } from "./project-row";
 import { SectionCollapse } from "./row";
 import { TextField } from "./text-field";
@@ -123,34 +124,56 @@ function AdminPublish({
   );
 }
 
+function ProjectMark({ className }: { className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+      <g fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} transform="translate(2 2) scale(0.66666667)">
+        <path d="M12 3H5C4.46957 3 3.96086 3.21071 3.58579 3.58579C3.21071 3.96086 3 4.46957 3 5V19C3 19.5304 3.21071 20.0391 3.58579 20.4142C3.96086 20.7893 4.46957 21 5 21H19C19.5304 21 20.0391 20.7893 20.4142 20.4142C20.7893 20.0391 21 19.5304 21 19V12M18.375 2.62523C18.7728 2.2274 19.3124 2.00391 19.875 2.00391C20.4376 2.00391 20.9771 2.2274 21.375 2.62523C21.7728 3.02305 21.9963 3.56262 21.9963 4.12523C21.9963 4.68784 21.7728 5.2274 21.375 5.62523L12.362 14.6392C12.1245 14.8765 11.8312 15.0501 11.509 15.1442L8.63597 15.9842C8.54992 16.0093 8.45871 16.0108 8.37188 15.9886C8.28505 15.9663 8.2058 15.9212 8.14242 15.8578C8.07904 15.7944 8.03386 15.7151 8.01162 15.6283C7.98937 15.5415 7.99087 15.4503 8.01597 15.3642L8.85597 12.4912C8.9505 12.1693 9.12451 11.8763 9.36197 11.6392L18.375 2.62523Z" />
+      </g>
+    </svg>
+  );
+}
+
 function WindowTitle({
   icon,
   title,
   action,
 }: {
-  icon: "folder-tree" | "lock" | "app-window-mac" | "folder";
+  icon: ReactNode;
   title: string;
   action?: ReactNode;
 }) {
   return (
     <div className="flex h-5 items-center gap-1">
-      <PanelIcon name={icon} className="size-5 shrink-0" />
+      {icon}
       <span className="min-w-0 flex-1 truncate text-[14px] leading-4">{title}</span>
       {action}
     </div>
   );
 }
 
-function placeMenu(x: number, y: number, align: "cursor" | "button") {
+type MenuBox = { left: number; right: number; top: number; bottom: number };
+
+function placeMenu(box: MenuBox, align: "cursor" | "button", count: number) {
   const width = PROJECT_MENU_WIDTH;
-  const height = 80;
+  const height = count * 24 + 8;
   const margin = 8;
-  let left = align === "button" ? x - width : x;
-  let top = y;
-  if (left < margin) left = margin;
+  let left = align === "button" ? box.right - width : box.left;
+  let top = align === "button" ? box.bottom + 4 : box.top;
+  if (left < margin) left = align === "button" ? box.left : margin;
   if (left + width > window.innerWidth - margin) left = Math.max(margin, window.innerWidth - margin - width);
-  if (top + height > window.innerHeight - margin) top = Math.max(margin, window.innerHeight - margin - height);
-  return { top, left };
+  if (top + height > window.innerHeight - margin) top = align === "button" ? box.top - 4 - height : box.top - height;
+  return { top: Math.max(margin, top), left: Math.max(margin, left) };
+}
+
+function adminMenuItems(hidden: boolean, fromRow: boolean): ProjectMenuItem[] {
+  const items: ProjectMenuItem[] = [
+    { id: "open", label: "Открыть страницу", icon: "link" },
+    { id: "hide", label: hidden ? "Опубликовать" : "Снять с сайта", icon: hidden ? "eye" : "eye-off" },
+    { id: "delete", label: "Удалить проект", icon: "trash-2", danger: true },
+  ];
+  if (fromRow) items.unshift({ id: "edit", label: "Редактировать", icon: "folder", glyph: <ProjectMark className="size-5" /> });
+  return items;
 }
 
 function MenuDots() {
@@ -167,39 +190,49 @@ function MenuDots() {
 
 function ProjectActionMenu({
   anchor,
+  hit,
   hidden,
+  fromRow,
   theme,
   onClose,
   onOpen,
+  onEdit,
   onHidden,
   onDelete,
 }: {
   anchor: { top: number; left: number };
+  /** Button or pointer box. The menu stays open while the pointer is on it. */
+  hit?: MenuBox;
   hidden: boolean;
+  fromRow: boolean;
   theme: "light" | "dark";
   onClose: () => void;
   onOpen: () => void;
+  onEdit: () => void;
   onHidden: () => void;
   onDelete: () => void;
 }) {
   const menuRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const close = (event: Event) => {
-      const target = event.target;
-      if (target instanceof Node && menuRef.current?.contains(target)) return;
-      if (target instanceof Element && target.closest("[data-project-menu]")) return;
-      onClose();
-    };
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
-    document.addEventListener("pointerdown", close, true);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("pointerdown", close, true);
-      document.removeEventListener("keydown", onKey);
+    const inside = (box: { left: number; right: number; top: number; bottom: number }, x: number, y: number) => {
+      const pad = 12;
+      return x >= box.left - pad && x <= box.right + pad && y >= box.top - pad && y <= box.bottom + pad;
     };
-  }, [onClose]);
+    const onMove = (event: PointerEvent) => {
+      const menu = menuRef.current?.getBoundingClientRect();
+      if (!menu) return;
+      if (!inside(menu, event.clientX, event.clientY) && !(hit && inside(hit, event.clientX, event.clientY))) onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("pointermove", onMove);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("pointermove", onMove);
+    };
+  }, [hit, onClose]);
   return createPortal(
     <div
       ref={menuRef}
@@ -208,12 +241,14 @@ function ProjectActionMenu({
       data-panel-theme={theme}
       className="fixed z-[120]"
       style={{ top: anchor.top, left: anchor.left }}
+      onContextMenu={(event) => event.preventDefault()}
     >
       <ProjectMenu
-        items={projectMenuItems(hidden)}
+        items={adminMenuItems(hidden, fromRow)}
         onSelect={(id) => {
           onClose();
-          if (id === "open") onOpen();
+          if (id === "edit") onEdit();
+          else if (id === "open") onOpen();
           else if (id === "hide") onHidden();
           else if (id === "delete") onDelete();
         }}
@@ -366,7 +401,7 @@ function RoleCard({
 
   return (
     <div ref={root} className={`relative w-full ${menu != null ? "z-20" : ""}`}>
-      <div className="flex flex-col gap-1.5 rounded-lg bg-black p-2 text-white">
+      <div className="flex flex-col gap-1.5 rounded-lg bg-black p-1 text-white">
         <span className="flex items-center gap-2">
           <input
             value={role.name}
@@ -376,8 +411,13 @@ function RoleCard({
             onChange={(event) => onChange({ ...role, name: event.target.value })}
             className="min-w-0 flex-1 bg-transparent text-[14px] leading-4 text-white outline-none placeholder:text-white/50"
           />
-          <button type="button" aria-label="Удалить" onClick={onRemove} className="flex size-4 shrink-0 items-center justify-center">
-            <PanelIcon name="x" className="size-4" strokeWidth={1.75} />
+          <button
+            type="button"
+            aria-label="Удалить"
+            onClick={onRemove}
+            className="flex size-6 shrink-0 items-center justify-center rounded text-white transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"
+          >
+            <PanelIcon name="x" className="size-5" />
           </button>
         </span>
         <span ref={chips} className="relative flex flex-wrap items-center gap-1">
@@ -434,15 +474,40 @@ function RoleCard({
   );
 }
 
-function EditorBlock({ title, children }: { title: string; children: ReactNode }) {
+function EditorBlock({
+  title,
+  children,
+  changed = false,
+  onReset,
+  count,
+}: {
+  title: string;
+  children: ReactNode;
+  changed?: boolean;
+  onReset?: () => void;
+  count?: number;
+}) {
   const [open, setOpen] = useState(true);
   const reduce = usePrefersReducedMotion();
+  const motion = reduce ? "" : "transition-[width,opacity] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]";
   return (
     <div className="flex shrink-0 flex-col">
-      <button type="button" onClick={() => setOpen((value) => !value)} className="flex h-4 w-full items-center justify-between text-left">
-        <span className="text-[14px] leading-4">{title}</span>
-        <PanelIcon name={open ? "chevron-up" : "chevron-down"} className="size-5" />
-      </button>
+      <div className="flex h-4 w-full items-center gap-1">
+        {onReset ? (
+          <span className={`flex shrink-0 overflow-hidden ${motion}`} style={{ width: changed ? 16 : 0, opacity: changed ? 1 : 0 }}>
+            <button type="button" aria-label={`Вернуть ${title}`} tabIndex={changed ? 0 : -1} onClick={onReset} className="flex size-4 shrink-0 items-center justify-center">
+              <i className="size-1 rounded-full bg-black" />
+            </button>
+          </span>
+        ) : null}
+        <button type="button" onClick={() => setOpen((value) => !value)} className="flex h-4 min-w-0 flex-1 items-center justify-between text-left">
+          <span className="text-[14px] leading-4">{title}</span>
+          <span className="flex items-center gap-1">
+            {count != null ? <span className="text-[14px] leading-4 text-black/50">{count}</span> : null}
+            <PanelIcon name={open ? "chevron-up" : "chevron-down"} className="size-5" />
+          </span>
+        </button>
+      </div>
       <SectionCollapse open={open} reduceMotion={reduce}>
         <div className="flex flex-col gap-1.5 pt-1.5">{children}</div>
       </SectionCollapse>
@@ -568,7 +633,7 @@ function ProjectEditor({
       <div className={`flex min-h-0 min-w-0 flex-1 flex-col ${confirming ? "pointer-events-none blur-md" : ""}`}>
       <div className="shrink-0 px-2 pt-2">
         <WindowTitle
-          icon="folder"
+          icon={<ProjectMark className="size-5 shrink-0" />}
           title={projectName(project)}
           action={
             <>
@@ -613,7 +678,7 @@ function ProjectEditor({
               <span className="text-[14px] leading-[18px] text-white/50">{status}</span>
             </Row>
             <Row>
-              <span className={rowLabel}>Показ</span>
+              <ChangedName changed={saved != null && project.length !== saved.length} label="Показ" onReset={() => saved && onChange({ ...project, length: saved.length })} />
               <Segment<AdminLength>
                 value={project.length}
                 onChange={(length) => onChange({ ...project, length })}
@@ -624,7 +689,7 @@ function ProjectEditor({
               />
             </Row>
             <Row>
-              <span className={rowLabel}>Название</span>
+              <ChangedName changed={saved != null && project.name !== saved.name} label="Название" onReset={() => saved && onChange({ ...project, name: saved.name, slug: saved.slug })} />
               <input
                 value={project.name}
                 aria-label="Название"
@@ -633,7 +698,7 @@ function ProjectEditor({
               />
             </Row>
             <Row>
-              <span className={rowLabel}>Год</span>
+              <ChangedName changed={saved != null && project.year !== saved.year} label="Год" onReset={() => saved && onChange({ ...project, year: saved.year })} />
               <ValueField
                 value={project.year || "0"}
                 current={Number(project.year) || 0}
@@ -649,11 +714,18 @@ function ProjectEditor({
               plain
               value={project.text}
               rows={5}
+              changed={saved != null && project.text !== saved.text}
+              onReset={() => saved && onChange({ ...project, text: saved.text })}
               onChange={(text) => onChange({ ...project, text })}
             />
           </div>
         </EditorBlock>
-        <EditorBlock title="Участники">
+        <EditorBlock
+          title="Участники"
+          count={project.roles.length}
+          changed={saved != null && JSON.stringify(project.roles) !== JSON.stringify(saved.roles)}
+          onReset={() => saved && onChange({ ...project, roles: saved.roles })}
+        >
           {project.roles.map((role, index) => (
             <RoleCard
               key={index}
@@ -666,13 +738,21 @@ function ProjectEditor({
           ))}
           <button
             type="button"
+            aria-label="Добавить участника"
             onClick={() => onChange({ ...project, roles: [...project.roles, { name: "", labels: [] }] })}
-            className={`flex h-[60px] w-full items-center justify-center rounded-lg border border-dashed border-black text-[14px] leading-4 fine-hover:hover:border-solid fine-hover:hover:bg-black fine-hover:hover:text-white ${HOVER}`}
+            className={`relative flex w-full shrink-0 flex-col gap-1.5 rounded-lg p-1 text-black outline outline-1 -outline-offset-1 outline-dashed outline-black fine-hover:hover:bg-black fine-hover:hover:text-white fine-hover:hover:outline-solid ${HOVER}`}
           >
-            Добавить участника
+            <span className="h-6" aria-hidden />
+            <span className="h-6" aria-hidden />
+            <PanelIcon name="plus" className="absolute top-1/2 left-1/2 size-4 -translate-x-1/2 -translate-y-1/2" />
           </button>
         </EditorBlock>
-        <EditorBlock title="Загруженные фото">
+        <EditorBlock
+          title="Загруженные фото"
+          count={project.photos.length}
+          changed={saved != null && JSON.stringify(project.photos) !== JSON.stringify(saved.photos)}
+          onReset={() => saved && onChange({ ...project, photos: saved.photos })}
+        >
           {project.photos.length > 0 ? (
             <span className="flex flex-wrap items-start gap-2">
               {project.photos.map((photo, index) => (
@@ -761,7 +841,7 @@ function Gate({ attempt, error, onSubmit }: { attempt: number; error: boolean; o
 
   return (
     <section data-admin-gate="" className="flex w-[300px] flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
-      <WindowTitle icon="lock" title="Вход" />
+      <WindowTitle icon={<PanelIcon name="lock" className="size-5 shrink-0" />} title="Вход" />
       <CodeField
         key={attempt}
         onChange={(code) => {
@@ -856,15 +936,15 @@ export function AdminShell({
   const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [editorBox, setEditorBox] = useState<{ width: number; height?: number }>({ width: 300 });
-  const [menu, setMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  const [menu, setMenu] = useState<{ id: string; top: number; left: number; hit: MenuBox; fromRow: boolean } | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const room = panelHeightCap(dockAnchor);
   const tt = (ru: string, en: string) => (locale === "en" ? en : ru);
   const catalogDirty = !samePanelRowOrder(catalog, savedCatalog) || removed.length > 0;
   const homeDirty = !samePanelRowOrder(home, savedHome) || removed.length > 0;
 
-  function openMenu(id: string, x: number, y: number, align: "cursor" | "button") {
-    const next = { id, ...placeMenu(x, y, align) };
+  function openMenu(id: string, box: MenuBox, align: "cursor" | "button") {
+    const next = { id, hit: box, fromRow: align === "cursor", ...placeMenu(box, align, adminMenuItems(hidden.includes(id), align === "cursor").length) };
     setMenu((current) => (align === "button" && current?.id === id ? null : next));
   }
 
@@ -908,12 +988,12 @@ export function AdminShell({
             {signedIn ? (
               <>
                 <DockButton
-                  name="app-window-mac"
+                  name="sliders-horizontal"
                   label={tt("Страницы", "Pages")}
                   active={pagesOpen}
                   onClick={() => setPagesOpen((open) => !open)}
                 />
-                <DockButton name="folder-tree" label="Проекты" active={listOpen} onClick={() => setListOpen((open) => !open)} />
+                <DockButton name="folder" label="Проекты" active={listOpen} onClick={() => setListOpen((open) => !open)} />
               </>
             ) : (
               <DockButton name="lock" label="Вход" active={gateOpen} onClick={() => setGateOpen((open) => !open)} />
@@ -924,7 +1004,7 @@ export function AdminShell({
               {signedIn ? (
                 <section className="flex w-[300px] flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
                   <WindowTitle
-                    icon="folder-tree"
+                    icon={<PanelIcon name="folder" className="size-5 shrink-0" />}
                     title="Проекты"
                     action={
                       <button type="button" aria-label={tt("Добавить проект", "Add project")} onClick={onAdd} className="flex size-5 shrink-0 items-center justify-center">
@@ -939,7 +1019,7 @@ export function AdminShell({
                     removed={removed}
                     onOrder={onCatalog}
                     onOpen={onEditing}
-                    onMenu={(id, x, y) => openMenu(id, x, y, "cursor")}
+                    onMenu={(id, x, y) => openMenu(id, { left: x, right: x, top: y, bottom: y }, "cursor")}
                   />
                   {catalogDirty ? <AdminPublish busy={busy} onReset={() => { onCatalog([...savedCatalog]); onClearRemoved(); }} onPublish={() => { setBusy(true); onPublishOrder(); setBusy(false); }} /> : null}
                 </section>
@@ -974,7 +1054,7 @@ export function AdminShell({
                     confirming={confirmId === project.id}
                     onChange={onProject}
                     onClose={() => onEditing(null)}
-                    onMenu={(box) => openMenu(project.id, box.right, box.bottom + 4, "button")}
+                    onMenu={(box) => openMenu(project.id, box, "button")}
                     onPreview={onPreview}
                     onCancelDelete={() => setConfirmId(null)}
                     onConfirmDelete={confirmDelete}
@@ -990,7 +1070,7 @@ export function AdminShell({
             <FloatWindow resetKey={placeEpoch} hidden={!signedIn || !pagesOpen}>
               <Pop open={pagesOpen && signedIn}>
                 <section className="flex max-h-[calc(100vh-80px)] w-[308px] flex-col gap-2 rounded-2xl bg-white p-2 text-black">
-                  <WindowTitle icon="app-window-mac" title={tt("Страницы", "Pages")} />
+                  <WindowTitle icon={<PanelIcon name="sliders-horizontal" className="size-5 shrink-0" />} title={tt("Страницы", "Pages")} />
                   <div className="flex min-h-0 flex-col overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     <button type="button" onClick={() => setHomeOpen((open) => !open)} className="flex h-4 w-full items-center justify-between text-left">
                       <span className="text-[14px] leading-4">{tt("Главная", "Home")}</span>
@@ -1005,7 +1085,7 @@ export function AdminShell({
                           removed={removed}
                           cue={false}
                           onOrder={onHome}
-                          onMenu={(id, x, y) => openMenu(id, x, y, "cursor")}
+                          onMenu={(id, x, y) => openMenu(id, { left: x, right: x, top: y, bottom: y }, "cursor")}
                         />
                       </div>
                     ) : null}
@@ -1090,9 +1170,12 @@ export function AdminShell({
           {menu ? (
             <ProjectActionMenu
               anchor={menu}
+              hit={menu.hit}
               hidden={hidden.includes(menu.id)}
+              fromRow={menu.fromRow}
               theme={theme}
               onClose={() => setMenu(null)}
+              onEdit={() => onEditing(menu.id)}
               onOpen={() => onOpenPage(menu.id)}
               onHidden={() => onHide(menu.id, !hidden.includes(menu.id))}
               onDelete={() => setConfirmId(menu.id)}

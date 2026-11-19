@@ -1,6 +1,18 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.8"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.9"`. Without `#tag` npm takes `main`.
+
+## 0.3.9
+
+### Added
+
+- `ProjectMenu` — the 220 project menu (`#161616`, white border). A custom item can bring its own glyph.
+
+### Changed
+
+- A text value that still fits one row underlines when the pointer is on that text and while it is being edited.
+- Admin stand matches the site checklist: a white reset dot on a field that differs from the published copy, pages use `sliders-horizontal`, projects use `folder`, the editor header is a pencil, «Добавить участника» is only a plus. The row menu adds **Редактировать** and **Снять с сайта** / **Опубликовать**; the editor menu omits edit. The menu closes when the pointer leaves it and the button.
+- The credit delete control is the 24 field button. The credit block’s inset is 4, the same as a row.
 
 ## 0.3.8
 

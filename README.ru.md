@@ -30,7 +30,7 @@
 npm install github:Veevtamm/settings-panel
 ```
 
-Зафиксировать версию — через тег: `github:Veevtamm/settings-panel#v0.3.8`. Что поменялось между версиями — в [`CHANGELOG.md`](CHANGELOG.md).
+Зафиксировать версию — через тег: `github:Veevtamm/settings-panel#v0.3.9`. Что поменялось между версиями — в [`CHANGELOG.md`](CHANGELOG.md).
 
 Пиры: `react` 19, `react-dom` 19, `clsx`, `tailwind-merge`. Geist — в layout сайта (дефолт панели). В настройках панели можно переключить хром на системный шрифт.
 

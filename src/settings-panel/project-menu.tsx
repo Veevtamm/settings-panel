@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { LucideIconName } from "../lucide-glyphs";
 import { PanelIcon } from "./kit-chrome";
 
@@ -9,6 +10,8 @@ export type ProjectMenuItem = {
   id: string;
   label: string;
   icon: LucideIconName;
+  /** Replaces the Lucide glyph, as the editor mark on «Редактировать». */
+  glyph?: ReactNode;
   danger?: boolean;
 };
 
@@ -34,7 +37,7 @@ export function ProjectMenu({
   onSelect?: (id: string) => void;
 }) {
   return (
-    <div role="menu" className="w-[220px] rounded-lg bg-black p-1 text-[14px] leading-none text-white">
+    <div role="menu" className="w-[220px] rounded-lg border border-white bg-[#161616] p-1 text-[14px] leading-none text-white">
       {items.map((item) => (
         <button
           key={item.id}
@@ -43,7 +46,7 @@ export function ProjectMenu({
           onClick={() => onSelect?.(item.id)}
           className={`flex h-6 w-full items-center gap-1 rounded px-0.5 text-left fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white ${item.danger ? "text-[#ff4d4d]" : ""}`}
         >
-          <PanelIcon name={item.icon} className="size-5" />
+          {item.glyph ?? <PanelIcon name={item.icon} className="size-5" />}
           {item.label}
         </button>
       ))}

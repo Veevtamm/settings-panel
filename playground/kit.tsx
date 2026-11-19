@@ -349,7 +349,7 @@ function Credit() {
   }
   return (
     <div ref={root} className={`relative w-[284px] ${menu ? "z-20" : ""}`}>
-      <div className="flex flex-col gap-1.5 rounded-lg bg-black p-2 text-white">
+      <div className="flex flex-col gap-1.5 rounded-lg bg-black p-1 text-white">
         <span className="flex items-center gap-2">
           <span
             aria-label="Имя"
@@ -373,8 +373,13 @@ function Credit() {
           >
             {handle}
           </span>
-          <button type="button" aria-label="Удалить" onClick={() => setPresent(false)} className="flex size-4 shrink-0 items-center justify-center">
-            <PanelIcon name="x" className="size-4" strokeWidth={1.75} />
+          <button
+            type="button"
+            aria-label="Удалить"
+            onClick={() => setPresent(false)}
+            className="flex size-6 shrink-0 items-center justify-center rounded text-white transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"
+          >
+            <PanelIcon name="x" className="size-5" />
           </button>
         </span>
         <span ref={chips} className="relative flex flex-wrap items-center gap-1">

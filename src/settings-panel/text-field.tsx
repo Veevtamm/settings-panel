@@ -1,7 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { rowLabel } from "./kit-chrome";
+import { ChangedName, rowLabel } from "./kit-chrome";
 
 const ink = "text-[14px] leading-4 text-white outline-none placeholder:text-white/50";
 
@@ -21,6 +21,8 @@ export function TextField({
   caption = true,
   plain = false,
   aside,
+  changed = false,
+  onReset,
 }: {
   label: string;
   value: string;
@@ -34,6 +36,9 @@ export function TextField({
   plain?: boolean;
   /** A control on the right of the name line, such as the link button. */
   aside?: ReactNode;
+  /** The value differs from the published copy. The name grows a reset dot. */
+  changed?: boolean;
+  onReset?: () => void;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
@@ -57,7 +62,7 @@ export function TextField({
     const observer = new ResizeObserver(measure);
     observer.observe(root);
     return () => observer.disconnect();
-  }, [value, label, aside, expanded]);
+  }, [value, label, aside, expanded, changed]);
 
   useLayoutEffect(() => {
     if (!restoreFocus.current) return;
@@ -76,8 +81,12 @@ export function TextField({
     </span>
   );
   const name = caption ? (
-    <span ref={labelRef} className={`shrink-0 ${rowLabel}`}>
-      {label}
+    <span ref={labelRef} className="flex shrink-0">
+      {onReset ? (
+        <ChangedName changed={changed} label={label} onReset={onReset} />
+      ) : (
+        <span className={rowLabel}>{label}</span>
+      )}
     </span>
   ) : null;
   const side = aside ? (
@@ -100,7 +109,7 @@ export function TextField({
           spellCheck={false}
           autoComplete="off"
           onChange={(event) => onChange(event.target.value)}
-          className={`min-w-0 flex-1 bg-transparent text-right ${ink}`}
+          className={`ml-auto min-w-0 max-w-full bg-transparent text-right [field-sizing:content] ${value ? "decoration-1 underline-offset-[3px] focus:underline fine-hover:hover:underline" : ""} ${ink}`}
         />
         {side}
       </div>
