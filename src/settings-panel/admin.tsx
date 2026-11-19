@@ -503,7 +503,7 @@ function EditorBlock({
         <button type="button" onClick={() => setOpen((value) => !value)} className="flex h-4 min-w-0 flex-1 items-center justify-between text-left">
           <span className="text-[14px] leading-4">{title}</span>
           <span className="flex items-center gap-1">
-            {count != null ? <span className="text-[14px] leading-4 text-black/50">{count}</span> : null}
+            {count != null ? <span className="text-[11px] leading-4 text-black/50">{count}</span> : null}
             <PanelIcon name={open ? "chevron-up" : "chevron-down"} className="size-5" />
           </span>
         </button>
