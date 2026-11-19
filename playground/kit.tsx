@@ -5,6 +5,7 @@ import { PanelIcon } from "../src/panel-icon";
 import { LUCIDE_ICON_NAMES } from "../src/lucide-glyphs";
 import { CodeField } from "../src/settings-panel/code-field";
 import { TextField } from "../src/settings-panel/text-field";
+import { ProjectMenu, projectMenuItems } from "../src/settings-panel/project-menu";
 import { ProjectRow } from "../src/settings-panel/project-row";
 import { PageBar } from "./page-bar";
 import type { AxisHandle } from "../src/lib/axis-curve";
@@ -191,11 +192,11 @@ function AddPhoto({ empty = false, progress, index, total }: { empty?: boolean; 
       aria-label={empty || loading ? undefined : "Добавить медиа"}
       aria-busy={loading || undefined}
       data-chrome=""
-      className={`relative h-20 rounded border border-dashed border-black text-black fine-hover:hover:border-solid fine-hover:hover:bg-black fine-hover:hover:text-white ${CHIP_HOVER} ${empty ? "w-[284px]" : "w-16"}`}
+      className={`relative h-20 rounded-lg border border-dashed border-black text-black fine-hover:hover:border-solid fine-hover:hover:bg-black fine-hover:hover:text-white ${CHIP_HOVER} ${empty ? "w-[284px]" : "w-16"}`}
     >
       {loading ? (
         <>
-          <span className="absolute top-1/2 left-1/2 h-1 w-[calc(100%-16px)] max-w-40 -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-current/20" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={index != null && total != null ? `Загрузка, ${caption}` : "Загрузка"}>
+          <span className="absolute top-1/2 left-1/2 h-1 w-[calc(100%-16px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-current/20" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={index != null && total != null ? `Загрузка, ${caption}` : "Загрузка"}>
             <span className="block h-full bg-current" style={{ width: `${progress}%` }} />
           </span>
           <span className={`${ADD_CAPTION} max-w-[calc(100%-8px)]`}>{caption}</span>
@@ -218,16 +219,34 @@ const CHIP_HOVER = "transition-colors duration-200 ease-[cubic-bezier(0.23,1,0.3
 
 function chipClass(pressed: boolean) {
   const face = pressed
-    ? "bg-white text-black fine-hover:hover:bg-black fine-hover:hover:text-white"
+    ? "bg-white text-black"
     : "text-white fine-hover:hover:bg-white fine-hover:hover:text-black";
   return `flex h-6 items-center gap-1 rounded border border-white px-1.5 text-[14px] leading-4 disabled:opacity-40 ${CHIP_HOVER} ${face}`;
 }
 
-function TextSpecimen() {
-  const [essay, setEssay] = useState("A spring campaign inspired by 90s films and created on the streets of St. Petersburg.");
+function LinkButton() {
   return (
-    <span className="block w-[284px] overflow-hidden rounded-lg bg-black">
-      <TextField label="Текст" placeholder="Текст" caption={false} plain value={essay} rows={5} onChange={setEssay} />
+    <button
+      type="button"
+      aria-label="Ссылка"
+      className="flex size-6 shrink-0 items-center justify-center rounded text-white transition-colors duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white"
+    >
+      <PanelIcon name="link" className="size-5" />
+    </button>
+  );
+}
+
+function TextSpecimen() {
+  const [withLink, setWithLink] = useState("Текст");
+  const [plain, setPlain] = useState("Текст");
+  return (
+    <span className="flex w-[284px] flex-col gap-1">
+      <span className="block overflow-hidden rounded-lg bg-black">
+        <TextField label="Текст" placeholder="Текст" plain value={withLink} rows={5} onChange={setWithLink} aside={<LinkButton />} />
+      </span>
+      <span className="block overflow-hidden rounded-lg bg-black">
+        <TextField label="Текст" placeholder="Текст" plain value={plain} rows={5} onChange={setPlain} />
+      </span>
     </span>
   );
 }
@@ -236,7 +255,7 @@ function PasswordField() {
   const [value, setValue] = useState("");
   const [shown, setShown] = useState(false);
   return (
-    <span className="flex h-8 w-[284px] items-center gap-2 rounded-lg bg-black px-2 text-white">
+    <span className="group flex h-8 w-[284px] items-center gap-2 rounded-lg bg-black px-2 text-white">
       <input
         type={shown ? "text" : "password"}
         value={value}
@@ -244,7 +263,8 @@ function PasswordField() {
         placeholder="Пароль"
         aria-label="Пароль"
         onChange={(event) => setValue(event.target.value)}
-        className={`min-w-0 flex-1 bg-transparent text-[14px] leading-4 text-white outline-none placeholder:text-white/50 ${value ? "underline decoration-1 underline-offset-[3px]" : ""}`}
+        style={!shown && value ? { WebkitTextSecurity: "disc" } : undefined}
+        className={`min-w-0 flex-1 bg-transparent leading-4 text-white outline-none placeholder:text-[14px] placeholder:text-white/50 ${!shown && value ? "font-mono text-[10px] tracking-[0.28em]" : `text-[14px] ${shown && value ? "decoration-1 underline-offset-[3px] focus:underline fine-hover:group-hover:underline" : ""}`}`}
       />
       <button
         type="button"
@@ -318,9 +338,12 @@ function Credit() {
           setRoles(["Photography", "Styling"]);
           setPresent(true);
         }}
-        className={`flex h-[60px] w-[284px] items-center justify-center rounded-lg border border-dashed border-black text-[14px] leading-4 text-black fine-hover:hover:border-solid fine-hover:hover:bg-black fine-hover:hover:text-white ${CHIP_HOVER}`}
+        aria-label="Добавить участника"
+        className={`flex h-[62px] w-[284px] items-center justify-center rounded-lg border border-dashed border-black text-black fine-hover:hover:border-solid fine-hover:hover:bg-black fine-hover:hover:text-white ${CHIP_HOVER}`}
       >
-        Добавить участника
+        <svg viewBox="0 0 16 16" className="size-4" aria-hidden>
+          <path fill="currentColor" d="M7 3h2v10H7zM3 7h10v2H3z" />
+        </svg>
       </button>
     );
   }
@@ -481,6 +504,18 @@ function SceneDock({ state, done = false }: { state: "closed" | "open" | "search
       <DockButton name="waypoints" label="Ось" />
       <DockButton name="palette" label="Палитра" badge={2} />
     </div>
+  );
+}
+
+function ProjectMenuSpecimen() {
+  const [hidden, setHidden] = useState(false);
+  return (
+    <ProjectMenu
+      items={projectMenuItems(hidden)}
+      onSelect={(id) => {
+        if (id === "hide") setHidden((value) => !value);
+      }}
+    />
   );
 }
 
@@ -1246,6 +1281,11 @@ export function KitPage() {
             <ProjectList />
           </Plate>
         </Card>
+        <Card name="Меню проекта">
+          <Plate hug>
+            <ProjectMenuSpecimen />
+          </Plate>
+        </Card>
         <Card name="Текст">
           <Plate hug>
             <TextSpecimen />
@@ -1260,6 +1300,7 @@ export function KitPage() {
               <AddPhoto />
               <AddPhoto progress={62} index={2} total={8} />
               <AddPhoto empty />
+              <AddPhoto empty progress={62} index={2} total={8} />
             </span>
           </Plate>
         </Card>

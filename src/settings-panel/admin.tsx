@@ -29,6 +29,7 @@ import {
 import { samePanelRowOrder } from "../lib/panel-rows";
 import { useRowOrderDrag } from "./row-order-drag";
 import { usePrefersReducedMotion } from "../lib/prefers-reduced-motion";
+import { PROJECT_MENU_WIDTH, ProjectMenu, projectMenuItems } from "./project-menu";
 import { ProjectRow } from "./project-row";
 import { SectionCollapse } from "./row";
 import { TextField } from "./text-field";
@@ -140,8 +141,6 @@ function WindowTitle({
   );
 }
 
-const PROJECT_MENU_WIDTH = 220;
-
 function placeMenu(x: number, y: number, align: "cursor" | "button") {
   const width = PROJECT_MENU_WIDTH;
   const height = 80;
@@ -201,34 +200,24 @@ function ProjectActionMenu({
       document.removeEventListener("keydown", onKey);
     };
   }, [onClose]);
-  const items: { id: string; label: string; icon: "link" | "eye" | "eye-off" | "trash-2"; danger?: boolean; run: () => void }[] = [
-    { id: "open", label: "Открыть страницу", icon: "link", run: onOpen },
-    { id: "hide", label: hidden ? "Показать проект" : "Скрыть проект", icon: hidden ? "eye" : "eye-off", run: onHidden },
-    { id: "delete", label: "Удалить проект", icon: "trash-2", danger: true, run: onDelete },
-  ];
   return createPortal(
     <div
       ref={menuRef}
       data-settings-panel=""
       data-new-ui=""
       data-panel-theme={theme}
-      className="fixed z-[120] rounded-lg bg-black p-1 text-[14px] leading-none text-white"
-      style={{ top: anchor.top, left: anchor.left, width: PROJECT_MENU_WIDTH }}
+      className="fixed z-[120]"
+      style={{ top: anchor.top, left: anchor.left }}
     >
-      {items.map((item) => (
-        <button
-          key={item.id}
-          type="button"
-          onClick={() => {
-            onClose();
-            item.run();
-          }}
-          className={`flex h-6 w-full items-center gap-1 rounded px-0.5 text-left fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white ${item.danger ? "text-[#ff4d4d]" : ""}`}
-        >
-          <PanelIcon name={item.icon} className="size-5" />
-          {item.label}
-        </button>
-      ))}
+      <ProjectMenu
+        items={projectMenuItems(hidden)}
+        onSelect={(id) => {
+          onClose();
+          if (id === "open") onOpen();
+          else if (id === "hide") onHidden();
+          else if (id === "delete") onDelete();
+        }}
+      />
     </div>,
     document.body,
   );
@@ -657,7 +646,6 @@ function ProjectEditor({
             <TextField
               label="Текст"
               placeholder="Текст"
-              caption={false}
               plain
               value={project.text}
               rows={5}

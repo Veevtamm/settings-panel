@@ -53,7 +53,7 @@ export function CodeField({ onChange }: { onChange?: (code: string) => void }) {
               cells.current[index + 1]?.focus();
             }
           }}
-          className={`font-areal-mono h-8 min-w-0 flex-1 rounded-lg bg-black text-center text-[14px] leading-8 text-white outline-none focus:inset-ring focus:inset-ring-white ${digit ? "underline decoration-1 underline-offset-[3px]" : ""}`}
+          className="font-areal-mono h-8 min-w-0 flex-1 rounded-lg bg-black text-center text-[14px] leading-8 text-white outline-none focus:inset-ring focus:inset-ring-white"
         />
       ))}
     </span>

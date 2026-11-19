@@ -87,6 +87,8 @@ export {
 } from "./kit-chrome";
 export type { DockAnchor, Anchor } from "./kit-chrome";
 export { TextField } from "./text-field";
+export { ProjectMenu, projectMenuItems, PROJECT_MENU_WIDTH } from "./project-menu";
+export type { ProjectMenuItem } from "./project-menu";
 export { SectionCollapse } from "./row";
 
 export type Hsva = { h: number; s: number; v: number; a: number };

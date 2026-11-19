@@ -110,6 +110,8 @@ export { FieldButton, SettingToggle } from "./settings-panel/fields";
 export { CodeField } from "./settings-panel/code-field";
 export { ProjectRow } from "./settings-panel/project-row";
 export type { ProjectRowStatus } from "./settings-panel/project-row";
+export { ProjectMenu, projectMenuItems, PROJECT_MENU_WIDTH } from "./settings-panel/project-menu";
+export type { ProjectMenuItem } from "./settings-panel/project-menu";
 export { PickRadioGroup } from "./settings-panel/pick";
 export { SettingChips } from "./settings-panel/chips";
 export { SettingCells, SettingSkipReplay } from "./settings-panel/cells";
