@@ -1,6 +1,13 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.3.9"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.4.0"`. Without `#tag` npm takes `main`.
+
+## 0.4.0
+
+### Changed
+
+- Admin section counts on **Участники** and **Загруженные фото** are 11.
+- The shared text field and the masked password typecheck, so `npm run check` passes on this tag.
 
 ## 0.3.9
 
