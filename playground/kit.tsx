@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { useRowOrderDrag } from "../src/settings-panel/row-order-drag";
 import { PairGlyph } from "../src/settings-panel/number";
 import { PanelIcon } from "../src/panel-icon";
@@ -263,7 +263,7 @@ function PasswordField() {
         placeholder="Пароль"
         aria-label="Пароль"
         onChange={(event) => setValue(event.target.value)}
-        style={!shown && value ? { WebkitTextSecurity: "disc" } : undefined}
+        style={!shown && value ? ({ WebkitTextSecurity: "disc" } as CSSProperties) : undefined}
         className={`min-w-0 flex-1 bg-transparent leading-4 text-white outline-none placeholder:text-[14px] placeholder:text-white/50 ${!shown && value ? "font-mono text-[10px] tracking-[0.28em]" : `text-[14px] ${shown && value ? "decoration-1 underline-offset-[3px] focus:underline fine-hover:group-hover:underline" : ""}`}`}
       />
       <button

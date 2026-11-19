@@ -101,7 +101,9 @@ export function TextField({
         {probe}
         {name}
         <input
-          ref={fieldRef}
+          ref={(node) => {
+            fieldRef.current = node;
+          }}
           type="text"
           value={value}
           placeholder={placeholder}
@@ -124,7 +126,9 @@ export function TextField({
         {side}
       </div>
       <textarea
-        ref={fieldRef}
+        ref={(node) => {
+          fieldRef.current = node;
+        }}
         value={value}
         rows={Math.max(rows, 2)}
         placeholder={placeholder}
