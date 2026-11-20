@@ -49,11 +49,9 @@ export const PANEL_PAPER = "#E4E4E4";
 export const dangerTextClass = "text-[color:var(--sp-danger)]";
 /** Destructive fill. The label stays light on the red in both themes. */
 export const dangerFillClass = "bg-[var(--sp-danger)] text-[color:var(--sp-on-danger)]";
-/** Project menu plate. Fixed dark list, white stroke — it does not follow the ink/paper swap. */
-export const menuSurfaceClass =
-  "border border-[color:var(--sp-on-menu)] bg-[var(--sp-menu)] text-[color:var(--sp-on-menu)]";
-export const menuHoverClass =
-  "fine-hover:hover:inset-ring fine-hover:hover:inset-ring-[color:var(--sp-on-menu)]";
+/** Project menu plate. Same ink and paper as the rows; the theme swaps them. */
+export const menuSurfaceClass = "border border-white bg-black text-white";
+export const menuHoverClass = "fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white";
 
 const row = "group/row relative flex shrink-0 text-[14px] leading-none text-white";
 export const rowLabel = "decoration-1 underline-offset-[3px] group-hover/row:underline";
