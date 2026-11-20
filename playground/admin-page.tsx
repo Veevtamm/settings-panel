@@ -118,7 +118,7 @@ export function AdminPage() {
   }
 
   return (
-    <main data-new-ui="" className="relative min-h-dvh bg-[#fff] text-[#0b0b0b]" style={{ fontFamily: FONT }}>
+    <main data-new-ui="" className="relative min-h-dvh" style={{ background: "#ffffff", color: "#0b0b0b", fontFamily: FONT }}>
       <PageBar trailing={<IconPick value={theme} onChange={setTheme} options={[{ id: "sun", icon: "sun" }, { id: "moon", icon: "moon" }]} />} />
       <div className="flex min-h-dvh flex-col items-start gap-4 px-12 pt-28 pb-16">
         {face ? (

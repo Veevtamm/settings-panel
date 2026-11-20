@@ -23,8 +23,11 @@ import {
   SectionFoldContext,
   Segment,
   ValueField,
+  dangerFillClass,
+  dangerTextClass,
   panelHeightCap,
   rowLabel,
+  tr,
   type DockAnchor,
 } from "./kit-chrome";
 import { samePanelRowOrder } from "../lib/panel-rows";
@@ -274,7 +277,7 @@ function DeleteProjectDialog({ onCancel, onConfirm }: { onCancel: () => void; on
           <button type="button" autoFocus onClick={onCancel} className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg border border-black px-2 text-[14px] leading-4">
             Отмена
           </button>
-          <button type="button" onClick={onConfirm} className="flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg bg-[#ff4d4d] px-2 text-[14px] leading-4 text-white">
+          <button type="button" onClick={onConfirm} className={`flex h-8 min-w-0 flex-1 items-center justify-center rounded-lg px-2 text-[14px] leading-4 ${dangerFillClass}`}>
             Удалить
           </button>
         </div>
@@ -829,7 +832,17 @@ function ProjectEditor({
   );
 }
 
-function Gate({ attempt, error, onSubmit }: { attempt: number; error: boolean; onSubmit: (code: string) => void }) {
+function Gate({
+  attempt,
+  error,
+  locale,
+  onSubmit,
+}: {
+  attempt: number;
+  error: boolean;
+  locale: "ru" | "en";
+  onSubmit: (code: string) => void;
+}) {
   const [value, setValue] = useState("");
 
   useEffect(() => {
@@ -837,11 +850,11 @@ function Gate({ attempt, error, onSubmit }: { attempt: number; error: boolean; o
     document.querySelector<HTMLInputElement>("[data-admin-gate] input")?.focus();
   }, [attempt]);
 
-  const hint = value.length > 0 ? null : error ? "Неверный код" : "Введите код";
+  const hint = value.length > 0 ? null : error ? tr(locale, "Неверный код", "Wrong code") : tr(locale, "Введите код", "Enter the code");
 
   return (
     <section data-admin-gate="" className="flex w-[300px] flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
-      <WindowTitle icon={<PanelIcon name="lock" className="size-5 shrink-0" />} title="Вход" />
+      <WindowTitle icon={<PanelIcon name="lock" className="size-5 shrink-0" />} title={tr(locale, "Вход", "Sign in")} />
       <CodeField
         key={attempt}
         onChange={(code) => {
@@ -850,7 +863,7 @@ function Gate({ attempt, error, onSubmit }: { attempt: number; error: boolean; o
         }}
       />
       {hint ? (
-        <p className={`px-1 text-[14px] leading-4 ${error ? "text-[#ff3b30]" : "text-black/50"}`}>{hint}</p>
+        <p className={`px-1 text-[14px] leading-4 ${error ? dangerTextClass : "text-black/50"}`}>{hint}</p>
       ) : null}
     </section>
   );
@@ -996,7 +1009,7 @@ export function AdminShell({
                 <DockButton name="folder" label="Проекты" active={listOpen} onClick={() => setListOpen((open) => !open)} />
               </>
             ) : (
-              <DockButton name="lock" label="Вход" active={gateOpen} onClick={() => setGateOpen((open) => !open)} />
+              <DockButton name="lock" label={tt("Вход", "Sign in")} active={gateOpen} onClick={() => setGateOpen((open) => !open)} />
             )}
           </ScreenDock>
           <DockedWindows>
@@ -1024,7 +1037,7 @@ export function AdminShell({
                   {catalogDirty ? <AdminPublish busy={busy} onReset={() => { onCatalog([...savedCatalog]); onClearRemoved(); }} onPublish={() => { setBusy(true); onPublishOrder(); setBusy(false); }} /> : null}
                 </section>
               ) : (
-                <Gate attempt={attempt} error={error} onSubmit={submit} />
+                <Gate attempt={attempt} error={error} locale={locale} onSubmit={submit} />
               )}
             </FloatWindow>
             <FloatWindow

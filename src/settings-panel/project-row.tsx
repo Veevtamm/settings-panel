@@ -68,7 +68,7 @@ export function ProjectRow({
           <PanelIcon name="eye-off" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2" strokeWidth={1.25} />
         ) : null}
         {status === "removed" ? (
-          <PanelIcon name="trash-2" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 text-[#ff4d4d]" strokeWidth={1.25} />
+          <PanelIcon name="trash-2" tone="danger" className="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2" strokeWidth={1.25} />
         ) : null}
       </span>
       <span className="flex min-w-0 flex-1 flex-col gap-1">

@@ -1,6 +1,19 @@
 # Changelog
 
-Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.4.0"`. Without `#tag` npm takes `main`.
+Install a fixed version with a git tag: `"@veevtamm/settings-panel": "github:Veevtamm/settings-panel#v0.4.1"`. Without `#tag` npm takes `main`.
+
+## 0.4.1
+
+### Added
+
+- Kit colors are roles: `--sp-menu`, `--sp-on-menu`, `--sp-danger`, `--sp-on-danger`, `--sp-stage`, `--sp-on-stage`. `npm run check` fails when a class uses a raw hex or a Tailwind palette color.
+- An open dock button swaps its glyph for `x` on hover, so the click reads as closing that window.
+
+### Changed
+
+- The admin gate follows the language switch: Sign in, Enter the code, Wrong code.
+- The add-media progress bar is half of the button width minus 16. The button stays the same width.
+- The text block has no scrollbar. Text that does not fit fades at the edge, the same way the menu does.
 
 ## 0.4.0
 

@@ -1613,7 +1613,7 @@ export function SettingsPanelImpl<TSettings>({
               style={{ background: FIELD }}
             >
               <EasingCurveEditor
-                accent={panelTheme === "light" ? "#1a1a1a" : "#ffffff"}
+                accent="var(--sp-fg)"
                 onChange={patchEasing}
                 playhead={playhead}
                 size={CURVE_SIZE}
@@ -2926,7 +2926,7 @@ export function SettingsPanelImpl<TSettings>({
                       value={activeSpring}
                       defaultValue={changes.defaultSprings?.[activeSpringId]}
                       onChange={patchSpring}
-                      accent={panelTheme === "light" ? "#1a1a1a" : "#ffffff"}
+                      accent="var(--sp-fg)"
                       locale={locale}
                       reduceMotion={reduceMotion}
                     />

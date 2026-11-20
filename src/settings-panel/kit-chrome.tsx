@@ -41,14 +41,34 @@ const arealType = {
   letterSpacing: "normal",
 } as const;
 
+/** Primitive pair behind `--color-black` / `--color-white`. Components use those roles, not these hexes. */
 export const PANEL_INK = "#0B0B0B";
 export const PANEL_PAPER = "#E4E4E4";
+
+/** Destructive text: delete, trash, a wrong code. */
+export const dangerTextClass = "text-[color:var(--sp-danger)]";
+/** Destructive fill. The label stays light on the red in both themes. */
+export const dangerFillClass = "bg-[var(--sp-danger)] text-[color:var(--sp-on-danger)]";
+/** Project menu plate. Fixed dark list, white stroke — it does not follow the ink/paper swap. */
+export const menuSurfaceClass =
+  "border border-[color:var(--sp-on-menu)] bg-[var(--sp-menu)] text-[color:var(--sp-on-menu)]";
+export const menuHoverClass =
+  "fine-hover:hover:inset-ring fine-hover:hover:inset-ring-[color:var(--sp-on-menu)]";
 
 const row = "group/row relative flex shrink-0 text-[14px] leading-none text-white";
 export const rowLabel = "decoration-1 underline-offset-[3px] group-hover/row:underline";
 const fieldUnderline = "underline decoration-1 underline-offset-[3px]";
 export const rowLayout = "h-auto min-h-8 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-1";
 export const stackLayout = "h-auto flex-col items-stretch justify-start gap-1 p-1";
+const wrapLayout = "h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1";
+
+export const rowLayouts = {
+  row: rowLayout,
+  stack: stackLayout,
+  wrap: wrapLayout,
+} as const;
+
+export type RowLayout = keyof typeof rowLayouts;
 export const NEW_PANEL_W_MIN = 296;
 export const NEW_PANEL_W_MAX = PANEL_WIDTH_MAX;
 export const NEW_PANEL_H_MIN = PANEL_HEIGHT_MIN;
@@ -68,12 +88,15 @@ export function PanelIcon({
   name,
   className,
   strokeWidth = 1.8,
+  tone,
 }: {
   name: LucideIconName;
   className?: string;
   strokeWidth?: number;
+  /** `danger` paints the glyph with `--sp-danger`. Size and position stay on `className`. */
+  tone?: "danger";
 }) {
-  return <Icon name={name} className={className} strokeWidth={strokeWidth} />;
+  return <Icon name={name} className={className} strokeWidth={strokeWidth} tone={tone} />;
 }
 
 const startSort = createContext<((id: string, event: ReactPointerEvent<HTMLElement>) => void) | null>(null);
@@ -224,17 +247,18 @@ function DragGrip({ className = "-left-2" }: { className?: string }) {
 
 export function Row({
   children,
-  className = rowLayout,
+  layout = "row",
   radius = true,
   bind,
 }: {
   children: ReactNode;
-  className?: string;
+  /** `row` — value on the right. `stack` — control under the label. `wrap` — chips that wrap. */
+  layout?: RowLayout;
   radius?: boolean;
   bind?: string;
 }) {
   return (
-    <div data-row="" data-bind={bind} className={`${row} ${radius ? "rounded-lg" : ""} bg-black ${className}`}>
+    <div data-row="" data-bind={bind} className={`${row} ${radius ? "rounded-lg" : ""} bg-black ${rowLayouts[layout]}`}>
       <DragGrip />
       {children}
     </div>
@@ -890,6 +914,7 @@ export function DockButton({
   label: string;
   badge?: number;
 }) {
+  const close = Boolean(active) && !disabled;
   return (
     <span className={`relative ${badge != null ? "z-10" : ""}`}>
       <button
@@ -898,9 +923,10 @@ export function DockButton({
         aria-pressed={active}
         disabled={disabled}
         onClick={onClick}
-        className={`flex size-7 items-center justify-center rounded ${disabled ? "text-black/50" : active ? "bg-black text-white" : "text-black fine-hover:hover:inset-ring fine-hover:hover:inset-ring-black"}`}
+        className={`group/dock flex size-7 items-center justify-center rounded ${disabled ? "text-black/50" : active ? "bg-black text-white" : "text-black fine-hover:hover:inset-ring fine-hover:hover:inset-ring-black"}`}
       >
-        <PanelIcon name={name} className="size-5" />
+        <PanelIcon name={name} className={`size-5 ${close ? "fine-hover:group-hover/dock:hidden" : ""}`} />
+        {close ? <PanelIcon name="x" className="hidden size-5 fine-hover:group-hover/dock:block" /> : null}
       </button>
       {badge != null ? (
         <span className="pointer-events-none absolute top-[-7px] left-[21px] flex size-3.5 items-center justify-center rounded-full bg-black text-[10px] leading-none text-white">

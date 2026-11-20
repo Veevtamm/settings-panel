@@ -47,6 +47,7 @@ export function TextField({
   const fieldRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const restoreFocus = useRef(false);
   const [expanded, setExpanded] = useState(() => value.includes("\n"));
+  const [fade, setFade] = useState({ top: false, bottom: false });
 
   useLayoutEffect(() => {
     const root = rootRef.current;
@@ -73,6 +74,31 @@ export function TextField({
     const end = field.value.length;
     field.setSelectionRange(end, end);
   }, [expanded]);
+
+  function syncFade() {
+    const el = fieldRef.current;
+    if (!(el instanceof HTMLTextAreaElement)) return;
+    const next = {
+      top: el.scrollTop > 1,
+      bottom: el.scrollTop + el.clientHeight < el.scrollHeight - 1,
+    };
+    setFade((current) => (current.top === next.top && current.bottom === next.bottom ? current : next));
+  }
+
+  useLayoutEffect(() => {
+    if (!expanded) return;
+    syncFade();
+    const el = fieldRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(syncFade);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [expanded, value, rows]);
+
+  const fadeMask =
+    fade.top || fade.bottom
+      ? `linear-gradient(to bottom, ${fade.top ? "transparent" : "#000"} 0, #000 12px, #000 calc(100% - 16px), ${fade.bottom ? "transparent" : "#000"} 100%)`
+      : undefined;
 
   const shell = plain ? "" : "rounded-lg bg-black";
   const probe = (
@@ -135,7 +161,9 @@ export function TextField({
         aria-label={label}
         spellCheck={false}
         onChange={(event) => onChange(event.target.value)}
-        className={`block min-h-[72px] w-full resize-y bg-transparent px-1 pt-1 pb-2 [&::-webkit-resizer]:opacity-0 ${ink}`}
+        onScroll={syncFade}
+        style={fadeMask ? { maskImage: fadeMask, WebkitMaskImage: fadeMask } : undefined}
+        className={`block min-h-[72px] w-full resize-y overflow-y-auto bg-transparent px-1 pt-1 pb-2 [scrollbar-width:none] [&::-webkit-resizer]:opacity-0 [&::-webkit-scrollbar]:hidden ${ink}`}
       />
       <svg viewBox="0 0 12 12" aria-hidden className="pointer-events-none absolute right-1.5 bottom-1.5 size-3 text-white/60">
         <path d="M10.5 7.5 7.5 10.5M10.5 4.5 4.5 10.5" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { LucideIconName } from "../lucide-glyphs";
-import { PanelIcon } from "./kit-chrome";
+import { dangerTextClass, menuHoverClass, menuSurfaceClass, PanelIcon } from "./kit-chrome";
 
 export const PROJECT_MENU_WIDTH = 220;
 
@@ -37,14 +37,14 @@ export function ProjectMenu({
   onSelect?: (id: string) => void;
 }) {
   return (
-    <div role="menu" className="w-[220px] rounded-lg border border-white bg-[#161616] p-1 text-[14px] leading-none text-white">
+    <div role="menu" className={`w-[220px] rounded-lg p-1 text-[14px] leading-none ${menuSurfaceClass}`}>
       {items.map((item) => (
         <button
           key={item.id}
           type="button"
           role="menuitem"
           onClick={() => onSelect?.(item.id)}
-          className={`flex h-6 w-full items-center gap-1 rounded px-0.5 text-left fine-hover:hover:inset-ring fine-hover:hover:inset-ring-white ${item.danger ? "text-[#ff4d4d]" : ""}`}
+          className={`flex h-6 w-full items-center gap-1 rounded px-0.5 text-left ${menuHoverClass} ${item.danger ? dangerTextClass : ""}`}
         >
           {item.glyph ?? <PanelIcon name={item.icon} className="size-5" />}
           {item.label}

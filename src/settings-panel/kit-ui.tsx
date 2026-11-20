@@ -37,8 +37,6 @@ import {
   ValueField,
   trimNum,
   rowLabel,
-  rowLayout,
-  stackLayout,
   tr,
 } from "./kit-chrome";
 export {
@@ -47,6 +45,10 @@ export {
   rowLabel,
   rowLayout,
   stackLayout,
+  dangerFillClass,
+  dangerTextClass,
+  menuHoverClass,
+  menuSurfaceClass,
   NEW_PANEL_W_MIN,
   NEW_PANEL_W_MAX,
   NEW_PANEL_H_MIN,
@@ -85,7 +87,7 @@ export {
   Menu,
   FloatingMenu,
 } from "./kit-chrome";
-export type { DockAnchor, Anchor } from "./kit-chrome";
+export type { DockAnchor, Anchor, RowLayout } from "./kit-chrome";
 export { TextField } from "./text-field";
 export { ProjectMenu, projectMenuItems, PROJECT_MENU_WIDTH } from "./project-menu";
 export type { ProjectMenuItem } from "./project-menu";
@@ -619,7 +621,7 @@ export function MotionWindow({
           />
         </div>
         {type === "easing" ? (
-          <Row bind="card" className={stackLayout}>
+          <Row bind="card" layout="stack">
             <span className="flex h-6 w-full items-center justify-between">
               <span className={rowLabel}>{tr(locale, "Координаты", "Coords")}</span>
               <button
@@ -680,7 +682,7 @@ export function MotionWindow({
               <span className="text-white/50">{series.settleMs} ms</span>
             </Row>
             <div ref={springAnchor} onClick={() => setSpringMenu((open) => !open)} className="cursor-pointer">
-              <Row bind="card" className={rowLayout}>
+              <Row bind="card">
                 <span className={rowLabel}>{tr(locale, "Пресет", "Preset")}</span>
                 <span className="flex items-center gap-1">
                   {springLabel}
@@ -695,7 +697,7 @@ export function MotionWindow({
         ) : null}
         {type !== "physics" ? (
           <div ref={easeAnchor} onClick={() => setMenu((open) => !open)} className="cursor-pointer">
-            <Row bind="card" className={rowLayout}>
+            <Row bind="card">
               <span className={rowLabel}>{tr(locale, "Кривая", "Ease")}</span>
               <span className="flex items-center gap-1">
                 {presetLabel}

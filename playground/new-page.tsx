@@ -73,7 +73,6 @@ import {
   parseColorInput,
   rgbToHex,
   rowLabel,
-  stackLayout,
   trimNum,
   useScrollRoot,
   type ColorFormat,
@@ -513,7 +512,7 @@ export function NewPage() {
   ) {
     const openScrub = scrubKey === key;
     return (
-      <Row key={key} bind="card" className={stackLayout}>
+      <Row key={key} bind="card" layout="stack">
         <span className="flex h-6 w-full items-center justify-between">
           <ChangedName changed={value !== d[key]} label={label} onReset={() => patch({ [key]: d[key] })} />
           <span className="flex items-center gap-1">
@@ -641,9 +640,10 @@ export function NewPage() {
               aria-label={tt("Панель", "Panel")}
               aria-pressed={open}
               onClick={() => setOpen((value) => !value)}
-              className={`flex size-7 shrink-0 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}
+              className={`group/dock flex size-7 shrink-0 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}
             >
-              <PanelIcon name="sliders-horizontal" className="size-5" />
+              <PanelIcon name="sliders-horizontal" className={`size-5 ${open ? "fine-hover:group-hover/dock:hidden" : ""}`} />
+              {open ? <PanelIcon name="x" className="hidden size-5 fine-hover:group-hover/dock:block" /> : null}
             </button>
             {open ? (
               <>
@@ -674,9 +674,10 @@ export function NewPage() {
                 setOpen(true);
                 setSearchOpen(true);
               }}
-              className={`flex size-7 shrink-0 items-center justify-center rounded ${searchOpen ? "bg-black text-white" : "text-black"}`}
+              className={`group/dock flex size-7 shrink-0 items-center justify-center rounded ${searchOpen ? "bg-black text-white" : "text-black"}`}
             >
-              <PanelIcon name="search" className="size-5" />
+              <PanelIcon name="search" className={`size-5 ${searchOpen ? "fine-hover:group-hover/dock:hidden" : ""}`} />
+              {searchOpen ? <PanelIcon name="x" className="hidden size-5 fine-hover:group-hover/dock:block" /> : null}
             </button>
             <input
               ref={searchRef}
@@ -798,7 +799,7 @@ export function NewPage() {
                       ]}
                     />
                   </Row>
-                  <Row key="anchor" bind="card" className={stackLayout}>
+                  <Row key="anchor" bind="card" layout="stack">
                     <span className="flex h-6 w-full items-center">
                       <ChangedName changed={settings.anchor !== d.anchor} label={tx(P.anchor.label, locale)} onReset={() => patch({ anchor: d.anchor })} />
                     </span>
@@ -906,7 +907,7 @@ export function NewPage() {
                     <ChangedName changed={settings.fontSize !== d.fontSize} label={tx(P.fontSize.label, locale)} onReset={() => patch({ fontSize: d.fontSize })} />
                     <ValueField value={String(settings.fontSize)} current={settings.fontSize} min={10} max={96} unit="px" onCommit={(next) => commitNumber(next, settings.fontSize, 10, 96, (fontSize) => patch({ fontSize }))} />
                   </Row>
-                  <Row key="weight" bind="title" className={stackLayout}>
+                  <Row key="weight" bind="title" layout="stack">
                     <span className="flex h-6 w-full items-center justify-between">
                       <ChangedName
                         changed={settings.wghtMin !== d.wghtMin || settings.wghtMax !== d.wghtMax}
@@ -1026,13 +1027,13 @@ export function NewPage() {
                       />
                     </FloatingMenu>
                   </div>
-                  <Row key="gaps" bind="bars" className="h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1">
+                  <Row key="gaps" bind="bars" layout="wrap">
                     <span className="flex h-8 items-center">
                       <ChangedName changed={settings.barGaps !== d.barGaps} label={tt("Зазоры", "Gaps")} onReset={() => patch({ barGaps: d.barGaps })} />
                     </span>
                     <GapChips value={settings.barGaps} onChange={(barGaps) => patch({ barGaps })} />
                   </Row>
-                  <Row key="skips" bind="bars" className="h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1">
+                  <Row key="skips" bind="bars" layout="wrap">
                     <span className="flex h-8 items-center">
                       <ChangedName changed={settings.skipCells !== d.skipCells} label={tt("Пропуски", "Skips")} onReset={() => patch({ skipCells: d.skipCells })} />
                     </span>

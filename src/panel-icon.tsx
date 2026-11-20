@@ -81,11 +81,14 @@ export function isPanelIconName(value: unknown): value is PanelIconName {
 type PanelIconProps = {
   name: PanelIconName;
   className?: string;
+  /** Destructive glyph. Color comes from `--sp-danger`, not from a class. */
+  tone?: "danger";
 } & Omit<SVGProps<SVGSVGElement>, "children" | "viewBox" | "xmlns" | "fill">;
 
 export function PanelIcon({
   name,
   className,
+  tone,
   strokeWidth = 1.5,
   ...props
 }: PanelIconProps) {
@@ -95,7 +98,7 @@ export function PanelIcon({
   return (
     <svg
       aria-hidden
-      className={cn("size-5 shrink-0", className)}
+      className={cn("size-5 shrink-0", tone === "danger" && "text-[color:var(--sp-danger)]", className)}
       fill="none"
       viewBox="0 0 20 20"
       xmlns="http://www.w3.org/2000/svg"

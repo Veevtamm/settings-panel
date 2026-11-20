@@ -1,3 +1,16 @@
+/* Roles. The name is the job, so a theme can retarget the job.
+   Ink and paper of the new chrome are `--color-black` / `--color-white`
+   (they swap). The roles below stay put: the project menu is a fixed
+   dark plate, danger stays red, the kit stage stays the same gray. */
+:root {
+  --sp-menu: #161616;
+  --sp-on-menu: #ffffff;
+  --sp-danger: #ff4d4d;
+  --sp-on-danger: #ffffff;
+  --sp-stage: #767676;
+  --sp-on-stage: #e4e4e4;
+}
+
 /* Panel gray ladder (Figma Tools → Panel / Primitive):
    glass · surface · raised · line · line-2 · dim · text-2 · text · contrast.
    Solid aliases onto the ladder. Alpha: glass, and the row hover wash

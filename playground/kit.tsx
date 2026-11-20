@@ -100,7 +100,7 @@ function PhotoTile({
       className="group relative block cursor-grab touch-none overflow-hidden rounded select-none"
       style={{ height: 120, width: Math.round(120 * ratio) }}
     >
-      <span data-truecolor="" className="absolute inset-0 bg-[#737373]" />
+      <span data-truecolor="" className="absolute inset-0" style={{ background: "#737373" }} />
       {number ? (
         <span className="absolute top-0.5 left-0.5 rounded-[2px] bg-black p-1 text-[11px] leading-3 text-white [text-box:trim-both_cap_alphabetic]">
           {number}
@@ -196,7 +196,7 @@ function AddPhoto({ empty = false, progress, index, total }: { empty?: boolean; 
     >
       {loading ? (
         <>
-          <span className="absolute top-1/2 left-1/2 h-1 w-[calc(100%-16px)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-current/20" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={index != null && total != null ? `Загрузка, ${caption}` : "Загрузка"}>
+          <span className="absolute top-1/2 left-1/2 h-1 w-[calc((100%-16px)/2)] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-full bg-current/20" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100} aria-label={index != null && total != null ? `Загрузка, ${caption}` : "Загрузка"}>
             <span className="block h-full bg-current" style={{ width: `${progress}%` }} />
           </span>
           <span className={`${ADD_CAPTION} max-w-[calc(100%-8px)]`}>{caption}</span>
@@ -477,8 +477,9 @@ function SceneDock({ state, done = false }: { state: "closed" | "open" | "search
       <DockButton name="settings" label="Настройки" />
       <DockDivider />
       <span className={`flex h-7 items-center rounded ${open ? "inset-ring inset-ring-black" : ""}`}>
-        <button type="button" aria-label="Панель" aria-pressed={open} className={`flex size-7 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}>
-          <PanelIcon name="sliders-horizontal" className="size-5" />
+        <button type="button" aria-label="Панель" aria-pressed={open} className={`group/dock flex size-7 items-center justify-center rounded ${open ? "bg-black text-white" : "text-black"}`}>
+          <PanelIcon name="sliders-horizontal" className={`size-5 ${open ? "fine-hover:group-hover/dock:hidden" : ""}`} />
+          {open ? <PanelIcon name="x" className="hidden size-5 fine-hover:group-hover/dock:block" /> : null}
         </button>
         {open ? (
           <>
@@ -491,8 +492,9 @@ function SceneDock({ state, done = false }: { state: "closed" | "open" | "search
             <button type="button" aria-label="Ссылка" className="flex size-7 items-center justify-center rounded">
               <PanelIcon name={done ? "check" : "link"} className="size-5" />
             </button>
-            <button type="button" aria-label={search ? "Закрыть поиск" : "Поиск"} aria-pressed={search} className={`flex size-7 items-center justify-center rounded ${search ? "bg-black text-white" : ""}`}>
-              <PanelIcon name="search" className="size-5" />
+            <button type="button" aria-label={search ? "Закрыть поиск" : "Поиск"} aria-pressed={search} className={`group/dock flex size-7 items-center justify-center rounded ${search ? "bg-black text-white" : ""}`}>
+              <PanelIcon name="search" className={`size-5 ${search ? "fine-hover:group-hover/dock:hidden" : ""}`} />
+              {search ? <PanelIcon name="x" className="hidden size-5 fine-hover:group-hover/dock:block" /> : null}
             </button>
             {search ? (
               <input
@@ -594,7 +596,7 @@ function ParametersSpecimen() {
               <span className="flex items-center gap-2">
                 <ValueField value="101014" unit="HEX" onCommit={() => {}} />
                 <ValueField value="55" unit="%" current={55} min={0} max={100} onCommit={() => {}} />
-                <span aria-hidden className="size-6 rounded bg-[#101014]" />
+                <span aria-hidden data-color-sample="" className="size-6 rounded" style={{ background: "#101014" }} />
               </span>
             </Row>
           </Section>
@@ -666,7 +668,7 @@ export function KitPage() {
   }, [theme]);
 
   return (
-    <main data-new-ui="" className="h-dvh overflow-y-auto bg-[#767676] px-8 pt-24 pb-8 text-[#E4E4E4] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ fontFamily: FONT }}>
+    <main data-new-ui="" className="h-dvh overflow-y-auto bg-[var(--sp-stage)] px-8 pt-24 pb-8 text-[color:var(--sp-on-stage)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ fontFamily: FONT }}>
       <PageBar trailing={<IconPick value={theme} onChange={setTheme} options={[{ id: "sun", icon: "sun" }, { id: "moon", icon: "moon" }]} />} />
       <div className={`flex flex-col gap-10 ${theme === "moon" ? "photo-theme-dark" : ""}`}>
       <Layer name="Атомы">
@@ -789,7 +791,7 @@ export function KitPage() {
 
         <Card name="Скраб">
           <Plate>
-            <Row className="h-auto flex-col items-stretch gap-1 p-1">
+            <Row layout="stack">
               <span className="flex h-6 items-center justify-between">
                 <Name label="Сторона" />
                 <ValueField
@@ -811,7 +813,7 @@ export function KitPage() {
 
         <Card name="Диапазон">
           <Plate>
-            <Row className="h-auto flex-col items-stretch gap-1 p-1">
+            <Row layout="stack">
               <span className="flex h-6 w-full items-center justify-between">
                 <Name label="Толщина" />
                 <span className="flex items-center gap-3">
@@ -1069,7 +1071,7 @@ export function KitPage() {
 
         <Card name="Якорь">
           <Plate>
-            <Row className="h-auto flex-col items-stretch gap-1 p-1">
+            <Row layout="stack">
               <span className="flex h-6 w-full items-center">
                 <Name label="Якорь" />
               </span>
@@ -1106,7 +1108,7 @@ export function KitPage() {
 
         <Card name="Зазоры">
           <Plate>
-            <Row className="h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1">
+            <Row layout="wrap">
               <span className="flex h-8 items-center">
                 <Name label="Зазоры" />
               </span>
@@ -1117,7 +1119,7 @@ export function KitPage() {
 
         <Card name="Пропуски">
           <Plate>
-            <Row className="h-auto min-h-8 flex-wrap items-start gap-x-2 gap-y-1 px-1">
+            <Row layout="wrap">
               <span className="flex h-8 items-center">
                 <Name label="Пропуски" />
               </span>
