@@ -175,35 +175,12 @@
   color: var(--color-white) !important;
 }
 
-/* New chrome ink and paper. Dark swaps them before paint, same as the kit.
-   A filter would invert already-smoothed glyphs, so type on white looks heavier. */
+/* New chrome keeps the kit pair in both panel themes: paper window, ink rows.
+   Swapping them in the dark theme turned the rows and the plot light. */
 [data-panel-style="new"],
 [data-new-ui] {
   --color-black: #0b0b0b;
   --color-white: #e4e4e4;
-}
-
-[data-panel-style="new"][data-panel-theme="dark"],
-[data-new-ui][data-panel-theme="dark"] {
-  --color-black: #e4e4e4;
-  --color-white: #0b0b0b;
-}
-
-[data-panel-style="new"][data-panel-theme="dark"] .text-white\/50,
-[data-panel-style="new"][data-panel-theme="dark"] .text-white\/55,
-[data-new-ui][data-panel-theme="dark"] .text-white\/50,
-[data-new-ui][data-panel-theme="dark"] .text-white\/55 {
-  color: color-mix(in srgb, var(--color-white) 50%, transparent);
-}
-
-[data-panel-style="new"][data-panel-theme="dark"] .text-black\/50,
-[data-new-ui][data-panel-theme="dark"] .text-black\/50 {
-  color: color-mix(in srgb, var(--color-black) 50%, transparent);
-}
-
-[data-panel-style="new"][data-panel-theme="dark"] .bg-black\/50,
-[data-new-ui][data-panel-theme="dark"] .bg-black\/50 {
-  background-color: color-mix(in srgb, var(--color-black) 50%, transparent);
 }
 
 [data-dock-extra] button {

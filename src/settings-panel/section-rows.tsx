@@ -199,6 +199,7 @@ export function SectionRows<TSettings>({
   sectionKey,
   theme,
   font,
+  omitColors = false,
 }: {
   section: SettingsSection<TSettings>;
   settings: TSettings;
@@ -222,6 +223,8 @@ export function SectionRows<TSettings>({
   sectionKey?: string;
   theme?: string;
   font?: string;
+  /** New chrome keeps colours in the palette window. */
+  omitColors?: boolean;
 }) {
   type Row = {
     after?: keyof TSettings;
@@ -557,14 +560,16 @@ export function SectionRows<TSettings>({
 
   const rows: Row[] = [];
 
-  for (const item of section.colors ?? []) {
-    rows.push(
-      fromIndexed(
-        { kind: "color", item },
-        `color:${String(item.key)}`,
-        item.after,
-      ),
-    );
+  if (!omitColors) {
+    for (const item of section.colors ?? []) {
+      rows.push(
+        fromIndexed(
+          { kind: "color", item },
+          `color:${String(item.key)}`,
+          item.after,
+        ),
+      );
+    }
   }
   for (const item of section.orients ?? []) {
     rows.push(
@@ -695,6 +700,7 @@ export function SectionRows<TSettings>({
       warnMissingRef(String(item.ref));
       continue;
     }
+    if (omitColors && source.kind === "color") continue;
     const resolved = fromIndexed(
       source,
       `ref:${String(item.ref)}`,

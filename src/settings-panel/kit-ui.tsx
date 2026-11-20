@@ -1,6 +1,6 @@
 "use client";
 
-import { useContext, useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatBezierInput, parseBezierInput } from "../lib/cubic-bezier";
 import { parseRgb } from "../lib/hex";
@@ -15,6 +15,8 @@ import { hexToHsv, hsvToHex } from "./color";
 import { PresetCurveIcon } from "./preset-curve";
 import { matchSpringPreset, SPRING_PRESET_GROUPS, springSettleMs, springValue } from "../lib/spring";
 import {
+  AXIS_X0,
+  AXIS_X1,
   ensureAxisHandles,
   isCornerHandle,
   moveAxisPoint,
@@ -26,8 +28,6 @@ import {
 import {
   FloatingMenu,
   Menu,
-  PANEL_INK,
-  PANEL_PAPER,
   PanelIcon,
   PanelLocale,
   Row,
@@ -39,9 +39,8 @@ import {
   rowLabel,
   tr,
 } from "./kit-chrome";
+export { PANEL_INK, PANEL_PAPER } from "./kit-chrome";
 export {
-  PANEL_INK,
-  PANEL_PAPER,
   rowLabel,
   rowLayout,
   stackLayout,
@@ -179,11 +178,67 @@ function springSeries(stiffness: number, damping: number, mass: number) {
   return { points, settleMs };
 }
 
-function plotPoint(point: Point) {
+/** Page-shaped plot. t is its height, 0…1 is its width. */
+type ScreenFrame = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  screenW: number;
+  screenH: number;
+};
+
+function layoutScreen(width: number, aspect: number): ScreenFrame {
+  const screenW = width;
+  const screenH = width / aspect;
+  const padY = 14;
+  const span = AXIS_X1 - AXIS_X0;
+  const w = screenW * span;
+  return {
+    x: -((0 - AXIS_X0) / span) * w,
+    y: padY,
+    w,
+    h: Math.max(1, screenH - padY * 2),
+    screenW,
+    screenH,
+  };
+}
+
+function useViewportAspect() {
+  return useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener("resize", onChange);
+      return () => window.removeEventListener("resize", onChange);
+    },
+    () => Math.max(0.45, Math.min(2.6, window.innerWidth / Math.max(1, window.innerHeight))),
+    () => 16 / 9,
+  );
+}
+
+function plotPoint(point: Point, frame?: ScreenFrame) {
+  if (frame) {
+    const span = AXIS_X1 - AXIS_X0;
+    return {
+      x: frame.x + ((point.y - AXIS_X0) / span) * frame.w,
+      y: frame.y + point.x * frame.h,
+    };
+  }
   return { x: 8 + point.x * 224, y: 8 + point.y * 144 };
 }
 
-function PlotGrid({ x, y, width, height }: { x: number; y: number; width: number; height: number }) {
+function PlotGrid({
+  x,
+  y,
+  width,
+  height,
+  turned = false,
+}: {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  turned?: boolean;
+}) {
   return (
     <g stroke={SILVER} opacity="0.5">
       {[0.25, 0.5, 0.75].map((step) => (
@@ -192,7 +247,14 @@ function PlotGrid({ x, y, width, height }: { x: number; y: number; width: number
           <line x1={x} x2={x + width} y1={y + height * step} y2={y + height * step} />
         </g>
       ))}
-      <line x1={x} y1={y + height} x2={x + width} y2={y} strokeWidth="0.75" strokeDasharray="4 4" />
+      <line
+        x1={turned ? x + width : x}
+        y1={turned ? y : y + height}
+        x2={turned ? x : x + width}
+        y2={turned ? y + height : y}
+        strokeWidth="0.75"
+        strokeDasharray="4 4"
+      />
     </g>
   );
 }
@@ -201,45 +263,48 @@ function axisPts(points: Point[]): AxisPoint[] {
   return points.map((point) => [point.x, point.y]);
 }
 
-function axisCurvePath(points: Point[], handles: AxisHandle[], smooth: boolean) {
+function axisCurvePath(points: Point[], handles: AxisHandle[], smooth: boolean, frame?: ScreenFrame) {
   const samples = sampleAxisPath(axisPts(points), handles, 64, smooth ? 0 : 1);
   return samples
     .map((sample, index) => {
-      const at = plotPoint({ x: sample.t, y: sample.x });
+      const at = plotPoint({ x: sample.t, y: sample.x }, frame);
       return `${index === 0 ? "M" : "L"}${at.x} ${at.y}`;
     })
     .join(" ");
 }
 
-function axisArms(points: Point[], handles: AxisHandle[], index: number) {
+function axisArms(points: Point[], handles: AxisHandle[], index: number, frame?: ScreenFrame) {
   const pts = axisPts(points);
   const hs = ensureAxisHandles(pts, handles);
   if (isCornerHandle(hs[index])) return { inn: null, out: null };
   const out = index < pts.length - 1 ? segmentControls(pts, hs, index)[0] : null;
   const inn = index > 0 ? segmentControls(pts, hs, index - 1)[1] : null;
   return {
-    out: out ? plotPoint({ x: out[0], y: out[1] }) : null,
-    inn: inn ? plotPoint({ x: inn[0], y: inn[1] }) : null,
+    out: out ? plotPoint({ x: out[0], y: out[1] }, frame) : null,
+    inn: inn ? plotPoint({ x: inn[0], y: inn[1] }, frame) : null,
   };
 }
 
 /** Each whisker keeps its own offset. A 2-tuple handle is mirrored, so split it into the two sides currently on screen. */
-function splitWhiskers(points: Point[], handles: AxisHandle[], index: number) {
+function splitWhiskers(points: Point[], handles: AxisHandle[], index: number, frame?: ScreenFrame) {
   const pts = axisPts(points);
   const knot = pts[index] ?? [0, 0];
-  const arms = axisArms(points, handles, index);
+  const arms = axisArms(points, handles, index, frame);
   const fromPlot = (arm: { x: number; y: number } | null, sign: 1 | -1): [number, number] => {
     if (!arm) return [0.08, 0];
-    const x = (arm.x - 8) / 224;
-    const y = (arm.y - 8) / 144;
-    return [Math.round((x - knot[0]) * sign * 200) / 200, Math.round((y - knot[1]) * sign * 200) / 200];
+    const span = AXIS_X1 - AXIS_X0;
+    const t = frame ? (arm.y - frame.y) / frame.h : (arm.x - 8) / 224;
+    const value = frame
+      ? AXIS_X0 + ((arm.x - frame.x) / frame.w) * span
+      : (arm.y - 8) / 144;
+    return [Math.round((t - knot[0]) * sign * 200) / 200, Math.round((value - knot[1]) * sign * 200) / 200];
   };
   return { out: fromPlot(arms.out, 1), inn: fromPlot(arms.inn, -1) };
 }
 
 
-const VOID = PANEL_INK;
-const SILVER = PANEL_PAPER;
+const VOID = "var(--color-black)";
+const SILVER = "var(--color-white)";
 
 export function ColorPicker({
   color,
@@ -441,6 +506,8 @@ export function MotionWindow({
   target,
   targets = [],
   onTarget,
+  modes = ["easing", "physics"],
+  bare = false,
 }: {
   type: "easing" | "physics";
   onType: (next: "easing" | "physics") => void;
@@ -448,10 +515,14 @@ export function MotionWindow({
   onCurve: (next: [number, number, number, number]) => void;
   spring: { stiffness: number; damping: number; mass: number };
   onSpring: (next: { stiffness: number; damping: number; mass: number }) => void;
-  /** Current curve, shown as a dropdown above the plot. */
+  /** Current curve or spring, shown as a dropdown above the plot. */
   target?: string;
   targets?: readonly string[];
   onTarget?: (label: string) => void;
+  /** Which halves of the window exist. One mode hides the Кривая | Пружина segment. */
+  modes?: readonly ("easing" | "physics")[];
+  /** Parent already draws the white window. */
+  bare?: boolean;
 }) {
   const locale = useContext(PanelLocale);
   const [menu, setMenu] = useState(false);
@@ -463,10 +534,12 @@ export function MotionWindow({
   const presetLabel = EASING_PRESET_LABELS[presetId as keyof typeof EASING_PRESET_LABELS] ?? EASING_PRESET_LABELS.custom;
   const presetGroups = PRESET_GROUPS.map((group) => group.map((item) => item.label));
   const series = springSeries(spring.stiffness, spring.damping, spring.mass);
-  const types = [
-    ["easing", tr(locale, "Кривая", "Easing")],
-    ["physics", tr(locale, "Пружина", "Physics")],
-  ] as const;
+  const types = (
+    [
+      ["easing", tr(locale, "Кривая", "Easing")],
+      ["physics", tr(locale, "Пружина", "Physics")],
+    ] as const
+  ).filter(([id]) => modes.includes(id));
 
   const springHit = matchSpringPreset(spring);
   const springPreset = SPRING_PRESET_GROUPS.flatMap((group) => group.presets).find((preset) => preset.id === springHit);
@@ -535,14 +608,21 @@ export function MotionWindow({
   }
 
   return (
-    <section data-chrome="" className="flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black">
+    <section
+      data-chrome=""
+      className={
+        bare
+          ? "flex w-full flex-col gap-1.5 p-2 text-black"
+          : "flex w-64 flex-col gap-1.5 rounded-2xl bg-white p-2 text-black"
+      }
+    >
       <header className="flex h-4 items-center px-1">
         <span className="flex min-w-0 items-center gap-1">
           <PanelIcon name="spline" className="size-5" />
           <span className="text-[14px] leading-4">{tr(locale, "Движение", "Motion")}</span>
         </span>
       </header>
-      {type === "easing" && target && onTarget ? (
+      {target && onTarget && targets.length > 0 ? (
         <TargetPick label={tr(locale, "Элемент", "Element")} value={target} options={targets} onChange={onTarget} />
       ) : null}
       <div className="overflow-hidden rounded-lg bg-black">
@@ -612,14 +692,16 @@ export function MotionWindow({
             </>
           )}
         </svg>
-        <div className="p-1">
-          <Segment
-            equal
-            value={type}
-            onChange={onType}
-            options={types.map(([id, label]) => ({ id, label }))}
-          />
-        </div>
+        {types.length > 1 ? (
+          <div className="p-1">
+            <Segment
+              equal
+              value={type}
+              onChange={onType}
+              options={types.map(([id, label]) => ({ id, label }))}
+            />
+          </div>
+        ) : null}
         {type === "easing" ? (
           <Row bind="card" layout="stack">
             <span className="flex h-6 w-full items-center justify-between">
@@ -736,6 +818,8 @@ export function AxisWindow({
   target,
   targets = [],
   onTarget,
+  /** Page axes travel downward. The plot turns so that path is vertical. */
+  turned = false,
 }: {
   points: Point[];
   onPoints: (next: Point[]) => void;
@@ -749,8 +833,11 @@ export function AxisWindow({
   target?: string;
   targets?: readonly string[];
   onTarget?: (label: string) => void;
+  turned?: boolean;
 }) {
   const locale = useContext(PanelLocale);
+  const aspect = useViewportAspect();
+  const frame = turned ? layoutScreen(240, aspect) : undefined;
 
   function addPoint() {
     if (points.length >= 12) return;
@@ -793,25 +880,38 @@ export function AxisWindow({
       <div className="overflow-hidden rounded-lg bg-black">
         <svg
           data-plot=""
-          viewBox="0 0 240 160"
-          className="block h-40 w-full touch-none"
+          viewBox={frame ? `0 0 ${frame.screenW} ${frame.screenH}` : "0 0 240 160"}
+          className={`block w-full touch-none ${frame ? "" : "h-40"}`}
+          style={frame ? { aspectRatio: aspect } : undefined}
           onPointerDown={(event) => {
             event.stopPropagation();
             const svg = event.currentTarget;
             const rect = svg.getBoundingClientRect();
+            const boxW = frame ? frame.screenW : 240;
+            const boxH = frame ? frame.screenH : 160;
             const view = (clientX: number, clientY: number) => ({
-              x: ((clientX - rect.left) / rect.width) * 240,
-              y: ((clientY - rect.top) / rect.height) * 160,
+              x: ((clientX - rect.left) / rect.width) * boxW,
+              y: ((clientY - rect.top) / rect.height) * boxH,
             });
             const local = (clientX: number, clientY: number) => {
               const at = view(clientX, clientY);
+              if (frame) {
+                const span = AXIS_X1 - AXIS_X0;
+                return {
+                  x: Math.min(1, Math.max(0, (at.y - frame.y) / frame.h)),
+                  y: Math.min(
+                    AXIS_X1,
+                    Math.max(AXIS_X0, AXIS_X0 + ((at.x - frame.x) / frame.w) * span),
+                  ),
+                };
+              }
               return {
                 x: Math.min(1, Math.max(0, (at.x - 8) / 224)),
                 y: Math.min(1, Math.max(0, (at.y - 8) / 144)),
               };
             };
             const start = view(event.clientX, event.clientY);
-            const arms = style === "smooth" ? axisArms(points, handles, selected) : { inn: null, out: null };
+            const arms = style === "smooth" ? axisArms(points, handles, selected, frame) : { inn: null, out: null };
             const distTo = (arm: { x: number; y: number } | null) => (arm ? Math.hypot(arm.x - start.x, arm.y - start.y) : Infinity);
             const outDist = distTo(arms.out);
             const inDist = distTo(arms.inn);
@@ -831,7 +931,7 @@ export function AxisWindow({
               });
               onSelect(nearest);
             }
-            const sides = splitWhiskers(points, handles, selected);
+            const sides = splitWhiskers(points, handles, selected, frame);
             svg.setPointerCapture(event.pointerId);
             const move = (ev: PointerEvent) => {
               const place = local(ev.clientX, ev.clientY);
@@ -872,13 +972,17 @@ export function AxisWindow({
             svg.addEventListener("pointerup", up);
           }}
         >
-          <PlotGrid x={8} y={8} width={224} height={144} />
-          <path d={axisCurvePath(points, handles, style === "smooth")} fill="none" stroke={SILVER} strokeWidth="1.5" />
+          {frame ? (
+            <PlotGrid x={0} y={0} width={frame.screenW} height={frame.screenH} />
+          ) : (
+            <PlotGrid x={8} y={8} width={224} height={144} />
+          )}
+          <path d={axisCurvePath(points, handles, style === "smooth", frame)} fill="none" stroke={SILVER} strokeWidth="1.5" />
           {style === "smooth" && points[selected] ? (
             <g stroke={SILVER} strokeOpacity="0.5" strokeWidth="1">
               {(() => {
-                const at = plotPoint(points[selected]);
-                const arms = axisArms(points, handles, selected);
+                const at = plotPoint(points[selected], frame);
+                const arms = axisArms(points, handles, selected, frame);
                 return (
                   <>
                     {arms.inn ? <line x1={at.x} y1={at.y} x2={arms.inn.x} y2={arms.inn.y} /> : null}
@@ -903,7 +1007,7 @@ export function AxisWindow({
             </g>
           ) : null}
           {points.map((point, index) => {
-            const at = plotPoint(point);
+            const at = plotPoint(point, frame);
             return <circle key={index} cx={at.x} cy={at.y} r={index === selected ? 4 : 3} fill={VOID} stroke={SILVER} strokeWidth="1.5" />;
           })}
         </svg>

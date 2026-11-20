@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { PanelIcon, type PanelIconName } from "../panel-icon";
 import { cn } from "../lib/utils";
+import { AnchorPick, IconPick } from "./kit-chrome";
+import { useChromeStyle } from "./panel-style";
 import { pickActive, pickEase, pickIdle, pickerChrome } from "./chrome";
 import { isMember } from "./model";
 import { SettingRow, RowLabel } from "./row";
@@ -147,6 +149,7 @@ export function SettingFrameOrient({
   value: string;
 } & ResetDotProps) {
   const selected = isSettingFrameOrient(value) ? value : "square";
+  const fresh = useChromeStyle() === "new";
   return (
     <SettingRow
       label={label}
@@ -157,6 +160,17 @@ export function SettingFrameOrient({
       onIconChange={onIconChange}
       locale={locale}
     >
+      {fresh ? (
+        <IconPick
+          value={selected}
+          onChange={onChange}
+          options={[
+            { id: "square", icon: "square" },
+            { id: "portrait", icon: "rectangle-vertical" },
+            { id: "landscape", icon: "rectangle-horizontal" },
+          ]}
+        />
+      ) : (
       <PickRadioGroup
         label={label}
         className={cn(
@@ -169,6 +183,7 @@ export function SettingFrameOrient({
         optionLabel={(orient) => tx(FRAME_ORIENT_COPY[orient], locale)}
         optionGlyph={(orient) => <FrameOrientGlyph orient={orient} />}
       />
+      )}
     </SettingRow>
   );
 }
@@ -242,6 +257,7 @@ export function SettingXAnchor({
   value: string;
 } & ResetDotProps) {
   const selected = isSettingXAnchor(value) ? value : "center";
+  const fresh = useChromeStyle() === "new";
   return (
     <SettingRow
       label={label}
@@ -252,6 +268,17 @@ export function SettingXAnchor({
       onIconChange={onIconChange}
       locale={locale}
     >
+      {fresh ? (
+        <IconPick
+          value={selected}
+          onChange={onChange}
+          options={[
+            { id: "left", icon: "align-start-vertical" },
+            { id: "center", icon: "align-center-vertical" },
+            { id: "right", icon: "align-end-vertical" },
+          ]}
+        />
+      ) : (
       <PickRadioGroup
         label={label}
         className={cn(
@@ -269,6 +296,7 @@ export function SettingXAnchor({
           />
         )}
       />
+      )}
     </SettingRow>
   );
 }
@@ -290,6 +318,7 @@ export function SettingTextAlign({
   value: string;
 } & ResetDotProps) {
   const selected = isSettingTextAlign(value) ? value : "left";
+  const fresh = useChromeStyle() === "new";
   return (
     <SettingRow
       label={label}
@@ -300,6 +329,18 @@ export function SettingTextAlign({
       onIconChange={onIconChange}
       locale={locale}
     >
+      {fresh ? (
+        <IconPick
+          value={selected}
+          onChange={onChange}
+          options={[
+            { id: "left", icon: "align-left" },
+            { id: "center", icon: "align-center" },
+            { id: "right", icon: "align-right" },
+            { id: "justify", icon: "align-justify" },
+          ]}
+        />
+      ) : (
       <PickRadioGroup
         label={label}
         className={cn(
@@ -317,6 +358,7 @@ export function SettingTextAlign({
           />
         )}
       />
+      )}
     </SettingRow>
   );
 }
@@ -338,6 +380,29 @@ export function SettingAnchor({
   value: string;
 } & ResetDotProps) {
   const selected = isSettingAnchor(value) ? value : "center";
+  const fresh = useChromeStyle() === "new";
+  if (fresh) {
+    return (
+      <div
+        className="flex flex-col gap-1 bg-black px-1 py-1 text-[14px] leading-none text-white"
+        data-setting-row=""
+        data-row=""
+      >
+        <span className="flex h-6 items-center">
+          <RowLabel
+            label={label}
+            modified={modified}
+            onResetValue={onResetValue}
+            info={info}
+            icon={icon}
+            onIconChange={onIconChange}
+            locale={locale}
+          />
+        </span>
+        <AnchorPick value={selected} onChange={onChange} />
+      </div>
+    );
+  }
   return (
     <div
       className="group flex items-start justify-between gap-4"

@@ -167,6 +167,16 @@ import { bindSettingsHistory, useSettingsHistory } from "./use-history";
 import { usePanelSnapshots } from "./use-snapshots";
 import { useSettingsTransfer } from "./use-transfer";
 import { SettingsTransferMenu } from "./transfer-menu";
+import { NewScene } from "./new-scene";
+import { PanelLocale as KitLocale } from "./kit-chrome";
+import {
+  ColorPicker,
+  MotionWindow,
+  hexToHsva,
+  hsvaToRgb,
+  rgbToHex,
+  type ColorFormat,
+} from "./kit-ui";
 import { SpringEditor } from "./spring-editor";
 import { useCurveLibrary } from "./use-curve-library";
 import {
@@ -317,6 +327,10 @@ export function SettingsPanelImpl<TSettings>({
   const [bezierOpen, setBezierOpen] = useState(false);
   const [axisOpen, setAxisOpen] = useState(false);
   const [springOpen, setSpringOpen] = useState(false);
+  const [motionType, setMotionType] = useState<"easing" | "physics">("easing");
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteKey, setPaletteKey] = useState("");
+  const [colorFormat, setColorFormat] = useState<ColorFormat>("hex");
   const curveLibrary = useCurveLibrary(panelId);
   const [curveName, setCurveName] = useState("");
   const [activeSpringId, setActiveSpringId] = useState(
@@ -437,6 +451,7 @@ export function SettingsPanelImpl<TSettings>({
     maxPanelH,
     frameW,
     frameH,
+    panelTopPin,
     startPanelResize,
     startPanelMove,
     startChromeMove,
@@ -526,6 +541,10 @@ export function SettingsPanelImpl<TSettings>({
     setSearchQuery("");
     setChangedOnly(false);
   };
+  const dockSearchRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (searchOpen) dockSearchRef.current?.focus();
+  }, [searchOpen]);
   const [closedSubsections, setClosedSubsections] = useState(
     () => new Set<string>(),
   );
@@ -656,6 +675,11 @@ export function SettingsPanelImpl<TSettings>({
     skipPanelMotion,
     skipPanelMotion ? 0 : PANEL_EXIT_MS,
   );
+  const paletteMounted = useDeferredMount(
+    paletteOpen,
+    skipPanelMotion,
+    skipPanelMotion ? 0 : PANEL_EXIT_MS,
+  );
   const settingsMounted = useDeferredMount(
     settingsOpen,
     skipPanelMotion,
@@ -747,6 +771,39 @@ export function SettingsPanelImpl<TSettings>({
     ...curveSections.flatMap((section) => section.options),
   ];
   const hasEasingTargets = easingTargets.length > 0;
+  const paletteColors = groups.flatMap((group) =>
+    group.sections.flatMap((section) =>
+      (section.colors ?? []).map((color) => ({
+        key: String(color.key),
+        opacityKey:
+          color.opacityKey == null ? undefined : String(color.opacityKey),
+        label: tx(color.label, locale),
+      })),
+    ),
+  );
+  const paletteSeen = new Set<string>();
+  const paletteItems = paletteColors.filter((color) => {
+    if (paletteSeen.has(color.key)) return false;
+    paletteSeen.add(color.key);
+    return true;
+  });
+  const paletteLabelCount = new Map<string, number>();
+  for (const color of paletteItems) {
+    paletteLabelCount.set(
+      color.label,
+      (paletteLabelCount.get(color.label) ?? 0) + 1,
+    );
+  }
+  const paletteChoices = paletteItems.map((color) => ({
+    ...color,
+    label:
+      (paletteLabelCount.get(color.label) ?? 0) > 1
+        ? `${color.label} · ${color.key}`
+        : color.label,
+  }));
+  const activePalette =
+    paletteChoices.find((color) => color.key === paletteKey) ??
+    paletteChoices[0];
 
   const allSectionIds = [
     ...groupsForPanel.map((group) => group.id),
@@ -1544,15 +1601,31 @@ export function SettingsPanelImpl<TSettings>({
     setSpringOpen((open) => !open);
     if (!springOpen) raiseWindow("spring");
   };
+  const toggleMotion = () => {
+    setPanelInstant(false);
+    if (springOpen || bezierOpen) {
+      setSpringOpen(false);
+      setBezierOpen(false);
+      return;
+    }
+    if (hasSpringTargets) setSpringOpen(true);
+    if (hasEasingTargets) setBezierOpen(true);
+    raiseWindow(hasEasingTargets ? "bezier" : "spring");
+  };
   const panelScroll =
     "overflow-y-auto overscroll-y-contain [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden";
+  const motionIsOpen = springOpen || bezierOpen;
   const extraDockLeft = (id: ChromeWindowId) => {
     const rank = CHROME_WINDOW_IDS.indexOf(id);
     const index =
       (panelOpen && panelFloat == null ? 1 : 0) +
       (settingsOpen && rank > 0 ? 1 : 0) +
-      (springOpen && rank > 1 ? 1 : 0) +
-      (bezierOpen && rank > 2 ? 1 : 0);
+      (fresh
+        ? motionIsOpen && rank > 1
+          ? 1
+          : 0
+        : (springOpen && rank > 1 ? 1 : 0) +
+          (bezierOpen && rank > 2 ? 1 : 0));
     const dir = dockRight ? -1 : 1;
     const x = dockedX + dir * index * (frameW + PANEL_DOCK_GAP);
     const maxX = Math.max(DOCK_INSET, viewportW - frameW - DOCK_INSET);
@@ -1743,6 +1816,29 @@ export function SettingsPanelImpl<TSettings>({
 
   if (!chromeVisible) return null;
 
+  if (fresh) {
+    return (
+      <NewScene
+        panelId={panelId}
+        layoutPanelId={layoutStoreId}
+        settings={settings as Record<string, unknown>}
+        defaultSettings={defaultSettings as Record<string, unknown> | undefined}
+        onSettingsChange={(patch) =>
+          onSettingsChange(patch as Partial<TSettings>)
+        }
+        onReset={onReset}
+        groups={groups as readonly SettingsGroup<Record<string, unknown>>[]}
+        easingTargets={easingTargets}
+        springTargets={springTargets}
+        curveSection={curveSection}
+        curveSectionTitle={curveSectionTitle}
+        curveSectionIcon={curveSectionIcon}
+        dockExtra={dockExtra}
+        sceneIcon={sceneIcon}
+      />
+    );
+  }
+
   const dockButton = (active = false) =>
     fresh ? newDockButtonClass(active) : dockBarButtonClass(active);
 
@@ -1819,6 +1915,28 @@ export function SettingsPanelImpl<TSettings>({
           </button>
           <DockBarDivider />
           <DockBadgeAnchor>
+          <span
+            className={cn(
+              fresh && "flex h-7 overflow-hidden rounded inset-ring-black",
+              fresh &&
+                (panelOpen
+                  ? "inset-ring"
+                  : "fine-hover:hover:inset-ring"),
+              fresh &&
+                !reduceMotion &&
+                "transition-[width] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]",
+            )}
+            style={
+              fresh
+                ? {
+                    width:
+                      panelOpen && dockSearch
+                        ? 28 + (searchOpen ? 164 : 28)
+                        : 28,
+                  }
+                : undefined
+            }
+          >
           <button
             type="button"
             id={`${panelId}-trigger`}
@@ -1846,6 +1964,59 @@ export function SettingsPanelImpl<TSettings>({
           >
             <PanelIcon name={sceneIcon} className="size-5" />
           </button>
+          {fresh && panelOpen && dockSearch ? (
+            <>
+              <button
+                type="button"
+                aria-expanded={searchOpen}
+                aria-label={tx(
+                  searchOpen ? PANEL_COPY.closeSearch : PANEL_COPY.openSearch,
+                  locale,
+                )}
+                className={cn(
+                  "flex size-7 shrink-0 items-center justify-center rounded",
+                  searchOpen ? "bg-black text-white" : "text-black",
+                )}
+                onClick={() => {
+                  if (dockMovedRef.current) return;
+                  if (searchOpen) closeSearch();
+                  else {
+                    setSearchOpen(true);
+                    setPanelOpen(true);
+                  }
+                }}
+              >
+                <PanelIcon name="search" className="size-5" />
+              </button>
+              <input
+                ref={dockSearchRef}
+                type="search"
+                value={searchQuery}
+                placeholder={
+                  changedFilterActive
+                    ? tx(PANEL_COPY.changedFilter(changedCount), locale)
+                    : tx(PANEL_COPY.searchPlaceholder, locale)
+                }
+                aria-label={tx(PANEL_COPY.searchField, locale)}
+                aria-hidden={!searchOpen}
+                tabIndex={searchOpen ? 0 : -1}
+                autoComplete="off"
+                onChange={(event) => {
+                  setChangedOnly(false);
+                  setSearchQuery(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Escape") return;
+                  event.preventDefault();
+                  if (searchQuery) setSearchQuery("");
+                  else closeSearch();
+                }}
+                onPointerDown={(event) => event.stopPropagation()}
+                className="h-7 min-w-0 flex-1 bg-transparent pr-2 pl-1 text-[14px] leading-[18px] text-black outline-none placeholder:text-black/50 [&::-webkit-search-cancel-button]:hidden"
+              />
+            </>
+          ) : null}
+          </span>
           {changedBadge(!valueReset || panelOpen ? 0 : changedCount)}
           </DockBadgeAnchor>
           <DockBarSlot
@@ -1874,6 +2045,33 @@ export function SettingsPanelImpl<TSettings>({
           >
             <DockBarDivider />
           </DockBarSlot>
+          {fresh ? (
+            <DockBarSlot
+              open={hasSpringTargets || hasEasingTargets}
+              reduceMotion={reduceMotion}
+            >
+              <button
+                type="button"
+                aria-expanded={motionIsOpen}
+                aria-controls={`${panelId}-motion`}
+                aria-label={tx(
+                  motionIsOpen ? PANEL_COPY.closeMotion : PANEL_COPY.openMotion,
+                  locale,
+                )}
+                data-dock-tip={tx(PANEL_COPY.motion, locale)}
+                className={cn(
+                  dockButton(motionIsOpen),
+                  dockDragging && "cursor-grabbing active:scale-100",
+                )}
+                onClick={() => {
+                  if (dockMovedRef.current) return;
+                  toggleMotion();
+                }}
+              >
+                <PanelIcon name="spline" className="size-5" />
+              </button>
+            </DockBarSlot>
+          ) : (
           <DockBarSlot open={hasSpringTargets} reduceMotion={reduceMotion}>
             <button
               type="button"
@@ -1896,8 +2094,9 @@ export function SettingsPanelImpl<TSettings>({
               <PanelIcon name="activity" className="size-5" />
             </button>
           </DockBarSlot>
+          )}
           <DockBarSlot
-            open={hasEasingTargets}
+            open={!fresh && hasEasingTargets}
             reduceMotion={reduceMotion}
           >
             <button
@@ -1943,12 +2142,38 @@ export function SettingsPanelImpl<TSettings>({
               <PanelIcon name="waypoints" className="size-5" />
             </button>
           </DockBarSlot>
+          <DockBarSlot
+            open={fresh && paletteChoices.length > 0}
+            reduceMotion={reduceMotion}
+          >
+            <button
+              type="button"
+              aria-expanded={paletteOpen}
+              aria-controls={`${panelId}-palette`}
+              aria-label={tx(
+                paletteOpen ? PANEL_COPY.closePalette : PANEL_COPY.openPalette,
+                locale,
+              )}
+              data-dock-tip={tx(PANEL_COPY.palette, locale)}
+              className={cn(
+                dockButton(paletteOpen),
+                dockDragging && "cursor-grabbing active:scale-100",
+              )}
+              onClick={() => {
+                if (dockMovedRef.current) return;
+                setPanelInstant(false);
+                setPaletteOpen((open) => !open);
+              }}
+            >
+              <PanelIcon name="palette" className="size-5" />
+            </button>
+          </DockBarSlot>
           <DockBarSlot open={Boolean(dockExtra)} reduceMotion={reduceMotion}>
             <div data-dock-extra="" className="contents">
               {dockExtra}
             </div>
           </DockBarSlot>
-          {dockSearch || onReset ? <DockBarDivider /> : null}
+          {!fresh && dockSearch || dockActionsVisible ? <DockBarDivider /> : null}
           {onReset ? (
             <DockBarSlot
               open={Boolean(dockActionsVisible)}
@@ -2006,7 +2231,7 @@ export function SettingsPanelImpl<TSettings>({
               ) : null}
             </DockBarSlot>
           ) : null}
-          {dockSearch ? (
+          {!fresh && dockSearch ? (
           <DockSearchField
             open={searchOpen}
             query={searchQuery}
@@ -2086,8 +2311,8 @@ export function SettingsPanelImpl<TSettings>({
             background: fresh ? "var(--color-white)" : GLASS,
             zIndex: windowZ.scene ?? 100,
             width: frameW,
-            maxHeight: frameH ?? maxPanelH,
-            height: "auto",
+            maxHeight: fresh ? maxPanelH : (frameH ?? maxPanelH),
+            height: fresh && frameH != null ? frameH : "auto",
             ...(panelFloat != null
               ? {
                   left: panelFloat.x,
@@ -2096,6 +2321,14 @@ export function SettingsPanelImpl<TSettings>({
                   bottom: "auto",
                   margin: 0,
                 }
+              : panelTopPin != null
+                ? {
+                    left: dockedX,
+                    top: panelTopPin,
+                    right: "auto",
+                    bottom: "auto",
+                    margin: 0,
+                  }
               : {
                   left: dockedX,
                   top: dockBottom
@@ -2147,6 +2380,7 @@ export function SettingsPanelImpl<TSettings>({
                     sectionKey={subsectionId}
                     theme={panelTheme}
                     font={panelFont}
+                    omitColors={fresh}
                   />
                 ) : null}
               </div>
@@ -2395,13 +2629,23 @@ export function SettingsPanelImpl<TSettings>({
                   (item) => copyKey(item.title) === orderKey,
                 );
                 if (!section || !sectionHasRows(section)) continue;
+                const colorOnly =
+                  sectionRowCount(section) -
+                    (section.colors?.length ?? 0) -
+                    (section.refs ?? []).filter(
+                      (ref) => rowIndex.get(ref.ref)?.kind === "color",
+                    ).length <=
+                  0;
+                if (colorOnly) continue;
                 const node = renderGroupSectionItem(group, section, orderKey);
                 if (section.untitled) {
                   untitled.push(node);
-                  untitledCount += sectionRowCount(section);
+                  untitledCount +=
+                    sectionRowCount(section) - (section.colors?.length ?? 0);
                   continue;
                 }
-                const count = sectionRowCount(section);
+                const count =
+                  sectionRowCount(section) - (section.colors?.length ?? 0);
                 const subsectionId = `${group.id}:${orderKey}`;
                 titled.push(
                   count <= 1 ? (
@@ -2547,10 +2791,15 @@ export function SettingsPanelImpl<TSettings>({
             visibleTop.length === 0 &&
             visibleMid.length === 0;
           return (
-          <div
-            className="grid min-h-0 w-full grid-rows-[auto_minmax(0,auto)] overflow-hidden"
-            data-section-list=""
-          >
+            <div
+              className={cn(
+                "grid min-h-0 w-full overflow-hidden",
+                frameH != null
+                  ? "min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)]"
+                  : "grid-rows-[auto_minmax(0,auto)]",
+              )}
+              data-section-list=""
+            >
             {fresh ? (
               <header className="flex items-center justify-between px-3 pt-2 pb-0.5 text-black">
                 <span className="flex h-5 min-w-0 items-center gap-1">
@@ -2621,6 +2870,31 @@ export function SettingsPanelImpl<TSettings>({
                 )}
                 style={{ height: PANEL_MOVE_EDGE }}
               />
+              {fresh ? (
+                <>
+                  <button
+                    type="button"
+                    data-panel-resize="y"
+                    aria-label={tx(PANEL_COPY.resizePanelHeight, locale)}
+                    className="absolute bottom-0 left-3 right-3 z-[3] cursor-ns-resize touch-none"
+                    style={{ height: PANEL_RESIZE_HIT }}
+                    onPointerDown={startPanelResize("y", "bottom")}
+                  />
+                  <button
+                    type="button"
+                    data-panel-resize={dockRight ? "xy-nesw" : "xy-nwse"}
+                    aria-label={tx(PANEL_COPY.resizePanelCorner, locale)}
+                    className={cn(
+                      "absolute bottom-0 z-[4] size-3 touch-none",
+                      dockRight
+                        ? "left-0 cursor-nesw-resize"
+                        : "right-0 cursor-nwse-resize",
+                    )}
+                    onPointerDown={startPanelResize("xy", "bottom")}
+                  />
+                </>
+              ) : (
+                <>
               <button
                 type="button"
                 data-panel-resize="y"
@@ -2650,6 +2924,8 @@ export function SettingsPanelImpl<TSettings>({
                 }}
                 onPointerDown={startPanelResize("xy")}
               />
+                </>
+              )}
             </>
           ) : null}
 
@@ -2877,7 +3153,113 @@ export function SettingsPanelImpl<TSettings>({
               windowHost,
             )
           : null}
-        {windowHost && hasSpringTargets && activeSpring
+        {windowHost && fresh && (hasSpringTargets || hasEasingTargets)
+          ? createPortal(
+              <DockedChromeWindow
+                id={`${panelId}-motion`}
+                open={motionIsOpen}
+                mounted={springMounted || bezierMounted}
+                label={tx(PANEL_COPY.motion, locale)}
+                left={extraDockLeft("spring")}
+                top={dockedWindowTop}
+                bottom={dockedWindowBottom}
+                fromBottom={dockBottom}
+                origin={dockedOrigin}
+                skip={skipPanelMotion}
+                theme={panelTheme}
+                font={panelFont}
+                width={256}
+                maxHeight={extraMaxH}
+                locale={locale}
+                float={chromeFloat.bezier ?? chromeFloat.spring}
+                moving={chromeMoving === "bezier" || chromeMoving === "spring"}
+                zIndex={windowZ.bezier ?? windowZ.spring ?? 100}
+                onPointerDown={startChromeMove(
+                  hasEasingTargets ? "bezier" : "spring",
+                )}
+              >
+                <MotionWindow
+                  bare
+                  type={
+                    hasEasingTargets && hasSpringTargets
+                      ? motionType
+                      : hasSpringTargets
+                        ? "physics"
+                        : "easing"
+                  }
+                  onType={setMotionType}
+                  modes={[
+                    ...(hasEasingTargets ? (["easing"] as const) : []),
+                    ...(hasSpringTargets ? (["physics"] as const) : []),
+                  ]}
+                  curve={
+                    activeEasing
+                      ? [
+                          activeEasing.x1,
+                          activeEasing.y1,
+                          activeEasing.x2,
+                          activeEasing.y2,
+                        ]
+                      : [0.22, 1, 0.36, 1]
+                  }
+                  onCurve={(next) =>
+                    patchEasing({
+                      x1: next[0],
+                      y1: next[1],
+                      x2: next[2],
+                      y2: next[3],
+                    })
+                  }
+                  spring={
+                    activeSpring ?? { stiffness: 170, damping: 26, mass: 1 }
+                  }
+                  onSpring={patchSpring}
+                  target={
+                    (hasEasingTargets && hasSpringTargets
+                      ? motionType
+                      : hasSpringTargets
+                        ? "physics"
+                        : "easing") === "physics"
+                      ? springTargets.length > 1
+                        ? tx(
+                            springTargets.find((item) => item.id === activeSpringId)
+                              ?.label ?? springTargets[0].label,
+                            locale,
+                          )
+                        : undefined
+                      : easingTargets.length > 1
+                        ? tx(
+                            easingTargets.find((item) => item.id === activeEasingId)
+                              ?.label ?? easingTargets[0].label,
+                            locale,
+                          )
+                        : undefined
+                  }
+                  targets={
+                    (hasSpringTargets &&
+                    (!hasEasingTargets || motionType === "physics")
+                      ? springTargets
+                      : easingTargets
+                    ).map((item) => tx(item.label, locale))
+                  }
+                  onTarget={(label) => {
+                    const physics =
+                      hasSpringTargets &&
+                      (!hasEasingTargets || motionType === "physics");
+                    const list = physics ? springTargets : easingTargets;
+                    const hit = list.find(
+                      (item) => tx(item.label, locale) === label,
+                    );
+                    if (!hit) return;
+                    if (physics) setActiveSpringId(hit.id);
+                    else setActiveEasingId(hit.id);
+                  }}
+                />
+              </DockedChromeWindow>,
+              windowHost,
+            )
+          : null}
+        {windowHost && !fresh && hasSpringTargets && activeSpring
           ? createPortal(
               <DockedChromeWindow
                 id={`${panelId}-spring`}
@@ -2970,7 +3352,7 @@ export function SettingsPanelImpl<TSettings>({
               windowHost,
             )
           : null}
-        {windowHost && hasEasingTargets
+        {windowHost && !fresh && hasEasingTargets
           ? createPortal(
               <DockedChromeWindow
                 id={`${panelId}-bezier`}
@@ -3034,6 +3416,17 @@ export function SettingsPanelImpl<TSettings>({
                 zIndex={windowZ.axis ?? 100}
                 onPointerDown={startChromeMove("axis")}
               >
+                {fresh ? (
+                  <div className="flex w-full flex-col gap-1.5 p-2 text-black">
+                    <header className="flex h-4 items-center px-1">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <PanelIcon name={curveSectionIcon} className="size-5" />
+                        <span className="text-[14px] leading-4">{curveTitle}</span>
+                      </span>
+                    </header>
+                    {curveSection}
+                  </div>
+                ) : (
                 <ChromeViewSection
                   icon={curveSectionIcon}
                   title={curveTitle}
@@ -3045,6 +3438,94 @@ export function SettingsPanelImpl<TSettings>({
                 >
                   {curveSection}
                 </ChromeViewSection>
+                )}
+              </DockedChromeWindow>,
+              windowHost,
+            )
+          : null}
+        {windowHost && fresh && activePalette
+          ? createPortal(
+              <DockedChromeWindow
+                id={`${panelId}-palette`}
+                open={paletteOpen}
+                mounted={paletteMounted}
+                label={tx(PANEL_COPY.palette, locale)}
+                left={
+                  extraDockLeft("axis") +
+                  (axisOpen
+                    ? (dockRight ? -1 : 1) * (frameW + PANEL_DOCK_GAP)
+                    : 0)
+                }
+                top={dockedWindowTop}
+                bottom={dockedWindowBottom}
+                fromBottom={dockBottom}
+                origin={dockedOrigin}
+                skip={skipPanelMotion}
+                theme={panelTheme}
+                font={panelFont}
+                width={256}
+                maxHeight={extraMaxH}
+                locale={locale}
+                zIndex={101}
+              >
+                <KitLocale.Provider value={locale}>
+                  <div className="flex w-full flex-col gap-1.5 p-2 text-black">
+                    <header className="flex h-4 items-center px-1">
+                      <span className="flex min-w-0 items-center gap-1">
+                        <PanelIcon name="palette" className="size-5" />
+                        <span className="text-[14px] leading-4">
+                          {tx(PANEL_COPY.palette, locale)}
+                        </span>
+                      </span>
+                    </header>
+                    <ColorPicker
+                      color={(() => {
+                        const raw = String(
+                          settings[activePalette.key as keyof TSettings] ??
+                            "#000000",
+                        );
+                        const body = raw.replace("#", "");
+                        const hex = /^[0-9a-fA-F]{6}$/.test(body)
+                          ? `#${body}`
+                          : "#000000";
+                        const percent = activePalette.opacityKey
+                          ? Number(
+                              settings[
+                                activePalette.opacityKey as keyof TSettings
+                              ],
+                            )
+                          : 100;
+                        return (
+                          hexToHsva(
+                            hex,
+                            (Number.isFinite(percent) ? percent : 100) / 100,
+                          ) ?? { h: 0, s: 0, v: 0, a: 1 }
+                        );
+                      })()}
+                      onChange={(next) => {
+                        const patch = {
+                          [activePalette.key]: `#${rgbToHex(hsvaToRgb(next))}`,
+                        } as Partial<TSettings>;
+                        if (activePalette.opacityKey) {
+                          (patch as Record<string, number>)[
+                            activePalette.opacityKey
+                          ] = Math.round(next.a * 100);
+                        }
+                        onSettingsChange(patch);
+                      }}
+                      format={colorFormat}
+                      onFormat={setColorFormat}
+                      target={activePalette.label}
+                      targets={paletteChoices.map((color) => color.label)}
+                      onTarget={(label) => {
+                        const hit = paletteChoices.find(
+                          (color) => color.label === label,
+                        );
+                        if (hit) setPaletteKey(hit.key);
+                      }}
+                    />
+                  </div>
+                </KitLocale.Provider>
               </DockedChromeWindow>,
               windowHost,
             )

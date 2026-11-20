@@ -151,6 +151,12 @@ export const PANEL_COPY = {
   spring: L("Пружина", "Spring"),
   openSpring: L("Открыть пружину", "Open spring"),
   closeSpring: L("Закрыть пружину", "Close spring"),
+  palette: L("Палитра", "Palette"),
+  openPalette: L("Открыть палитру", "Open palette"),
+  closePalette: L("Закрыть палитру", "Close palette"),
+  motion: L("Движение", "Motion"),
+  openMotion: L("Открыть движение", "Open motion"),
+  closeMotion: L("Закрыть движение", "Close motion"),
   openAxis: L("Открыть ось", "Open axis"),
   closeAxis: L("Закрыть ось", "Close axis"),
   resetSettings: (count: number) =>

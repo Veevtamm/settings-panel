@@ -95,6 +95,8 @@ export function usePanelWindow({
   const legacyPanelKey = legacyPanelIds.join("\0");
   const [panelWidth, setPanelWidth] = useState(PANEL_WIDTH);
   const [panelHeight, setPanelHeight] = useState<number | null>(null);
+  /** Top of the window while a bottom-edge resize is in progress or just happened. */
+  const [panelTopPin, setPanelTopPin] = useState<number | null>(null);
   const [panelFloat, setPanelFloat] = useState<{
     x: number;
     y: number;
@@ -263,7 +265,7 @@ export function usePanelWindow({
   }, [dockCorner, panelHeight, panelWidth, viewportH, viewportW]);
 
   const startPanelResize =
-    (edge: "x" | "y" | "xy") =>
+    (edge: "x" | "y" | "xy", grip?: "bottom") =>
     (event: ReactPointerEvent<HTMLButtonElement>) => {
       if (event.button !== 0) return;
       event.preventDefault();
@@ -271,9 +273,12 @@ export function usePanelWindow({
       const el = document.getElementById(panelId);
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const cornerNwse =
-        dockCorner.endsWith("right") === dockCorner.startsWith("bottom");
+      const fromBottom = grip === "bottom";
+      const cornerNwse = fromBottom
+        ? !dockCorner.endsWith("right")
+        : dockCorner.endsWith("right") === dockCorner.startsWith("bottom");
       const centered = dockCorner.endsWith("center");
+      if (fromBottom) setPanelTopPin(rect.top);
       panelResizeRef.current = {
         edge,
         cursor:
@@ -296,7 +301,7 @@ export function usePanelWindow({
             ? Math.max(rect.height, panelHeight ?? PANEL_HEIGHT_MIN)
             : rect.height,
         growX: dockCorner.endsWith("right") ? -1 : centered ? 2 : 1,
-        growY: dockCorner.startsWith("bottom") ? -1 : 1,
+        growY: fromBottom ? 1 : dockCorner.startsWith("bottom") ? -1 : 1,
       };
       try {
         event.currentTarget.setPointerCapture(event.pointerId);
@@ -588,11 +593,13 @@ export function usePanelWindow({
 
   const persistDock = (corner: DockCorner) => {
     setDockCorner(corner);
+    setPanelTopPin(null);
     writePanelSettings(layoutStoreId, { dockSlot: corner });
   };
 
   const resetChromeLayout = () => {
     setPanelFloat(null);
+    setPanelTopPin(null);
     setChromeFloat({});
     if (ownFloat) {
       writePanelSettings(panelId, { panelFloat: null });
@@ -724,6 +731,7 @@ export function usePanelWindow({
     maxPanelH,
     frameW,
     frameH,
+    panelTopPin,
     startPanelResize,
     startPanelMove,
     startChromeMove,
